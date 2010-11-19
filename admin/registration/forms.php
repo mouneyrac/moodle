@@ -368,8 +368,8 @@ class site_registration_form extends moodleform {
         $questioncount = $DB->count_records('question');
         $resourcecount = $DB->count_records('resource');
         require_once($CFG->dirroot . "/course/lib.php");
-        $participantnumberaverage = average_number_of_participants();
-        $modulenumberaverage = average_number_of_courses_modules();
+        $participantnumberaverage = number_format(average_number_of_participants(), 2);
+        $modulenumberaverage = number_format(average_number_of_courses_modules(), 2);
 
         if (HUB_MOODLEORGHUBURL != $huburl) {
             $mform->addElement('checkbox', 'courses', get_string('sendfollowinginfo', 'hub'),

@@ -5476,6 +5476,58 @@ WHERE gradeitemid IS NOT NULL AND grademax IS NOT NULL");
 
         upgrade_main_savepoint(true, 2010111702);
     }
+    
+    if ($oldversion < 2010122000) {
+
+        // Define field description to be added to registration_hubs
+        $table = new xmldb_table('registration_hubs');
+        $field = new xmldb_field('description', XMLDB_TYPE_TEXT, 'big', null, null, null, null, 'confirmed');
+
+        // Conditionally launch add field description
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Define field sites to be added to registration_hubs
+        $table = new xmldb_table('registration_hubs');
+        $field = new xmldb_field('sites', XMLDB_TYPE_INTEGER, '10', XMLDB_UNSIGNED, XMLDB_NOTNULL, null, '0', 'description');
+
+        // Conditionally launch add field sites
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Define field courses to be added to registration_hubs
+        $table = new xmldb_table('registration_hubs');
+        $field = new xmldb_field('courses', XMLDB_TYPE_INTEGER, '10', XMLDB_UNSIGNED, XMLDB_NOTNULL, null, '0', 'sites');
+
+        // Conditionally launch add field courses
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Define field hublogo to be added to registration_hubs
+        $table = new xmldb_table('registration_hubs');
+        $field = new xmldb_field('hublogo', XMLDB_TYPE_INTEGER, '1', XMLDB_UNSIGNED, XMLDB_NOTNULL, null, '0', 'courses');
+
+        // Conditionally launch add field hublogo
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Define field lastmodified to be added to registration_hubs
+        $table = new xmldb_table('registration_hubs');
+        $field = new xmldb_field('lastmodified', XMLDB_TYPE_INTEGER, '10', XMLDB_UNSIGNED, null, null, '0', 'hublogo');
+
+        // Conditionally launch add field lastmodified
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Main savepoint reached
+        upgrade_main_savepoint(true, 2010122000);
+    }
+
 
     return true;
 }

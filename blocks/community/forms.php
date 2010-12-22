@@ -103,21 +103,21 @@ class community_hub_search_form extends moodleform {
         $xmlrpcclient = new webservice_xmlrpc_client($serverurl, 'publichubdirectory');
         try {
             $hubs = $xmlrpcclient->call($function, $params);
-        } catch (Exception $e) {
-            $hubs = array();
+        } catch (Exception $e) {         
+            $hubs = array(); //"registered on" hubs get retrieved soon after this
             $error = $OUTPUT->notification(get_string('errorhublisting', 'block_community', $e->getMessage()));
             $mform->addElement('static', 'errorhub', '', $error);
         }
-
-        //display list of registered on hub
+        
+        //find hub that the site is registered on 
+        //and that are not in the hub directory listing.
         $registrationmanager = new registration_manager();
-        $registeredhubs = $registrationmanager->get_registered_on_hubs();
-        //retrieve some additional hubs that we will add to
-        //the hub list got from the hub directory
+        $registeredhubs = $registrationmanager->get_updated_registered_on_hubs();
         $additionalhubs = array();
         foreach ($registeredhubs as $registeredhub) {
             $inthepubliclist = false;
-            foreach ($hubs as $hub) {
+            //search if the "registered on" hub is in the hub directory listing
+            foreach ($hubs as $hub) {              
                 if ($hub['url'] == $registeredhub->huburl) {
                     $inthepubliclist = true;
                     $hub['registeredon'] = true;
@@ -127,16 +127,21 @@ class community_hub_search_form extends moodleform {
                 $additionalhub = array();
                 $additionalhub['name'] = $registeredhub->hubname;
                 $additionalhub['url'] = $registeredhub->huburl;
+                $additionalhub['description'] = $registeredhub->description;
+                $additionalhub['sites'] = $registeredhub->sites;
+                $additionalhub['courses'] = $registeredhub->courses;
+                $additionalhub['registeredon'] = true;
+                $additionalhub['trusted'] = false; //cannot be trusted by Moodle.org
                 $additionalhubs[] = $additionalhub;
             }
         }
         if (!empty($additionalhubs)) {
-            $hubs = $hubs + $additionalhubs;
+            $hubs = array_merge($hubs, $additionalhubs);
         }
 
         if (!empty($hubs)) {
-            //TODO: sort hubs by trusted/prioritize
-            //Public hub list
+            
+            //Display hub listing selector
             $options = array();
             $firsthub = false;
             foreach ($hubs as $hub) {
@@ -145,37 +150,43 @@ class community_hub_search_form extends moodleform {
                         'filetype' => HUB_HUBSCREENSHOT_FILE_TYPE);
                     $imgurl = new moodle_url(HUB_HUBDIRECTORYURL .
                                     "/local/hubdirectory/webservice/download.php", $params);
-                    $ascreenshothtml = html_writer::empty_tag('img',
-                                    array('src' => $imgurl, 'alt' => $hub['name']));
-
-                    $hubdescription = html_writer::tag('a', $hub['name'],
-                                    array('class' => 'hublink clearfix', 'href' => $hub['url'],
-                                        'onclick' => 'this.target="_blank"'));
-                    $hubdescription .= html_writer::tag('span', $ascreenshothtml,
-                                    array('class' => 'hubscreenshot'));
-                    $hubdescriptiontext = html_writer::tag('span', format_text($hub['description'], FORMAT_PLAIN),
-                                    array('class' => 'hubdescription'));
-                    $additionaldesc = get_string('sites', 'block_community') . ': ' . $hub['sites'] . ' - ' .
-                            get_string('courses', 'block_community') . ': ' . $hub['courses'];
-                    $hubdescriptiontext .= html_writer::tag('span', $additionaldesc,
-                                    array('class' => 'hubadditionaldesc'));
-                    if ($hub['trusted']) {
-                    $hubtrusted =  get_string('hubtrusted', 'block_community');
-                    $hubdescriptiontext .= html_writer::tag('span',
-                                    $hubtrusted . ' ' . $OUTPUT->doc_link('trusted_hubs'),
-                                    array('class' => 'trusted'));
-
-                    }
-                    $hubdescriptiontext = html_writer::tag('span', $hubdescriptiontext,
-                            array('class' => 'hubdescriptiontext'));
-
-                    $hubdescription = html_writer::tag('span',
-                                    $hubdescription . $hubdescriptiontext,
-                                    array('class' => $hub['trusted'] ? 'hubtrusted' : 'hubnottrusted'));
                 } else {
-                    $hubdescription = html_writer::tag('a', $hub['name'],
-                                    array('class' => 'hublink', 'href' => $hub['url']));
+                    $imgurl = new moodle_url($hub['url'] .
+                                    "/local/hub/webservice/download.php",
+                                    array('filetype' => HUB_HUBSCREENSHOT_FILE_TYPE));
                 }
+                $ascreenshothtml = html_writer::empty_tag('img', 
+                        array('src' => $imgurl, 'alt' => $hub['name']));
+
+                $hubdescription = html_writer::tag('a', $hub['name'], 
+                        array('class' => 'hublink clearfix', 'href' => $hub['url'],
+                            'onclick' => 'this.target="_blank"'));
+                $hubdescription .= html_writer::tag('span', $ascreenshothtml, 
+                        array('class' => 'hubscreenshot'));
+                $hubdescriptiontext = html_writer::tag('span', format_text($hub['description'], 
+                        FORMAT_PLAIN), array('class' => 'hubdescription'));
+                $additionaldesc = get_string('sites', 'block_community') 
+                        . ': ' . $hub['sites'] . ' - ' .
+                        get_string('courses', 'block_community') . ': ' . $hub['courses'];
+                $hubdescriptiontext .= html_writer::tag('span', $additionaldesc, 
+                        array('class' => 'hubadditionaldesc'));
+                if ($hub['trusted']) {
+                    $hubtrusted = get_string('hubtrusted', 'block_community');
+                    $hubdescriptiontext .= html_writer::tag('span', 
+                            $hubtrusted . ' ' . $OUTPUT->doc_link('trusted_hubs'), 
+                            array('class' => 'trusted'));
+                }
+                if (key_exists('registeredon', $hub)) {
+                    $hubregisteredon = get_string('hubregisteredon', 'block_community');
+                    $hubdescriptiontext .= html_writer::tag('span', 
+                            $hubregisteredon . ' ' . $OUTPUT->doc_link('trusted_hubs'), 
+                            array('class' => 'registeredon'));
+                }
+                $hubdescriptiontext = html_writer::tag('span', $hubdescriptiontext, 
+                        array('class' => 'hubdescriptiontext'));
+
+                $hubdescription = html_writer::tag('span', $hubdescription . $hubdescriptiontext, 
+                        array('class' => $hub['trusted'] ? 'hubtrusted' : 'hubnottrusted'));
 
                 if (empty($firsthub)) {
                     $mform->addElement('radio', 'huburl', get_string('selecthub', 'block_community'),
@@ -187,7 +198,7 @@ class community_hub_search_form extends moodleform {
                 }
             }
 
-            //display enrol/download select box if the USER has the download capability on the course
+            //Display enrol/download select box if the USER has the download capability on the course
             if (has_capability('moodle/community:download',
                             get_context_instance(CONTEXT_COURSE, $this->_customdata['courseid']))) {
                 $options = array(0 => get_string('enrollable', 'block_community'),

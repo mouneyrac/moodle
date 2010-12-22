@@ -26,6 +26,12 @@
     font-weight: normal;
     font-style: italic;
 }
+#page-blocks-community-communitycourse .registeredon {
+    font-size: 90%;
+    color: #006633;
+    font-weight: normal;
+    font-style: italic;
+}
 
 /* COURSES RESULT */
 #page-blocks-community-communitycourse .additionaldesc {font-size: 80%; color: #8B8989;}

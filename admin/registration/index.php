@@ -154,7 +154,7 @@ if (empty($cancel) and $unregistration and !$confirm) {
     echo $renderer->registrationselector($registeredonmoodleorg);
 
     if (extension_loaded('xmlrpc')) {     
-        $hubs = $registrationmanager->get_registered_on_hubs();
+        $hubs = $registrationmanager->get_updated_registered_on_hubs();
         if (!empty($hubs)) {
             echo $OUTPUT->heading(get_string('registeredon', 'hub'), 3, 'main');
             echo $renderer->registeredonhublisting($hubs);

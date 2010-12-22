@@ -153,11 +153,77 @@ class registration_manager {
 
     /**
      * Return all hubs where the site is registered on
+     * (hub information are not updated by web service)
      */
     public function get_registered_on_hubs() {
         global $DB;
         $hubs = $DB->get_records('registration_hubs', array('confirmed' => 1));
         return $hubs;
+    }
+    
+    /**
+     * Return all hubs where the site is registered on 
+     * Update the hub information (web service calls) if cache is expired
+     * @return $hubs array of hub 
+     */
+    public function get_updated_registered_on_hubs($expiredtime = 864000) {
+        $hubs = $this->get_registered_on_hubs();
+        if (!empty($hubs)) {          
+            //check that hub information are up to date.
+            foreach ($hubs as &$hub) {
+                $hub = $this->get_updated_hub_info($hub, $expiredtime);
+            }
+        }
+        return $hubs;
+    }
+    
+     /**
+     * Check if the hub information are expired
+     * @param object $hub
+     * @return $hub the updated hub 
+     */
+    public function get_updated_hub_info($hub, $expiredtime) {
+        global $DB, $CFG;
+        
+        //check the hub parameters is correct
+        if (empty($hub->huburl) or empty($hub->token) or empty($hub->id)) {
+            throw new moodle_exception('updatehubmissingvalues', 'hub');
+        }
+        
+        //if cache is expired, update the hub information
+        if (empty($hub->lastmodified)
+                or $hub->lastmodified < (time() - $expiredtime)) {
+
+            //retrieve the updated hub information
+            $function = 'hub_get_info';
+            $params = array();
+            $serverurl = $hub->huburl . "/local/hub/webservice/webservices.php";
+            require_once($CFG->dirroot . "/webservice/xmlrpc/lib.php");
+            $xmlrpcclient = new webservice_xmlrpc_client($serverurl, $hub->token);
+            try {
+                $hubinfo = $xmlrpcclient->call($function, $params);
+            } catch (Exception $e) {
+                //if error occurs, just display an alert
+                $messagevalues = new stdClass();
+                $messagevalues->hubname = $hub->hubname;
+                $messagevalues->error = $e->getMessage();
+                echo $OUTPUT->notification(get_string('cannotupdatehubinfo', 'hub', $messagevalues));
+            }
+
+            //update the hub information
+            if (!empty($hubinfo)) {
+                $hub->hubname = $hubinfo['name'];
+                $hub->lastmodified = time();
+                $hub->description = $hubinfo['description'];
+                $hub->courses = $hubinfo['courses'];
+                $hub->sites = $hubinfo['sites'];
+                $hub->hublogo = $hubinfo['hublogo'];
+                $DB->update_record('registration_hubs', $hub);
+            }
+        } 
+            
+        return $hub;
+        
     }
 
     /**
@@ -264,6 +330,6 @@ class registration_manager {
         }
         return $privacystring;
     }
-
+    
 }
 ?>

@@ -66,6 +66,7 @@ $string['errorhublisting'] = 'An error occured when retrieving the hub listing f
 $string['fileinfo'] = 'Language: {$a->lang} - License: {$a->license} -  Time updated: {$a->timeupdated}';
 $string['hub'] = 'hub';
 $string['hubnottrusted'] = 'Not trusted';
+$string['hubregisteredon'] = 'Registered on this hub';
 $string['hubtrusted'] = 'This hub is trusted by Moodle.org';
 $string['keywords'] = 'Keywords';
 $string['keywords_help'] = 'You can search for courses containing specific text in the name, description and other fields of the database.';

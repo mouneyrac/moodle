@@ -359,11 +359,17 @@ if ($pageid != LESSON_EOL) {
     } else {
         $data = new stdClass;
         $data->id = $PAGE->cm->id;
+        $data->pageid = $page->id;
+        $data->newpageid = LESSON_NEXTPAGE;
         if ($nextpage = $lesson->get_next_page($page->nextpageid)) {
             $data->newpageid = $nextpage->id;
         }
 
-        $mform = new lesson_page_without_answers();
+        $customdata = array(
+            'title'     => $page->title,
+            'contents'  => $page->get_contents()
+        );
+        $mform = new lesson_page_without_answers($CFG->wwwroot.'/mod/lesson/continue.php', $customdata);
         $mform->set_data($data);
         ob_start();
         $mform->display();
@@ -371,7 +377,7 @@ if ($pageid != LESSON_EOL) {
         ob_end_clean();
     }
 
-    lesson_add_pretend_blocks($PAGE, $cm, $lesson, $timer);
+    lesson_add_fake_blocks($PAGE, $cm, $lesson, $timer);
     echo $lessonoutput->header($lesson, $cm, $currenttab, $extraeditbuttons, $lessonpageid);
     if ($attemptflag) {
         echo $OUTPUT->heading(get_string('attempt', 'lesson', $retries));
@@ -553,7 +559,7 @@ if ($pageid != LESSON_EOL) {
     $url = new moodle_url('/grade/index.php', array('id'=>$course->id));
     $lessoncontent .= html_writer::link($url, get_string('viewgrades', 'lesson'), array('class'=>'centerpadded lessonbutton standardbutton'));
 
-    lesson_add_pretend_blocks($PAGE, $cm, $lesson, $timer);
+    lesson_add_fake_blocks($PAGE, $cm, $lesson, $timer);
     echo $lessonoutput->header($lesson, $cm, $currenttab, $extraeditbuttons, $lessonpageid);
     echo $lessoncontent;
     echo $lessonoutput->footer();

@@ -5647,12 +5647,12 @@ function print_date_selector($day, $month, $year, $currenttime=0, $return=false)
  * @param int $step minute spacing
  * @param boolean $return
  */
-function print_time_selector($hour, $minute, $currenttime=0, $step=5, $return=false) {
+function print_time_selector($hour, $minute, $currenttime=0, $step=5, $return=false, $timezone=99) {
 
     if (!$currenttime) {
         $currenttime = time();
     }
-    $currentdate = usergetdate($currenttime);
+    $currentdate = usergetdate($currenttime, $timezone);
     if ($step != 1) {
         $currentdate['minutes'] = ceil($currentdate['minutes']/$step)*$step;
     }

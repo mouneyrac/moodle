@@ -25,7 +25,14 @@
     <td>
       <?php print_date_selector('startday', 'startmon', 'startyr', $form->timestart);?>
       <?php print_string('eventtime', 'calendar');?>
-      <?php print_time_selector('starthr', 'startmin', $form->timestart) ?>
+      <?php 
+      //if Moodle timezone is set to 'server default', then force the correct UTC timezone - MDL-17672
+      $timezone = get_user_timezone_offset(99);
+      if (abs($timezone) > 13) { //Moodle timezone == 'server default'
+        $timezone = date('Z') / (60 * 60); // UTC value
+        $timezone = number_format($timezone, 1); // only one decimal for UTC value
+      }
+      print_time_selector('starthr', 'startmin', $form->timestart, 5, false, $timezone) ?>
       <?php if (isset($err['timestart'])) formerr($err['timestart']); ?>
     </td>
   </tr>
@@ -47,7 +54,7 @@
         </label>
         <?php print_date_selector('endday', 'endmon', 'endyr', $form->timestart + $form->timeduration);?>
         <?php print_string('eventtime', 'calendar');?>
-        <?php print_time_selector('endhr', 'endmin', $form->timestart + $form->timeduration) ?>
+        <?php print_time_selector('endhr', 'endmin', $form->timestart + $form->timeduration, 5, false, $timezone) ?>
         <?php if (isset($err['timeduration'])) formerr($err['timeduration']); ?>
       </div>
       <div>

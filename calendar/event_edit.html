@@ -23,16 +23,20 @@
   <tr>
     <td style="vertical-align: top; text-align: right;"><?php print_string('eventdate', 'calendar'); ?>:</td>
     <td>
-      <?php print_date_selector('startday', 'startmon', 'startyr', $form->timestart);?>
-      <?php print_string('eventtime', 'calendar');?>
       <?php 
-      //if Moodle timezone is set to 'server default', then force the correct UTC timezone - MDL-17672
+      //if Moodle timezone is set to 'server default', then substract a hour during DST time - MDL-17672
+      $timestart = $form->timestart;
+      $isstarttimedst = date('I', $form->timestart);
       $timezone = get_user_timezone_offset(99);
-      if (abs($timezone) > 13) { //Moodle timezone == 'server default'
-        $timezone = date('Z') / (60 * 60); // UTC value
-        $timezone = number_format($timezone, 1); // only one decimal for UTC value
+      if (abs($timezone) > 13) {    // Server time
+          if ($isstarttimedst ) {
+              $timestart = $timestart - 3600;
+          }
       }
-      print_time_selector('starthr', 'startmin', $form->timestart, 5, false, $timezone) ?>
+
+      print_date_selector('startday', 'startmon', 'startyr', $timestart);?>
+      <?php print_string('eventtime', 'calendar');?>
+      <?php print_time_selector('starthr', 'startmin', $timestart) ?>
       <?php if (isset($err['timestart'])) formerr($err['timestart']); ?>
     </td>
   </tr>
@@ -52,9 +56,9 @@
         <label for="duration_yes">
           <?php print_string('durationuntil', 'calendar'); ?>
         </label>
-        <?php print_date_selector('endday', 'endmon', 'endyr', $form->timestart + $form->timeduration);?>
+        <?php print_date_selector('endday', 'endmon', 'endyr', $timestart + $form->timeduration);?>
         <?php print_string('eventtime', 'calendar');?>
-        <?php print_time_selector('endhr', 'endmin', $form->timestart + $form->timeduration, 5, false, $timezone) ?>
+        <?php print_time_selector('endhr', 'endmin', $timestart + $form->timeduration) ?>
         <?php if (isset($err['timeduration'])) formerr($err['timeduration']); ?>
       </div>
       <div>

@@ -198,8 +198,34 @@
                 $form->name = clean_text(strip_tags($form->name, '<lang><span>'));
 
                 $form->timestart = make_timestamp($form->startyr, $form->startmon, $form->startday, $form->starthr, $form->startmin);
-                if($form->duration == 1) {
-                    $form->timeduration = make_timestamp($form->endyr, $form->endmon, $form->endday, $form->endhr, $form->endmin) - $form->timestart;
+
+                //add an hour to the timestart if it was set with server default and it is a DST time
+                //=> if the event is set at 13PM in London during a DST time, then we want the timestamp to be recorded
+                //   as 13PM GMT (not 12PM GMT).
+                $timezone = get_user_timezone_offset(99);
+                if (abs($timezone) > 13) {    // Server time
+                    $isstarttimedst = date('I', $form->timestart);
+                    if ($isstarttimedst) {
+                        $form->timestart = $form->timestart + 3600;
+                    }
+                }
+
+
+                if ($form->duration == 1) {
+
+                    $form->timeend = make_timestamp($form->endyr, $form->endmon, $form->endday, $form->endhr, $form->endmin);
+                    //add an hour to the timeend if it was set with server default and it is a DST time
+                    //=> if the event is set at 13PM in London during a DST time, then we want the timestamp to be recorded
+                    //   as 13PM GMT (not 12PM GMT).
+                    $timezone = get_user_timezone_offset(99);
+                    if (abs($timezone) > 13) {    // Server time
+                        $isendtimedst = date('I', $form->timeend);
+                        if ($isendtimedst) {
+                            $form->timeend = $form->timeend + 3600;
+                        }
+                    }
+
+                    $form->timeduration = $form->timeend - $form->timestart;
                     if($form->timeduration < 0) {
                         $form->timeduration = 0;
                     }

@@ -198,8 +198,34 @@
                 $form->name = clean_text(strip_tags($form->name, '<lang><span>'));
 
                 $form->timestart = make_timestamp($form->startyr, $form->startmon, $form->startday, $form->starthr, $form->startmin);
-                if($form->duration == 1) {
-                    $form->timeduration = make_timestamp($form->endyr, $form->endmon, $form->endday, $form->endhr, $form->endmin) - $form->timestart;
+
+                //add an hour to the timestart if it was set with server default and it is a DST time
+                //=> if the event is set at 13PM in London during a DST time, then we want the timestamp to be recorded
+                //   as 13PM GMT (not 12PM GMT).
+                $timezone = get_user_timezone_offset(99);
+                if (abs($timezone) > 13) {    // Server time
+                    $isstarttimedst = date('I', $form->timestart);
+                    if ($isstarttimedst) {
+                        $form->timestart = $form->timestart + 3600;
+                    }
+                }
+
+
+                if ($form->duration == 1) {
+
+                    $form->timeend = make_timestamp($form->endyr, $form->endmon, $form->endday, $form->endhr, $form->endmin);
+                    //add an hour to the timeend if it was set with server default and it is a DST time
+                    //=> if the event is set at 13PM in London during a DST time, then we want the timestamp to be recorded
+                    //   as 13PM GMT (not 12PM GMT).
+                    $timezone = get_user_timezone_offset(99);
+                    if (abs($timezone) > 13) {    // Server time
+                        $isendtimedst = date('I', $form->timeend);
+                        if ($isendtimedst) {
+                            $form->timeend = $form->timeend + 3600;
+                        }
+                    }
+
+                    $form->timeduration = $form->timeend - $form->timestart;
                     if($form->timeduration < 0) {
                         $form->timeduration = 0;
                     }
@@ -219,11 +245,11 @@
 
                     /// Get the event id for the log record.
                     $eventid = insert_record('event', $form, true);
-                    
+
                     /// Use the event id as the repeatid to link repeat entries together
                     if ($form->repeat) {
                         $form->repeatid = $form->id = $eventid;
-                        update_record('event', $form);         // update the row, to set its repeatid        	
+                        update_record('event', $form);         // update the row, to set its repeatid
                     }
 
                     /// Log the event entry.
@@ -508,7 +534,7 @@
                 if (!$course = get_record('course', 'id', $courseid)) {
                     error('Incorrect course ID');
                 }
-                
+
                 $groupid = groups_get_course_group($course);
 
                 echo '<h2>'.get_string('eventkind', 'calendar').':</h2>';
@@ -531,7 +557,7 @@
 
     $defaultcourses = calendar_get_default_courses();
     //calendar_set_filters($courses, $groups, $users, $defaultcourses, $defaultcourses);
-    
+
     // when adding an event you can not be a guest, so I think it's reasonalbe to ignore defaultcourses
     // MDL-10353
     calendar_set_filters($courses, $groups, $users);
@@ -626,7 +652,7 @@ function calendar_add_event_allowed($event) {
             // Allow users to add/edit group events if:
             // 1) They have manageentries (= entries for whole course)
             // 2) They have managegroupentries AND are in the group
-            $group = get_record('groups', 'id', $event->groupid);         
+            $group = get_record('groups', 'id', $event->groupid);
             return $group && (
                 has_capability('moodle/calendar:manageentries', get_context_instance(CONTEXT_COURSE, $group->courseid)) ||
                 (has_capability('moodle/calendar:managegroupentries', get_context_instance(CONTEXT_COURSE, $group->courseid))
@@ -645,4 +671,3 @@ function calendar_add_event_allowed($event) {
             return false;
     }
 }
-?>

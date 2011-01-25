@@ -456,6 +456,15 @@ function calendar_get_upcoming($courses, $groups, $users, $daysinfuture, $maxeve
                 break;
             }
 
+            //if Moodle timezone is set to 'server default', then substract a hour during DST time - MDL-17672
+            $isstarttimedst = date('I', $event->timestart);
+            $timezone = get_user_timezone_offset(99);
+            if (abs($timezone) > 13) {    // Server time
+                if ($isstarttimedst) {
+                    $event->timestart = $event->timestart - 3600;
+                }
+            }
+
             $event->time = calendar_format_event_time($event, $now, $morehref);
             $output[] = $event;
             ++$processed;
@@ -914,6 +923,8 @@ function calendar_time_representation($time) {
     if(empty($timeformat)){
         $timeformat = get_config(NULL,'calendar_site_timeformat');
     }
+    
+
     // The ? is needed because the preference might be present, but empty
     return userdate($time, empty($timeformat) ? $langtimeformat : $timeformat);
 }
@@ -1447,6 +1458,7 @@ function calendar_preferences_button() {
 }
 
 function calendar_format_event_time($event, $now, $morehref, $usecommonwords = true, $showtime=0) {
+
     $startdate = usergetdate($event->timestart);
     $enddate = usergetdate($event->timestart + $event->timeduration);
     $usermidnightstart = usergetmidnight($event->timestart);

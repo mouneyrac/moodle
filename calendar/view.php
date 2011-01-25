@@ -273,6 +273,15 @@ function calendar_show_day($d, $m, $y, $courses, $groups, $users, $courseid) {
         // First, print details about events that start today
         foreach ($events as $event) {
 
+            //if Moodle timezone is set to 'server default', then substract a hour during DST time - MDL-17672
+            $isstarttimedst = date('I', $event->timestart);
+            $timezone = get_user_timezone_offset(99);
+            if (abs($timezone) > 13) {    // Server time
+                if ($isstarttimedst) {
+                    $event->timestart = $event->timestart - 3600;
+                }
+            }
+
             $event->calendarcourseid = $courseid;
 
             if ($event->timestart >= $starttime && $event->timestart <= $endtime) {  // Print it now
@@ -285,8 +294,8 @@ function calendar_show_day($d, $m, $y, $courses, $groups, $users, $courseid) {
                 // Set printable representation
                 echo calendar_get_link_tag($dayend, CALENDAR_URL.'view.php?view=day'.$morehref.'&amp;', $enddate['mday'], $enddate['mon'], $enddate['year']).' ('.$timeend.')';
 */
-                //unset($event->time);
-
+                //unset($event->time);            
+                
                 $event->time = calendar_format_event_time($event, time(), '', false, $starttime);
                 calendar_print_event($event);
 
@@ -299,6 +308,16 @@ function calendar_show_day($d, $m, $y, $courses, $groups, $users, $courseid) {
         if (!empty($underway)) {
             echo '<h3>'.get_string('spanningevents', 'calendar').':</h3>';
             foreach ($underway as $event) {
+
+                //if Moodle timezone is set to 'server default', then substract a hour during DST time - MDL-17672
+                $isstarttimedst = date('I', $event->timestart);
+                $timezone = get_user_timezone_offset(99);
+                if (abs($timezone) > 13) {    // Server time
+                    if ($isstarttimedst) {
+                        $event->timestart = $event->timestart - 3600;
+                    }
+                }
+                
                 $event->time = calendar_format_event_time($event, time(), '', false, $starttime);
                 calendar_print_event($event);
             }

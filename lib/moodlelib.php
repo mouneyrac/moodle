@@ -3815,6 +3815,37 @@ function complete_user_login($user, $setcookie=true) {
     // this helps prevent session fixation attacks from the same domain
     session_regenerate_id(true);
 
+    /// Retrieve guest info cache
+    if (isguestuser($user)) {
+        //load file cache engine
+        require_once($CFG->libdir . '/filecache.php');
+        // constructing cache engine
+        $cache = new moodle_cache_filesystem();
+        // Guest user unique key
+        $key = 'guestusersessioninfo';
+        //Get the cached guest session info
+        $data = $cache->fetch($key);
+        if (!empty($data)) {
+
+            //simulate  session_set_user($user);
+            $USER = $data['user'];
+            $_SESSION['SESSION'] = $data['session'];
+            $USER->sesskey = random_string(10);
+            $_SESSION['USER'] = $USER;
+            $_SESSION['SESSION']->justloggedin = 1;
+
+            // update login times
+            update_user_login_times();
+
+            //NOTE:  check_user_preferences_loaded($user); and
+            // set_login_session_preferences(); are not needed for Guest.
+            // These two functions set empty information for Guest user.
+
+            // no need to continue when user is THE guest
+            return $USER;
+        }
+    }
+
     // check enrolments, load caps and setup $USER object
     session_set_user($user);
 
@@ -3828,7 +3859,17 @@ function complete_user_login($user, $setcookie=true) {
     // extra session prefs init
     set_login_session_preferences();
 
-    if (isguestuser()) {
+    if (isguestuser ()) {
+        //load file cache engine
+        require_once($CFG->libdir . '/filecache.php');
+        // constructing cache engine
+        $cache = new moodle_cache_filesystem();
+        // Guest user unique key
+        $key = 'guestusersessioninfo';
+        //cache the USER and the SESSION
+        $cachedsession['user'] = $USER;
+        $cachedsession['session'] = $_SESSION['SESSION'];
+        $cache->store($key, $cachedsession);
         // no need to continue when user is THE guest
         return $USER;
     }
@@ -3859,6 +3900,7 @@ function complete_user_login($user, $setcookie=true) {
             print_error('nopasswordchangeforced', 'auth');
         }
     }
+    
     return $USER;
 }
 
@@ -3965,12 +4007,16 @@ function update_internal_user_password($user, $password) {
 function get_complete_user_data($field, $value, $mnethostid = null) {
     global $CFG, $DB;
 
+  
+
+   
+
     if (!$field || !$value) {
         return false;
     }
 
 /// Build the WHERE clause for an SQL query
-    $params = array('fieldval'=>$value);
+    $params = array('fieldval' => $value);
     $constraints = "$field = :fieldval AND deleted <> 1";
 
     // If we are loading user data based on anything other than id,
@@ -3988,58 +4034,83 @@ function get_complete_user_data($field, $value, $mnethostid = null) {
 
 /// Get all the basic user data
 
-    if (! $user = $DB->get_record_select('user', $constraints, $params)) {
+    if (!$user = $DB->get_record_select('user', $constraints, $params)) {
         return false;
     }
 
+/// Retrieve guest info cache
+    if (isguestuser($user)) {
+        //load file cache engine
+        require_once($CFG->libdir . '/filecache.php');
+        // constructing cache engine
+        $cache = new moodle_cache_filesystem();
+        // Guest user unique key
+        $key = 'guestuserinfo';
+        //Get the cached guest info
+        $data = $cache->fetch($key);
+        if (!empty($data)) {
+            $user = $data;
+            $cached = true;
+        }
+    }
+
+    if (empty($cached)) {
+
 /// Get various settings and preferences
 
-    if ($displays = $DB->get_records('course_display', array('userid'=>$user->id))) {
-        foreach ($displays as $display) {
-            $user->display[$display->course] = $display->display;
+        if ($displays = $DB->get_records('course_display', array('userid' => $user->id))) {
+            foreach ($displays as $display) {
+                $user->display[$display->course] = $display->display;
+            }
         }
-    }
 
-    // preload preference cache
-    check_user_preferences_loaded($user);
+        // preload preference cache
+        check_user_preferences_loaded($user);
 
-    // load course enrolment related stuff
-    $user->lastcourseaccess    = array(); // during last session
-    $user->currentcourseaccess = array(); // during current session
-    if ($lastaccesses = $DB->get_records('user_lastaccess', array('userid'=>$user->id))) {
-        foreach ($lastaccesses as $lastaccess) {
-            $user->lastcourseaccess[$lastaccess->courseid] = $lastaccess->timeaccess;
+        // load course enrolment related stuff
+        $user->lastcourseaccess = array(); // during last session
+        $user->currentcourseaccess = array(); // during current session
+        if ($lastaccesses = $DB->get_records('user_lastaccess', array('userid' => $user->id))) {
+            foreach ($lastaccesses as $lastaccess) {
+                $user->lastcourseaccess[$lastaccess->courseid] = $lastaccess->timeaccess;
+            }
         }
-    }
 
-    $sql = "SELECT g.id, g.courseid
+        $sql = "SELECT g.id, g.courseid
               FROM {groups} g, {groups_members} gm
              WHERE gm.groupid=g.id AND gm.userid=?";
 
-    // this is a special hack to speedup calendar display
-    $user->groupmember = array();
-    if ($groups = $DB->get_records_sql($sql, array($user->id))) {
-        foreach ($groups as $group) {
-            if (!array_key_exists($group->courseid, $user->groupmember)) {
-                $user->groupmember[$group->courseid] = array();
+        // this is a special hack to speedup calendar display
+        $user->groupmember = array();
+        if ($groups = $DB->get_records_sql($sql, array($user->id))) {
+            foreach ($groups as $group) {
+                if (!array_key_exists($group->courseid, $user->groupmember)) {
+                    $user->groupmember[$group->courseid] = array();
+                }
+                $user->groupmember[$group->courseid][$group->id] = $group->id;
             }
-            $user->groupmember[$group->courseid][$group->id] = $group->id;
+        }
+
+/// Add the custom profile fields to the user record
+        require_once($CFG->dirroot . '/user/profile/lib.php');
+        profile_load_custom_fields($user);
+
+/// Rewrite some variables if necessary
+        if (!empty($user->description)) {
+            $user->description = true;   // No need to cart all of it around
+        }
+        if (isguestuser($user)) {
+            $user->lang = $CFG->lang;               // Guest language always same as site
+            $user->firstname = get_string('guestuser');  // Name always in current language
+            $user->lastname = ' ';
+
+            //cache data for next time
+            $cache->store($key, $user);
         }
     }
 
-/// Add the custom profile fields to the user record
-    require_once($CFG->dirroot.'/user/profile/lib.php');
-    profile_load_custom_fields($user);
 
-/// Rewrite some variables if necessary
-    if (!empty($user->description)) {
-        $user->description = true;   // No need to cart all of it around
-    }
-    if (isguestuser($user)) {
-        $user->lang       = $CFG->lang;               // Guest language always same as site
-        $user->firstname  = get_string('guestuser');  // Name always in current language
-        $user->lastname   = ' ';
-    }
+ 
 
     return $user;
 }

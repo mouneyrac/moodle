@@ -5956,6 +5956,7 @@ WHERE gradeitemid IS NOT NULL AND grademax IS NOT NULL");
         upgrade_main_savepoint(true, 2011011415);
     }
 
+
     if ($oldversion < 2011012400) {
         // Clean up the old progress tracked roles setting, no longer used (replaced by enrolment)
         unset_config('progresstrackedroles');
@@ -6004,7 +6005,7 @@ WHERE gradeitemid IS NOT NULL AND grademax IS NOT NULL");
 
         upgrade_main_savepoint(true, 2011012501);
     }
-
+    
     return true;
 }
 

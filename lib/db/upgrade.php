@@ -5956,6 +5956,12 @@ WHERE gradeitemid IS NOT NULL AND grademax IS NOT NULL");
         upgrade_main_savepoint(true, 2011011415);
     }
 
+    if ($oldversion < 2011011415) {
+        //add secret field to registration_hubs table
+        //site identifier by default $CFG->siteidentifier
+
+    }
+
     return true;
 }
 

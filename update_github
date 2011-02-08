@@ -1,0 +1,5 @@
+cd /Users/jerome/Sites/Moodle_Hub_server/
+git fetch upstream
+git checkout master
+git pull
+git push origin refs/remotes/upstream/master:master

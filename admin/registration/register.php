@@ -118,6 +118,7 @@ if (!empty($fromform) and empty($update) and confirm_sesskey()) {
             //we save the token into the communication table in order to have a reference
             $unconfirmedhub = new stdClass();
             $unconfirmedhub->token = $registrationmanager->get_site_secret_for_hub($huburl);
+            $unconfirmedhub->secret = $unconfirmedhub->token;
             $unconfirmedhub->huburl = $huburl;
             $unconfirmedhub->hubname = $hubname;
             $unconfirmedhub->confirmed = 0;

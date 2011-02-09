@@ -422,7 +422,7 @@ define('HUB_HUBDIRECTORYURL', "http://hubdirectory.moodle.org");
 /**
  * Moodle.org url (should be moodle.org)
  */
-define('HUB_MOODLEORGHUBURL', "http://hub.moodle.org");
+define('HUB_MOODLEORGHUBURL', "http://jerome.moodle.local/~jerome/Moodle_Hub_server");
 
 
 /// PARAMETER HANDLING ////////////////////////////////////////////////////

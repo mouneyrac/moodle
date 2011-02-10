@@ -3817,14 +3817,10 @@ function complete_user_login($user, $setcookie=true) {
 
     /// Retrieve guest info cache
     if (isguestuser($user)) {
-        //load file cache engine
-        require_once($CFG->libdir . '/filecache.php');
-        // constructing cache engine
-        $cache = new moodle_cache_filesystem();
         // Guest user unique key
         $key = 'guestusersessioninfo';
         //Get the cached guest session info
-        $data = $cache->fetch($key);
+        $data = fetch_guest_info_cache($key);
         if (!empty($data)) {
 
             //simulate  session_set_user($user);
@@ -3842,6 +3838,7 @@ function complete_user_login($user, $setcookie=true) {
             // These two functions set empty information for Guest user.
 
             // no need to continue when user is THE guest
+            varlog($USER);
             return $USER;
         }
     }
@@ -3860,16 +3857,12 @@ function complete_user_login($user, $setcookie=true) {
     set_login_session_preferences();
 
     if (isguestuser ()) {
-        //load file cache engine
-        require_once($CFG->libdir . '/filecache.php');
-        // constructing cache engine
-        $cache = new moodle_cache_filesystem();
         // Guest user unique key
         $key = 'guestusersessioninfo';
         //cache the USER and the SESSION
         $cachedsession['user'] = $USER;
         $cachedsession['session'] = $_SESSION['SESSION'];
-        $cache->store($key, $cachedsession);
+        store_guest_info_cache($key, $cachedsession);
         // no need to continue when user is THE guest
         return $USER;
     }
@@ -3902,6 +3895,72 @@ function complete_user_login($user, $setcookie=true) {
     }
     
     return $USER;
+}
+
+/**
+ * Create guest info cache file
+ * @param string $key
+ * @param int|string|bool|array|object $data
+ */
+function store_guest_info_cache($key, $data) {
+    //create empty cache file
+    $cachefile = fopen($CFG->dataroot . '/cache/cache_' . md5($key), 'w+');
+    if (!$cachefile) {
+        throw new moodle_exception('cannotwriteguestcache');
+    }
+
+    $data = serialize($data);
+
+    //add cache data (lock the file in writer lock mode)
+    flock($cachefile, LOCK_EX);
+    if (fwrite($cachefile, $data) === false) {
+        throw new moodle_exception('cannotwriteguestcache');
+    }
+    flock($cachefile, LOCK_UN);
+    fclose($cachefile);
+}
+
+/**
+ * Get guest info cache file content
+ * @param string $key
+ * @return int|string|bool|array|object
+ */
+function fetch_guest_info_cache($key) {
+    global $CFG;
+
+    //TODO: implement it in Administration
+    $CFG->guestsessioncachettl = 600;
+
+    //retrieve the cache file
+    $filename = $CFG->dataroot . '/cache/cache_' . md5($key);
+
+    //check if the cache exist
+    if (!file_exists($filename)) {
+        return false;
+    }
+
+    //check if the cache is not expired
+    if (time() > (filemtime($filename) + $CFG->guestsessioncachettl)) {
+        unlink($filename);
+        return false;
+    }
+
+    //retrieve the cache content
+    $cachefile = fopen($filename, 'r');
+    //any error during opening cache (example: no permission to read)
+    if (!$cachefile) {
+        return false;
+    }
+    // Getting the content (reader lock mode)
+    flock($cachefile, LOCK_SH);
+    $data = file_get_contents($filename);
+    flock($cachefile, LOCK_UN);
+    fclose($cachefile);
+    $data = unserialize($data);
+
+
+
+    return $data;
 }
 
 /**
@@ -4007,10 +4066,6 @@ function update_internal_user_password($user, $password) {
 function get_complete_user_data($field, $value, $mnethostid = null) {
     global $CFG, $DB;
 
-  
-
-   
-
     if (!$field || !$value) {
         return false;
     }
@@ -4040,14 +4095,10 @@ function get_complete_user_data($field, $value, $mnethostid = null) {
 
 /// Retrieve guest info cache
     if (isguestuser($user)) {
-        //load file cache engine
-        require_once($CFG->libdir . '/filecache.php');
-        // constructing cache engine
-        $cache = new moodle_cache_filesystem();
         // Guest user unique key
         $key = 'guestuserinfo';
         //Get the cached guest info
-        $data = $cache->fetch($key);
+        $data = fetch_guest_info_cache($key);
         if (!empty($data)) {
             $user = $data;
             $cached = true;
@@ -4105,12 +4156,9 @@ function get_complete_user_data($field, $value, $mnethostid = null) {
             $user->lastname = ' ';
 
             //cache data for next time
-            $cache->store($key, $user);
+            store_guest_info_cache($key, $user);
         }
     }
-
-
- 
 
     return $user;
 }

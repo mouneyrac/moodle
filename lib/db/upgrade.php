@@ -6006,8 +6006,8 @@ WHERE gradeitemid IS NOT NULL AND grademax IS NOT NULL");
         upgrade_main_savepoint(true, 2011012501);
     }
 
-    if ($oldversion < 2011020200.01) {
 
+    if ($oldversion < 2011020200.01) {
         // Define field targetversion to be added to upgrade_log
         $table = new xmldb_table('upgrade_log');
         $field = new xmldb_field('targetversion', XMLDB_TYPE_CHAR, '100', null, null, null, null, 'version');
@@ -6021,7 +6021,21 @@ WHERE gradeitemid IS NOT NULL AND grademax IS NOT NULL");
         upgrade_main_savepoint(true, 2011020200.01);
     }
 
+    if ($oldversion < 2011020901) {
+         // Define field secret to be added to registration_hubs
+        $table = new xmldb_table('registration_hubs');
+        $field = new xmldb_field('secret', XMLDB_TYPE_CHAR, '255', null, null, null,
+                $CFG->siteidentifier, 'confirmed');
 
+        // Conditionally launch add field secret
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Main savepoint reached
+        upgrade_main_savepoint(true, 2011020901);
+    }
+    
     return true;
 }
 

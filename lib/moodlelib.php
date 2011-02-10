@@ -3685,7 +3685,7 @@ function store_guest_info_cache($key, $data) {
 function fetch_guest_info_cache($key) {
     global $CFG;
 
-    //TODO: implement it in Administration
+    //Every ten minutes the cache expire
     $CFG->guestsessioncachettl = 600;
 
     //retrieve the cache file

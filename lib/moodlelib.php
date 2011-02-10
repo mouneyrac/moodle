@@ -3605,33 +3605,6 @@ function complete_user_login($user, $setcookie=true) {
     // this helps prevent session fixation attacks from the same domain
     session_regenerate_id(true);
 
-    /// Retrieve guest info cache
-    if (isguestuser($user)) {
-        // Guest user unique key
-        $key = 'guestusersessioninfo';
-        //Get the cached guest session info
-        $data = fetch_guest_info_cache($key);
-        if (!empty($data)) {
-
-            //simulate  session_set_user($user);
-            $USER = $data['user'];
-            $_SESSION['SESSION'] = $data['session'];
-            $USER->sesskey = random_string(10);
-            $_SESSION['USER'] = $USER;
-            $_SESSION['SESSION']->justloggedin = 1;
-
-            // update login times
-            update_user_login_times();
-
-            //NOTE:  check_user_preferences_loaded($user); and
-            // set_login_session_preferences(); are not needed for Guest.
-            // These two functions set empty information for Guest user.
-
-            // no need to continue when user is THE guest
-            return $USER;
-        }
-    }
-
     // check enrolments, load caps and setup $USER object
     session_set_user($user);
 
@@ -3645,13 +3618,7 @@ function complete_user_login($user, $setcookie=true) {
     // extra session prefs init
     set_login_session_preferences();
 
-    if (isguestuser ()) {
-        // Guest user unique key
-        $key = 'guestusersessioninfo';
-        //cache the USER and the SESSION
-        $cachedsession['user'] = $USER;
-        $cachedsession['session'] = $_SESSION['SESSION'];
-        store_guest_info_cache($key, $cachedsession);
+    if (isguestuser()) {
         // no need to continue when user is THE guest
         return $USER;
     }
@@ -3861,7 +3828,7 @@ function get_complete_user_data($field, $value, $mnethostid = null) {
     }
 
 /// Build the WHERE clause for an SQL query
-    $params = array('fieldval' => $value);
+    $params = array('fieldval'=>$value);
     $constraints = "$field = :fieldval AND deleted <> 1";
 
     // If we are loading user data based on anything other than id,
@@ -3879,7 +3846,7 @@ function get_complete_user_data($field, $value, $mnethostid = null) {
 
 /// Get all the basic user data
 
-    if (!$user = $DB->get_record_select('user', $constraints, $params)) {
+    if (! $user = $DB->get_record_select('user', $constraints, $params)) {
         return false;
     }
 
@@ -3949,7 +3916,6 @@ function get_complete_user_data($field, $value, $mnethostid = null) {
             store_guest_info_cache($key, $user);
         }
     }
-
     return $user;
 }
 

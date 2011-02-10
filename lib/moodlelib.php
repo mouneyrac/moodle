@@ -3628,7 +3628,6 @@ function complete_user_login($user, $setcookie=true) {
             // These two functions set empty information for Guest user.
 
             // no need to continue when user is THE guest
-            varlog($USER);
             return $USER;
         }
     }

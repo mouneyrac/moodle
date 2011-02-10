@@ -3649,7 +3649,75 @@ function complete_user_login($user, $setcookie=true) {
             print_error('nopasswordchangeforced', 'auth');
         }
     }
+    
     return $USER;
+}
+
+/**
+ * Create guest info cache file
+ * @param string $key
+ * @param int|string|bool|array|object $data
+ */
+function store_guest_info_cache($key, $data) {
+    global $CFG;
+    //create empty cache file
+    $cachefile = fopen($CFG->dataroot . '/cache/cache_' . md5($key), 'w+');
+    if (!$cachefile) {
+        throw new moodle_exception('cannotwriteguestcache');
+    }
+
+    $data = serialize($data);
+
+    //add cache data (lock the file in writer lock mode)
+    flock($cachefile, LOCK_EX);
+    if (fwrite($cachefile, $data) === false) {
+        throw new moodle_exception('cannotwriteguestcache');
+    }
+    flock($cachefile, LOCK_UN);
+    fclose($cachefile);
+}
+
+/**
+ * Get guest info cache file content
+ * @param string $key
+ * @return int|string|bool|array|object
+ */
+function fetch_guest_info_cache($key) {
+    global $CFG;
+
+    //Every ten minutes the cache expire
+    $CFG->guestsessioncachettl = 600;
+
+    //retrieve the cache file
+    $filename = $CFG->dataroot . '/cache/cache_' . md5($key);
+
+    //check if the cache exist
+    if (!file_exists($filename)) {
+        return false;
+    }
+
+    //check if the cache is not expired
+    if (time() > (filemtime($filename) + $CFG->guestsessioncachettl)) {
+        unlink($filename);
+        return false;
+    }
+
+    //retrieve the cache content
+    $cachefile = fopen($filename, 'r');
+    //any error during opening cache (example: no permission to read)
+    if (!$cachefile) {
+        return false;
+    }
+    // Getting the content (reader lock mode)
+    flock($cachefile, LOCK_SH);
+    $data = file_get_contents($filename);
+    flock($cachefile, LOCK_UN);
+    fclose($cachefile);
+    $data = unserialize($data);
+
+
+
+    return $data;
 }
 
 /**
@@ -3782,55 +3850,72 @@ function get_complete_user_data($field, $value, $mnethostid = null) {
         return false;
     }
 
+/// Retrieve guest info cache
+    if (isguestuser($user)) {
+        // Guest user unique key
+        $key = 'guestuserinfo';
+        //Get the cached guest info
+        $data = fetch_guest_info_cache($key);
+        if (!empty($data)) {
+            $user = $data;
+            $cached = true;
+        }
+    }
+
+    if (empty($cached)) {
+
 /// Get various settings and preferences
 
-    if ($displays = $DB->get_records('course_display', array('userid'=>$user->id))) {
-        foreach ($displays as $display) {
-            $user->display[$display->course] = $display->display;
+        if ($displays = $DB->get_records('course_display', array('userid' => $user->id))) {
+            foreach ($displays as $display) {
+                $user->display[$display->course] = $display->display;
+            }
         }
-    }
 
-    // preload preference cache
-    check_user_preferences_loaded($user);
+        // preload preference cache
+        check_user_preferences_loaded($user);
 
-    // load course enrolment related stuff
-    $user->lastcourseaccess    = array(); // during last session
-    $user->currentcourseaccess = array(); // during current session
-    if ($lastaccesses = $DB->get_records('user_lastaccess', array('userid'=>$user->id))) {
-        foreach ($lastaccesses as $lastaccess) {
-            $user->lastcourseaccess[$lastaccess->courseid] = $lastaccess->timeaccess;
+        // load course enrolment related stuff
+        $user->lastcourseaccess = array(); // during last session
+        $user->currentcourseaccess = array(); // during current session
+        if ($lastaccesses = $DB->get_records('user_lastaccess', array('userid' => $user->id))) {
+            foreach ($lastaccesses as $lastaccess) {
+                $user->lastcourseaccess[$lastaccess->courseid] = $lastaccess->timeaccess;
+            }
         }
-    }
 
-    $sql = "SELECT g.id, g.courseid
+        $sql = "SELECT g.id, g.courseid
               FROM {groups} g, {groups_members} gm
              WHERE gm.groupid=g.id AND gm.userid=?";
 
-    // this is a special hack to speedup calendar display
-    $user->groupmember = array();
-    if ($groups = $DB->get_records_sql($sql, array($user->id))) {
-        foreach ($groups as $group) {
-            if (!array_key_exists($group->courseid, $user->groupmember)) {
-                $user->groupmember[$group->courseid] = array();
+        // this is a special hack to speedup calendar display
+        $user->groupmember = array();
+        if ($groups = $DB->get_records_sql($sql, array($user->id))) {
+            foreach ($groups as $group) {
+                if (!array_key_exists($group->courseid, $user->groupmember)) {
+                    $user->groupmember[$group->courseid] = array();
+                }
+                $user->groupmember[$group->courseid][$group->id] = $group->id;
             }
-            $user->groupmember[$group->courseid][$group->id] = $group->id;
         }
-    }
 
 /// Add the custom profile fields to the user record
-    require_once($CFG->dirroot.'/user/profile/lib.php');
-    profile_load_custom_fields($user);
+        require_once($CFG->dirroot . '/user/profile/lib.php');
+        profile_load_custom_fields($user);
 
 /// Rewrite some variables if necessary
-    if (!empty($user->description)) {
-        $user->description = true;   // No need to cart all of it around
-    }
-    if (isguestuser($user)) {
-        $user->lang       = $CFG->lang;               // Guest language always same as site
-        $user->firstname  = get_string('guestuser');  // Name always in current language
-        $user->lastname   = ' ';
-    }
+        if (!empty($user->description)) {
+            $user->description = true;   // No need to cart all of it around
+        }
+        if (isguestuser($user)) {
+            $user->lang = $CFG->lang;               // Guest language always same as site
+            $user->firstname = get_string('guestuser');  // Name always in current language
+            $user->lastname = ' ';
 
+            //cache data for next time
+            store_guest_info_cache($key, $user);
+        }
+    }
     return $user;
 }
 

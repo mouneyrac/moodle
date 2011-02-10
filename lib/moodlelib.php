@@ -3692,6 +3692,7 @@ function complete_user_login($user, $setcookie=true) {
  * @param int|string|bool|array|object $data
  */
 function store_guest_info_cache($key, $data) {
+    global $CFG;
     //create empty cache file
     $cachefile = fopen($CFG->dataroot . '/cache/cache_' . md5($key), 'w+');
     if (!$cachefile) {

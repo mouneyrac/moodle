@@ -520,6 +520,14 @@ function is_float_problem() {
 }
 
 /**
+ * Verify if the site timezone has been set (i.e not equal to 'Server default')
+ * @return boolean
+ */
+function is_site_timezone_set() {
+    return ( get_config('moodle', 'timezone') != 99 );
+}
+
+/**
  * Try to verify that dataroot is not accessible from web.
  *
  * Try to verify that dataroot is not accessible from web.

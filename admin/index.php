@@ -388,6 +388,16 @@ if ($insecuredataroot == INSECURE_DATAROOT_WARNING) {
 
 }
 
+//Print warning message is site timezone is not properly set
+if (!is_site_timezone_set()) {
+    $tzurl = new moodle_url('/admin/settings.php', array('section' => 'locationsettings'));
+    $importtzurl = new moodle_url('/admin/timezoneimport.php');
+    $tzurls = new stdClass();
+    $tzurls->defaulttz = html_writer::link($tzurl->out(), get_string('timezonechange', 'admin'));
+    $tzurls->import = html_writer::link($importtzurl->out(), get_string('timezoneimport', 'admin'));
+    echo $OUTPUT->box(get_string('timezonesecuritywarning', 'admin', $tzurls), 'generalbox adminwarning');
+}
+
 if (defined('WARN_DISPLAY_ERRORS_ENABLED')) {
     echo $OUTPUT->box(get_string('displayerrorswarning', 'admin'), 'generalbox adminwarning');
 }

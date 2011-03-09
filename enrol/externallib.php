@@ -132,6 +132,171 @@ class moodle_enrol_external extends external_api {
             )
         );
     }
+    
+    /**
+     * Returns description of method parameters
+     * @return external_function_parameters
+     */
+    public static function get_courses_by_enrolled_users_parameters() {
+        return new external_function_parameters(
+                array('users' => new external_multiple_structure(
+                        new external_single_structure(
+                            array('userid' => new external_value(PARAM_INT, 'Course id'),
+                                'onlyactive' => new external_value(PARAM_INT, 'return only active enrolment', VALUE_DEFAULT, 0),
+                                'roleids' => new external_multiple_structure(
+                                        new external_value(PARAM_INT, 'Course id'), VALUE_OPTIONAL)))
+                            , 'enrolled users')
+                )
+        );
+    }
+
+    /**
+     * Get courses
+     * @param array $userids
+     * @return array
+     */
+    public static function get_courses_by_enrolled_users($users) {
+        global $CFG, $DB;
+        require_once($CFG->dirroot . "/course/lib.php");
+
+        //validate parameter
+        $params = self::validate_parameters(self::get_courses_by_user_ids_parameters(), array('users' => $users));
+
+        //retrieve courses for each user
+        foreach ($params['users'] as $enrollableuser) {
+            
+            //retrieve all courses of this user
+            $enrolledusercourses = enrol_get_users_courses($enrollableuser['userid'], 
+                    $enrollableuser['onlyactive'], null, '', $enrollableuser['roleids']);
+
+            //create return value
+            $coursesinfo = array();
+            foreach ($enrolledusercourses as $course) {
+
+                // now security checks
+                $context = get_context_instance(CONTEXT_COURSE, $course->id);
+                try {
+                    self::validate_context($context);
+                } catch (Exception $e) {
+                    $exceptionparam = new stdClass();
+                    $exceptionparam->message = $e->getMessage();
+                    $exceptionparam->courseid = $course->id;
+                    throw new moodle_exception(
+                            get_string('errorcoursecontextnotvalid', 'webservice', $exceptionparam));
+                }
+                require_capability('moodle/course:view', $context);
+
+                $courseinfo = array();
+                $courseinfo['userid'] = $userid;
+                $courseinfo['id'] = $course->id;
+                $courseinfo['fullname'] = $course->fullname;
+                $courseinfo['shortname'] = $course->shortname;
+                $courseinfo['categoryid'] = $course->category;
+                $courseinfo['summary'] = $course->summary;
+                $courseinfo['summaryformat'] = $course->summaryformat;
+                $courseinfo['format'] = $course->format;
+                $courseinfo['startdate'] = $course->startdate;
+                $courseinfo['numsections'] = $course->numsections;
+
+                //some field should be returned only if the user has update permission
+                $courseadmin = has_capability('moodle/course:update', $context);
+                if ($courseadmin) {
+                    $courseinfo['categorysortorder'] = $course->sortorder;
+                    $courseinfo['idnumber'] = $course->idnumber;
+                    $courseinfo['showgrades'] = $course->showgrades;
+                    $courseinfo['showreports'] = $course->showreports;
+                    $courseinfo['newsitems'] = $course->newsitems;
+                    $courseinfo['visible'] = $course->visible;
+                    $courseinfo['maxbytes'] = $course->maxbytes;
+                    $courseinfo['hiddensections'] = $course->hiddensections;
+                    $courseinfo['groupmode'] = $course->groupmode;
+                    $courseinfo['groupmodeforce'] = $course->groupmodeforce;
+                    $courseinfo['defaultgroupingid'] = $course->defaultgroupingid;
+                    $courseinfo['lang'] = $course->lang;
+                    $courseinfo['timecreated'] = $course->timecreated;
+                    $courseinfo['timemodified'] = $course->timemodified;
+                    $courseinfo['forcetheme'] = $course->theme;
+                    $courseinfo['enablecompletion'] = $course->enablecompletion;
+                    $courseinfo['completionstartonenrol'] = $course->completionstartonenrol;
+                    $courseinfo['completionnotify'] = $course->completionnotify;
+                }
+
+                if ($courseadmin or $course->visible
+                        or has_capability('moodle/course:viewhiddencourses', $context)) {
+                    $coursesinfo[] = $courseinfo;
+                }
+            }
+        }
+        return $coursesinfo;
+    }
+
+    /**
+     * Returns description of method result value
+     * @return external_description
+     */
+    public static function get_courses_by_enrolled_users_returns() {
+        return new external_multiple_structure(
+                new external_single_structure(
+                        array(
+                            'userid' => new external_value(PARAM_INT, 'user id'),
+                            'userroleid' => new external_value(PARAM_INT, 'user role id', VALUE_OPTIONAL),
+                            'id' => new external_value(PARAM_INT, 'course id'),
+                            'shortname' => new external_value(PARAM_TEXT, 'course short name'),
+                            'categoryid' => new external_value(PARAM_INT, 'category id'),
+                            'categorysortorder' => new external_value(PARAM_INT,
+                                    'sort order into the category', VALUE_OPTIONAL),
+                            'fullname' => new external_value(PARAM_TEXT, 'full name'),
+                            'idnumber' => new external_value(PARAM_RAW, 'id number', VALUE_OPTIONAL),
+                            'summary' => new external_value(PARAM_RAW, 'summary'),
+                            'summaryformat' => new external_value(PARAM_INT,
+                                    'the summary text Moodle format'),
+                            'format' => new external_value(PARAM_ALPHANUMEXT,
+                                    'course format: weeks, topics, social, site,..'),
+                            'showgrades' => new external_value(PARAM_INT,
+                                    '1 if grades are shown, otherwise 0', VALUE_OPTIONAL),
+                            'newsitems' => new external_value(PARAM_INT,
+                                    'number of recent items appearing on the course page', VALUE_OPTIONAL),
+                            'startdate' => new external_value(PARAM_INT,
+                                    'timestamp when the course start'),
+                            'numsections' => new external_value(PARAM_INT, 'number of weeks/topics'),
+                            'maxbytes' => new external_value(PARAM_INT,
+                                    'largest size of file that can be uploaded into the course',
+                                    VALUE_OPTIONAL),
+                            'showreports' => new external_value(PARAM_INT,
+                                    'are activity report shown (yes = 1, no =0)', VALUE_OPTIONAL),
+                            'visible' => new external_value(PARAM_INT,
+                                    '1: available to student, 0:not available', VALUE_OPTIONAL),
+                            'hiddensections' => new external_value(PARAM_INT,
+                                    'How the hidden sections in the course are displayed to students',
+                                    VALUE_OPTIONAL),
+                            'groupmode' => new external_value(PARAM_INT, 'no group, separate, visible',
+                                    VALUE_OPTIONAL),
+                            'groupmodeforce' => new external_value(PARAM_INT, '1: yes, 0: no',
+                                    VALUE_OPTIONAL),
+                            'defaultgroupingid' => new external_value(PARAM_INT, 'default grouping id',
+                                    VALUE_OPTIONAL),
+                            'timecreated' => new external_value(PARAM_INT,
+                                    'timestamp when the course have been created', VALUE_OPTIONAL),
+                            'timemodified' => new external_value(PARAM_INT,
+                                    'timestamp when the course have been modified', VALUE_OPTIONAL),
+                            'enablecompletion' => new external_value(PARAM_INT,
+                                    'Enabled, control via completion and activity settings. Disbaled,
+                                        not shown in activity settings.',
+                                    VALUE_OPTIONAL),
+                            'completionstartonenrol' => new external_value(PARAM_INT,
+                                    '1: begin tracking a student\'s progress in course completion
+                                        after course enrolment. 0: does not',
+                                    VALUE_OPTIONAL),
+                            'completionnotify' => new external_value(PARAM_INT,
+                                    '1: yes 0: no', VALUE_OPTIONAL),
+                            'lang' => new external_value(PARAM_ALPHANUMEXT,
+                                    'forced course language', VALUE_OPTIONAL),
+                            'forcetheme' => new external_value(PARAM_ALPHANUMEXT,
+                                    'name of the force theme', VALUE_OPTIONAL),
+                        ), 'course'
+                )
+        );
+    }
 
 
     /**

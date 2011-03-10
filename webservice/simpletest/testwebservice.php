@@ -297,8 +297,6 @@ class webservice_test extends UnitTestCase {
             }
             
             //check that all enrolled courses has been returned
-            varlog($user);
-            varlog($enrolledusercourses);
             $this->assertEqual(0, count($enrolledusercourses));
         }
     }

@@ -244,4 +244,93 @@ class moodle_enrol_external extends external_api {
     public static function role_unassign_returns() {
         return null;
     }
+    
+    /**
+     * Returns description of method parameters
+     * @return external_function_parameters
+     */
+    public static function manual_enrol_users_parameters() {
+        return new external_function_parameters(
+            array(
+                'enrolments' => new external_multiple_structure(
+                    new external_single_structure(
+                        array(
+                            'roleid'    => new external_value(PARAM_INT, 'Role to assign to the user'),
+                            'userid'    => new external_value(PARAM_INT, 'The user that is going to be enrolled'),
+                            'courseid' => new external_value(PARAM_INT, 'The course to enrol the user role in'),
+                        )
+                    )
+                )
+            )
+        );
+    }
+
+    /**
+     * Manual enrolment of users
+     *
+     * @param array $enrolments  An array of manual user enrolment
+     * @return null
+     */
+    public static function manual_enrol_users($enrolments) {
+        global $DB, $USER, $CFG;
+        
+        require_once($CFG->libdir . '/enrollib.php');
+
+        $params = self::validate_parameters(self::manual_enrol_users_parameters(), 
+                array('enrolments'=>$enrolments));
+
+        $transaction = $DB->start_delegated_transaction();
+
+        $enrolmentresult = array();
+        
+        foreach ($params['enrolments'] as $enrolment) {
+            // Ensure the current user is allowed to run this function in the enrolment context
+            $context = get_context_instance(CONTEXT_COURSE, $enrolment['courseid']);
+            self::validate_context($context);
+            require_capability('enrol/manual:enrol', $context);
+            
+            $enrols = enrol_get_plugins(true);
+            $enrolinstances = enrol_get_instances($enrolment['courseid'], true);
+            $enrolled = false;
+            foreach($enrolinstances as $instance) {
+                if (!isset($enrols[$instance->enrol])) {
+                    continue;
+                }
+                
+                if (!$enrolled and $enrols[$instance->enrol]->allow_enrol($instance)) {
+                    $enrols[$instance->enrol]->enrol_user($instance, $enrolment['userid'], 
+                            $enrolment['roleid']);
+                    $enrolleduserid[] = $enrolment['userid'];
+                    $enrolled = true;
+                }
+            }
+
+            if (!$enrolled) {
+                throw new moodle_exception('wscannotenrol', 'enrol', '', $enrolment['courseid']);
+            }
+            
+            $enrolmentresult[] = $enrolment;
+        }
+
+        $transaction->allow_commit();
+        
+        return $enrolmentresult;
+    }
+
+    /**
+     * Returns description of method result value
+     * @return external_description
+     */
+    public static function manual_enrol_users_returns() {
+        return new external_multiple_structure(
+            new external_single_structure(
+                array(
+                    'roleid'    => new external_value(PARAM_INT, 'Role to assign to the user'),
+                    'userid'    => new external_value(PARAM_INT, 'The user that is going to be enrolled'),
+                    'courseid' => new external_value(PARAM_INT, 'The course to enrol the user role in'),
+                    'failed' => new external_value(PARAM_TEXT, 'not set if success', VALUE_OPTIONAL)
+                )
+            )
+        );
+    }
 }

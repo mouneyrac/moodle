@@ -64,6 +64,7 @@ $string['invalidenrolinstance'] = 'Invalid enrolment instance';
 $string['invalidrole'] = 'Invalid role';
 $string['manageenrols'] = 'Manage enrol plugins';
 $string['manageinstance'] = 'Manage';
+$string['nocoursemanualenrol'] = 'Course id:{$a} doesn\'t support manual enrolment.';
 $string['noexistingparticipants'] = 'No existing participants';
 $string['noguestaccess'] = 'Guests can not access this course, please try to log in.';
 $string['none'] = 'None';

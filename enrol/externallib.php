@@ -143,15 +143,13 @@ class moodle_enrol_external extends external_api {
                         new external_single_structure(
                             array('userid' => new external_value(PARAM_INT, 'Course id'),
                                 'onlyactive' => new external_value(PARAM_INT, 'return only active enrolment', VALUE_DEFAULT, 0),
-                                'roleids' => new external_multiple_structure(
-                                        new external_value(PARAM_INT, 'Course id'), VALUE_OPTIONAL)))
-                            , 'enrolled users')
+                                )), 'enrolled users')
                 )
         );
     }
 
     /**
-     * Get courses
+     * Get courses for given users
      * @param array $userids
      * @return array
      */
@@ -160,21 +158,23 @@ class moodle_enrol_external extends external_api {
         require_once($CFG->dirroot . "/course/lib.php");
 
         //validate parameter
-        $params = self::validate_parameters(self::get_courses_by_user_ids_parameters(), array('users' => $users));
-
+        $params = self::validate_parameters(self::get_courses_by_enrolled_users_parameters(), 
+                array('users' => $users));
+        $courses = array();
         //retrieve courses for each user
         foreach ($params['users'] as $enrollableuser) {
             
             //retrieve all courses of this user
             $enrolledusercourses = enrol_get_users_courses($enrollableuser['userid'], 
-                    $enrollableuser['onlyactive'], null, '', $enrollableuser['roleids']);
+                    $enrollableuser['onlyactive'], '*');
 
             //create return value
-            $coursesinfo = array();
+            
             foreach ($enrolledusercourses as $course) {
-
+                
                 // now security checks
                 $context = get_context_instance(CONTEXT_COURSE, $course->id);
+                require_capability('moodle/course:enrolreview', $context);
                 try {
                     self::validate_context($context);
                 } catch (Exception $e) {
@@ -187,7 +187,7 @@ class moodle_enrol_external extends external_api {
                 require_capability('moodle/course:view', $context);
 
                 $courseinfo = array();
-                $courseinfo['userid'] = $userid;
+                $courseinfo['userid'] = $enrollableuser['userid'];
                 $courseinfo['id'] = $course->id;
                 $courseinfo['fullname'] = $course->fullname;
                 $courseinfo['shortname'] = $course->shortname;
@@ -223,11 +223,12 @@ class moodle_enrol_external extends external_api {
 
                 if ($courseadmin or $course->visible
                         or has_capability('moodle/course:viewhiddencourses', $context)) {
-                    $coursesinfo[] = $courseinfo;
+                    $courses[] = $courseinfo;
                 }
             }
         }
-        return $coursesinfo;
+
+        return $courses;
     }
 
     /**
@@ -238,7 +239,7 @@ class moodle_enrol_external extends external_api {
         return new external_multiple_structure(
                 new external_single_structure(
                         array(
-                            'userid' => new external_value(PARAM_INT, 'user id'),
+                            'userid' => new external_value(PARAM_INT, 'enrolled user id'),
                             'userroleid' => new external_value(PARAM_INT, 'user role id', VALUE_OPTIONAL),
                             'id' => new external_value(PARAM_INT, 'course id'),
                             'shortname' => new external_value(PARAM_TEXT, 'course short name'),

@@ -102,3 +102,4 @@ $string['extremovedsuspend'] = 'Disable course enrolment';
 $string['extremovedsuspendnoroles'] = 'Disable course enrolment and remove roles';
 $string['extremovedkeep'] = 'Keep user enrolled';
 $string['extremovedunenrol'] = 'Unenrol user from course';
+$string['wscannotenrol'] = 'No enrolment plugin can manually enrol a user in the course id = {$a} ';

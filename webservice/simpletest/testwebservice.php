@@ -63,7 +63,7 @@ class webservice_test extends UnitTestCase {
 
         //protocols to test
         $this->testrest = false; //Does not work till XML => PHP is implemented (MDL-22965)
-        $this->testxmlrpc = false;
+        $this->testxmlrpc = true;
         $this->testsoap = false;
 
         ////// READ-ONLY DB tests ////
@@ -88,7 +88,7 @@ class webservice_test extends UnitTestCase {
             'moodle_group_delete_groupmembers' => false,
             'moodle_group_create_groups' => false,
             'moodle_group_delete_groups' => false,
-            'moodle_enrol_manual_enrol_users' => false
+            'moodle_enrol_manual_enrol_users' => true
         );
 
         //performance testing: number of time the web service are run
@@ -268,31 +268,39 @@ class webservice_test extends UnitTestCase {
         $courses = $DB->get_records('course');
 
         foreach ($courses as $course) {
+            if ($course->id > 1) {
                 $enrolments[] = array('roleid' => $roleid,
                     'userid' => $user->id, 'courseid' => $course->id);
                 $enrolledcourses[] = $course;
+            }
         }
-
+        
         //web service call
         $function = 'moodle_enrol_manual_enrol_users';
         $wsparams = array('enrolments' => $enrolments);
         $enrolmentsresult = $client->call($function, $wsparams);
-
-        //test enrolment
-        $enrolledusercourses = enrol_get_users_courses($user->id);
-
-        //test and unenrol the user
-        $enrol = enrol_get_plugin('manual');
-        foreach ($enrolledcourses as $course) {
-            $this->assertEqual(true, isset($enrolledusercourses[$course->id]));
-             
-            //unenrol the user 
-            $instance = $DB->get_record('enrol', array('courseid' => $course->id, 'enrol' => 'manual'));
-            if (!empty($instance)) {   
-                $enrol->unenrol_user($instance, $user->id, $roleid);
+      
+        //get instance that can unenrol
+        $enrols = enrol_get_plugins(true);
+        $enrolinstances = enrol_get_instances($course->id, true);
+        $unenrolled = false;
+        foreach ($enrolinstances as $instance) {        
+            if (!$unenrolled and $enrols[$instance->enrol]->allow_unenrol($instance)) {
+                $unenrolinstance = $instance;
+                $unenrolled = true;
             }
         }
 
+        //test and unenrol the user
+        $enrolledusercourses = enrol_get_users_courses($user->id);
+        foreach ($enrolledcourses as $course) {
+            //test
+            $this->assertEqual(true, isset($enrolledusercourses[$course->id]));
+             
+            //unenrol the user 
+            $enrols[$unenrolinstance->enrol]->unenrol_user($unenrolinstance, $user->id, $roleid);
+        }
+        
         //delete user
         $DB->delete_records('user', array('id' => $user->id));
 

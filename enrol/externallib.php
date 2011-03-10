@@ -272,7 +272,9 @@ class moodle_enrol_external extends external_api {
      * @return null
      */
     public static function manual_enrol_users($enrolments) {
-        global $DB, $USER;
+        global $DB, $USER, $CFG;
+        
+        require_once($CFG->libdir . '/enrollib.php');
 
         $params = self::validate_parameters(self::manual_enrol_users_parameters(), 
                 array('enrolments'=>$enrolments));
@@ -286,15 +288,25 @@ class moodle_enrol_external extends external_api {
             $context = get_context_instance(CONTEXT_COURSE, $enrolment['courseid']);
             self::validate_context($context);
             require_capability('enrol/manual:enrol', $context);
+            
+            $enrols = enrol_get_plugins(true);
+            $enrolinstances = enrol_get_instances($enrolment['courseid'], true);
+            $enrolled = false;
+            foreach($enrolinstances as $instance) {
+                if (!isset($enrols[$instance->enrol])) {
+                    continue;
+                }
+                
+                if (!$enrolled and $enrols[$instance->enrol]->allow_enrol($instance)) {
+                    $enrols[$instance->enrol]->enrol_user($instance, $enrolment['userid'], 
+                            $enrolment['roleid']);
+                    $enrolleduserid[] = $enrolment['userid'];
+                    $enrolled = true;
+                }
+            }
 
-            $instance = $DB->get_record('enrol', 
-                    array('courseid' => $enrolment['courseid'], 'enrol' => 'manual'));
-            if (!empty($instance)) {
-                $enrol = enrol_get_plugin('manual');
-                $enrol->enrol_user($instance, $enrolment['userid'], $enrolment['roleid']);
-                $enrolleduserid[] = $enrolment['userid'];
-            } else {
-                $enrolment['failed'] = get_string('nocoursemanualenrol', 'enrol', $enrolment['courseid']);
+            if (!$enrolled) {
+                throw new moodle_exception('wscannotenrol', 'enrol', '', $enrolment['courseid']);
             }
             
             $enrolmentresult[] = $enrolment;

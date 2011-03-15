@@ -258,6 +258,9 @@ class moodle_enrol_external extends external_api {
                             'roleid'    => new external_value(PARAM_INT, 'Role to assign to the user'),
                             'userid'    => new external_value(PARAM_INT, 'The user that is going to be enrolled'),
                             'courseid' => new external_value(PARAM_INT, 'The course to enrol the user role in'),
+                            'timestart' => new external_value(PARAM_INT, 'Timestamp when the enrolment start', VALUE_OPTIONAL),
+                            'timeend' => new external_value(PARAM_INT, 'Timestamp when the enrolment end', VALUE_OPTIONAL),
+                            'suspend' => new external_value(PARAM_INT, 'set to 1 to suspend the enrolment', VALUE_OPTIONAL)
                         )
                     )
                 )
@@ -287,7 +290,6 @@ class moodle_enrol_external extends external_api {
             // Ensure the current user is allowed to run this function in the enrolment context
             $context = get_context_instance(CONTEXT_COURSE, $enrolment['courseid']);
             self::validate_context($context);
-            require_capability('enrol/manual:enrol', $context);
             
             $enrols = enrol_get_plugins(true);
             $enrolinstances = enrol_get_instances($enrolment['courseid'], true);
@@ -297,9 +299,15 @@ class moodle_enrol_external extends external_api {
                     continue;
                 }
                 
-                if (!$enrolled and $enrols[$instance->enrol]->allow_enrol($instance)) {
+                if (!$enrolled and $enrols[$instance->enrol]->allow_enrol($instance) and
+                    has_capability('enrol/'.$instance->enrol.':enrol', $context)) {
+                    $enrolment['timestart'] = isset($enrolment['timestart'])?$enrolment['timestart']:0;
+                    $enrolment['timeend'] = isset($enrolment['timeend'])?$enrolment['timeend']:0;
+                    $enrolment['status'] = (isset($enrolment['suspend']) && !empty($enrolment['suspend']))?ENROL_USER_SUSPENDED:ENROL_USER_ACTIVE;
+                    
                     $enrols[$instance->enrol]->enrol_user($instance, $enrolment['userid'], 
-                            $enrolment['roleid']);
+                            $enrolment['roleid'], $enrolment['timestart'], $enrolment['timestart'],
+                            $enrolment['status']);
                     $enrolled = true;
                 }
             }

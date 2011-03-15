@@ -306,7 +306,7 @@ class moodle_enrol_external extends external_api {
                     $enrolment['status'] = (isset($enrolment['suspend']) && !empty($enrolment['suspend']))?ENROL_USER_SUSPENDED:ENROL_USER_ACTIVE;
                     
                     $enrols[$instance->enrol]->enrol_user($instance, $enrolment['userid'], 
-                            $enrolment['roleid'], $enrolment['timestart'], $enrolment['timestart'],
+                            $enrolment['roleid'], $enrolment['timestart'], $enrolment['timeend'],
                             $enrolment['status']);
                     $enrolled = true;
                 }

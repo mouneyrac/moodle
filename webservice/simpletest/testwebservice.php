@@ -231,7 +231,7 @@ class webservice_test extends UnitTestCase {
 
         $this->assertEqual(count($users), count($userids));
     }
-    
+
     /**
      * This test will:
      * 1- create a user (core call)
@@ -274,17 +274,17 @@ class webservice_test extends UnitTestCase {
                 $enrolledcourses[] = $course;
             }
         }
-        
+
         //web service call
         $function = 'moodle_enrol_manual_enrol_users';
         $wsparams = array('enrolments' => $enrolments);
         $enrolmentsresult = $client->call($function, $wsparams);
-      
+
         //get instance that can unenrol
         $enrols = enrol_get_plugins(true);
         $enrolinstances = enrol_get_instances($course->id, true);
         $unenrolled = false;
-        foreach ($enrolinstances as $instance) {        
+        foreach ($enrolinstances as $instance) {
             if (!$unenrolled and $enrols[$instance->enrol]->allow_unenrol($instance)) {
                 $unenrolinstance = $instance;
                 $unenrolled = true;
@@ -296,11 +296,11 @@ class webservice_test extends UnitTestCase {
         foreach ($enrolledcourses as $course) {
             //test
             $this->assertEqual(true, isset($enrolledusercourses[$course->id]));
-             
-            //unenrol the user 
+
+            //unenrol the user
             $enrols[$unenrolinstance->enrol]->unenrol_user($unenrolinstance, $user->id, $roleid);
         }
-        
+
         //delete user
         $DB->delete_records('user', array('id' => $user->id));
 

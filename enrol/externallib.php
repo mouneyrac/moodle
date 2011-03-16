@@ -244,7 +244,7 @@ class moodle_enrol_external extends external_api {
     public static function role_unassign_returns() {
         return null;
     }
-    
+
     /**
      * Returns description of method parameters
      * @return external_function_parameters
@@ -275,8 +275,8 @@ class moodle_enrol_external extends external_api {
      * @return null
      */
     public static function manual_enrol_users($enrolments) {
-        global $DB, $USER, $CFG;
-        
+        global $DB, $CFG;
+
         require_once($CFG->libdir . '/enrollib.php');
 
         $params = self::validate_parameters(self::manual_enrol_users_parameters(), 
@@ -285,12 +285,12 @@ class moodle_enrol_external extends external_api {
         $transaction = $DB->start_delegated_transaction();
 
         $enrolmentresult = array();
-        
+
         foreach ($params['enrolments'] as $enrolment) {
             // Ensure the current user is allowed to run this function in the enrolment context
             $context = get_context_instance(CONTEXT_COURSE, $enrolment['courseid']);
             self::validate_context($context);
-            
+
             $enrols = enrol_get_plugins(true);
             $enrolinstances = enrol_get_instances($enrolment['courseid'], true);
             $enrolled = false;
@@ -298,13 +298,13 @@ class moodle_enrol_external extends external_api {
                 if (!isset($enrols[$instance->enrol])) {
                     continue;
                 }
-                
+
                 if (!$enrolled and $enrols[$instance->enrol]->allow_enrol($instance) and
                     has_capability('enrol/'.$instance->enrol.':enrol', $context)) {
                     $enrolment['timestart'] = isset($enrolment['timestart'])?$enrolment['timestart']:0;
                     $enrolment['timeend'] = isset($enrolment['timeend'])?$enrolment['timeend']:0;
                     $enrolment['status'] = (isset($enrolment['suspend']) && !empty($enrolment['suspend']))?ENROL_USER_SUSPENDED:ENROL_USER_ACTIVE;
-                    
+
                     $enrols[$instance->enrol]->enrol_user($instance, $enrolment['userid'], 
                             $enrolment['roleid'], $enrolment['timestart'], $enrolment['timeend'],
                             $enrolment['status']);
@@ -314,11 +314,11 @@ class moodle_enrol_external extends external_api {
 
             if (!$enrolled) {
                 throw new moodle_exception('wscannotenrol', 'enrol', '', $enrolment['courseid']);
-            }           
+            }
         }
 
         $transaction->allow_commit();
-        
+
         return null;
     }
 

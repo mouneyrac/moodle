@@ -176,7 +176,7 @@ $functions = array(
         'type'        => 'write',
         'capabilities'=> 'moodle/role:assign',
     ),
-    
+
     'moodle_enrol_get_courses_by_enrolled_users' => array(
         'classname'   => 'moodle_enrol_external',
         'methodname'  => 'get_courses_by_enrolled_users',

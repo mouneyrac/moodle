@@ -132,7 +132,7 @@ class moodle_enrol_external extends external_api {
             )
         );
     }
-    
+
     /**
      * Returns description of method parameters
      * @return external_function_parameters
@@ -163,17 +163,17 @@ class moodle_enrol_external extends external_api {
         $courses = array();
         //retrieve courses for each user
         foreach ($params['users'] as $enrollableuser) {
-            
+
             $usercourses = array();
-            
+
             //retrieve all courses of this user
             $enrolledusercourses = enrol_get_users_courses($enrollableuser['userid'], 
                     $enrollableuser['onlyactive'], '*');
 
             //create return value
-            
+
             foreach ($enrolledusercourses as $course) {
-                
+
                 // now security checks
                 $context = get_context_instance(CONTEXT_COURSE, $course->id);
                 require_capability('moodle/course:enrolreview', $context);
@@ -197,10 +197,9 @@ class moodle_enrol_external extends external_api {
                 if ($courseadmin or $course->visible
                         or has_capability('moodle/course:viewhiddencourses', $context)) {
                     $usercourses[] = $courseinfo;
-                   
                 }
             }
-            
+
              $courses[] = array('userid' => $enrollableuser['userid'], 'courses' => $usercourses);
         }
 
@@ -224,7 +223,7 @@ class moodle_enrol_external extends external_api {
                                             'fullname' => new external_value(PARAM_TEXT, 'full name'),
                                             'idnumber' => new external_value(PARAM_RAW, 'id number', VALUE_OPTIONAL),                                                
                                         ), 'course', VALUE_OPTIONAL), 'courses specific to one user')
-                        )          
+                        )
                )
         );
     }

@@ -88,7 +88,7 @@ class webservice_test extends UnitTestCase {
             'moodle_group_add_groupmembers' => false,
             'moodle_group_delete_groupmembers' => false,
             'moodle_group_create_groups' => false,
-            'moodle_group_delete_groups' => false        
+            'moodle_group_delete_groups' => false
         );
 
         //performance testing: number of time the web service are run
@@ -231,7 +231,7 @@ class webservice_test extends UnitTestCase {
 
         $this->assertEqual(count($users), count($userids));
     }
-    
+
     function moodle_enrol_get_enrolled_users($client) {
         global $DB;
 
@@ -268,7 +268,7 @@ class webservice_test extends UnitTestCase {
     }
 
     /**
-     * This function test that we can retrieve all courses 
+     * This function test that we can retrieve all courses
      * where all the site users are enrolled.
      */
     function moodle_enrol_get_courses_by_enrolled_users($client) {
@@ -287,9 +287,9 @@ class webservice_test extends UnitTestCase {
         foreach ($users as $user) {
             //retrieve all courses of this user
             $enrolledusercourses = enrol_get_users_courses($user['userid'], $user['onlyactive']);
-            
+
             foreach ($wsenrolleduserscourses as $wsenrolledcourses) {
-              
+
                 if ($wsenrolledcourses['userid'] == $user['userid']) {
                     foreach ($wsenrolledcourses['courses'] as $course) {
                         $this->assertEqual(true, isset($enrolledusercourses[$course['id']]));
@@ -297,7 +297,7 @@ class webservice_test extends UnitTestCase {
                     }
                 }
             }
-            
+
             //check that all enrolled courses has been returned
             $this->assertEqual(0, count($enrolledusercourses));
         }

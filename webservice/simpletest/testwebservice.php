@@ -63,7 +63,7 @@ class webservice_test extends UnitTestCase {
 
         //protocols to test
         $this->testrest = false; //Does not work till XML => PHP is implemented (MDL-22965)
-        $this->testxmlrpc = false;
+        $this->testxmlrpc = true;
         $this->testsoap = false;
 
         ////// READ-ONLY DB tests ////
@@ -74,7 +74,7 @@ class webservice_test extends UnitTestCase {
             'moodle_enrol_get_enrolled_users' => false,
             'moodle_group_get_course_groups' => false,
             'moodle_group_get_groupmembers' => false,
-            'moodle_enrol_get_courses_by_enrolled_users' => false
+            'moodle_enrol_get_courses_by_enrolled_users' => true
         );
 
         ////// WRITE DB tests ////
@@ -282,17 +282,19 @@ class webservice_test extends UnitTestCase {
         }
 
         $wsparams = array('users' => $users);
-        $wsenrolledcourses = $client->call($function, $wsparams);
+        $wsenrolleduserscourses = $client->call($function, $wsparams);
 
         foreach ($users as $user) {
             //retrieve all courses of this user
             $enrolledusercourses = enrol_get_users_courses($user['userid'], $user['onlyactive']);
             
-            foreach ($wsenrolledcourses as $wsenrolledcourse) {
+            foreach ($wsenrolleduserscourses as $wsenrolledcourses) {
               
-                if ($wsenrolledcourse['userid'] == $user['userid']) {
-                    $this->assertEqual(true, isset($enrolledusercourses[$wsenrolledcourse['id']]));
-                    unset($enrolledusercourses[$wsenrolledcourse['id']]);
+                if ($wsenrolledcourses['userid'] == $user['userid']) {
+                    foreach ($wsenrolledcourses['courses'] as $course) {
+                        $this->assertEqual(true, isset($enrolledusercourses[$course['id']]));
+                        unset($enrolledusercourses[$course['id']]);
+                    }
                 }
             }
             

@@ -59,7 +59,7 @@ class webservice_test extends UnitTestCase {
 
     function setUp() {
         //token to test
-        $this->testtoken = '72d338d58ff881cc293f8cd1d96d7a57';
+        $this->testtoken = 'acabec9d20933913f14309785324f579';
 
         //protocols to test
         $this->testrest = false; //Does not work till XML => PHP is implemented (MDL-22965)
@@ -73,7 +73,8 @@ class webservice_test extends UnitTestCase {
             'moodle_user_get_users_by_id' => false,
             'moodle_enrol_get_enrolled_users' => false,
             'moodle_group_get_course_groups' => false,
-            'moodle_group_get_groupmembers' => false
+            'moodle_group_get_groupmembers' => false,
+            'moodle_enrol_get_courses_by_enrolled_users' => false
         );
 
         ////// WRITE DB tests ////
@@ -263,6 +264,42 @@ class webservice_test extends UnitTestCase {
             $resultusers = $client->call($function, $wsparams);
 
             $this->assertEqual(count($resultusers), count($enrolledusers));
+        }
+    }
+
+    /**
+     * This function test that we can retrieve all courses
+     * where all the site users are enrolled.
+     */
+    function moodle_enrol_get_courses_by_enrolled_users($client) {
+        global $DB;
+
+        $dbusers = $DB->get_records('user');
+        $function = 'moodle_enrol_get_courses_by_enrolled_users';
+        $users = array();
+        foreach ($dbusers as $dbuser) {
+            $users[] = array('userid' => $dbuser->id, 'onlyactive' => 0);
+        }
+
+        $wsparams = array('users' => $users);
+        $wsenrolleduserscourses = $client->call($function, $wsparams);
+
+        foreach ($users as $user) {
+            //retrieve all courses of this user
+            $enrolledusercourses = enrol_get_users_courses($user['userid'], $user['onlyactive']);
+
+            foreach ($wsenrolleduserscourses as $wsenrolledcourses) {
+
+                if ($wsenrolledcourses['userid'] == $user['userid']) {
+                    foreach ($wsenrolledcourses['courses'] as $course) {
+                        $this->assertEqual(true, isset($enrolledusercourses[$course['id']]));
+                        unset($enrolledusercourses[$course['id']]);
+                    }
+                }
+            }
+
+            //check that all enrolled courses has been returned
+            $this->assertEqual(0, count($enrolledusercourses));
         }
     }
 

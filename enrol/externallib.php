@@ -201,7 +201,7 @@ class moodle_enrol_external extends external_api {
                 }
             }
             
-             $courses[] = array('userid' => $enrollableuser['userid'], 'courses' => $courseinfo);
+             $courses[] = array('userid' => $enrollableuser['userid'], 'courses' => $usercourses);
         }
 
         return $courses;

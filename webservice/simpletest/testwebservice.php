@@ -63,7 +63,7 @@ class webservice_test extends UnitTestCase {
 
         //protocols to test
         $this->testrest = false; //Does not work till XML => PHP is implemented (MDL-22965)
-        $this->testxmlrpc = true;
+        $this->testxmlrpc = false;
         $this->testsoap = false;
 
         ////// READ-ONLY DB tests ////
@@ -74,7 +74,7 @@ class webservice_test extends UnitTestCase {
             'moodle_enrol_get_enrolled_users' => false,
             'moodle_group_get_course_groups' => false,
             'moodle_group_get_groupmembers' => false,
-            'moodle_enrol_get_courses_by_enrolled_users' => true
+            'moodle_enrol_get_courses_by_enrolled_users' => false
         );
 
         ////// WRITE DB tests ////

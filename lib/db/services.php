@@ -183,7 +183,7 @@ $functions = array(
         'classpath'   => 'enrol/externallib.php',
         'description' => 'Get list of course for given enrolled users',
         'type'        => 'read',
-        'capabilities'=> 'moodle/course:enrolreview,moodle/course:view,moodle/course:update,
+        'capabilities'=> 'moodle/course:enrolreview,moodle/course:view,
             moodle/course:viewhiddencourses',
     ),
 

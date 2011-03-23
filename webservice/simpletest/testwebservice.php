@@ -63,7 +63,7 @@ class webservice_test extends UnitTestCase {
 
         //protocols to test
         $this->testrest = false; //Does not work till XML => PHP is implemented (MDL-22965)
-        $this->testxmlrpc = true;
+        $this->testxmlrpc = false;
         $this->testsoap = false;
 
         ////// READ-ONLY DB tests ////
@@ -88,7 +88,7 @@ class webservice_test extends UnitTestCase {
             'moodle_group_delete_groupmembers' => false,
             'moodle_group_create_groups' => false,
             'moodle_group_delete_groups' => false,
-            'moodle_enrol_enrol_users' => true
+            'moodle_enrol_enrol_users' => false
         );
 
         //performance testing: number of time the web service are run

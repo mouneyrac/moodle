@@ -63,7 +63,7 @@ class webservice_test extends UnitTestCase {
 
         //protocols to test
         $this->testrest = false; //Does not work till XML => PHP is implemented (MDL-22965)
-        $this->testxmlrpc = false;
+        $this->testxmlrpc = true;
         $this->testsoap = false;
 
         ////// READ-ONLY DB tests ////
@@ -88,7 +88,7 @@ class webservice_test extends UnitTestCase {
             'moodle_group_delete_groupmembers' => false,
             'moodle_group_create_groups' => false,
             'moodle_group_delete_groups' => false,
-            'moodle_enrol_manual_enrol_users' => false
+            'moodle_enrol_enrol_users' => true
         );
 
         //performance testing: number of time the web service are run
@@ -235,10 +235,10 @@ class webservice_test extends UnitTestCase {
     /**
      * This test will:
      * 1- create a user (core call)
-     * 2- enrol this user in the courses supporting manual enrolment
+     * 2- enrol this user in the courses supporting enrolment
      * 3- unenrol this user (core call)
      */
-    function moodle_enrol_manual_enrol_users($client) {
+    function moodle_enrol_enrol_users($client) {
         global $DB, $CFG;
 
         require_once($CFG->dirroot . "/user/lib.php");
@@ -276,7 +276,7 @@ class webservice_test extends UnitTestCase {
         }
 
         //web service call
-        $function = 'moodle_enrol_manual_enrol_users';
+        $function = 'moodle_enrol_enrol_users';
         $wsparams = array('enrolments' => $enrolments);
         $enrolmentsresult = $client->call($function, $wsparams);
 

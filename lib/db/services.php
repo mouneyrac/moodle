@@ -177,13 +177,12 @@ $functions = array(
         'capabilities'=> 'moodle/role:assign',
     ),
 
-    'moodle_enrol_manual_enrol_users' => array(
+    'moodle_enrol_enrol_users' => array(
         'classname'   => 'moodle_enrol_external',
-        'methodname'  => 'manual_enrol_users',
+        'methodname'  => 'enrol_users',
         'classpath'   => 'enrol/externallib.php',
-        'description' => 'Manual enrolment.',
+        'description' => 'Enrol users',
         'type'        => 'write',
-        'capabilities'=> 'enrol/manual:enrol',
     ),
 
     // === course related functions ===

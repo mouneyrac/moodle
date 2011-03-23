@@ -249,7 +249,7 @@ class moodle_enrol_external extends external_api {
      * Returns description of method parameters
      * @return external_function_parameters
      */
-    public static function manual_enrol_users_parameters() {
+    public static function enrol_users_parameters() {
         return new external_function_parameters(
             array(
                 'enrolments' => new external_multiple_structure(
@@ -269,17 +269,17 @@ class moodle_enrol_external extends external_api {
     }
 
     /**
-     * Manual enrolment of users
+     * Enrolment of users
      *
-     * @param array $enrolments  An array of manual user enrolment
+     * @param array $enrolments  An array of user enrolment
      * @return null
      */
-    public static function manual_enrol_users($enrolments) {
+    public static function enrol_users($enrolments) {
         global $DB, $CFG;
 
         require_once($CFG->libdir . '/enrollib.php');
 
-        $params = self::validate_parameters(self::manual_enrol_users_parameters(), 
+        $params = self::validate_parameters(self::enrol_users_parameters(), 
                 array('enrolments'=>$enrolments));
 
         $transaction = $DB->start_delegated_transaction();
@@ -326,7 +326,7 @@ class moodle_enrol_external extends external_api {
      * Returns description of method result value
      * @return external_description
      */
-    public static function manual_enrol_users_returns() {
+    public static function enrol_users_returns() {
         return null;
     }
 }

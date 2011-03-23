@@ -175,8 +175,7 @@ class moodle_enrol_external extends external_api {
             foreach ($enrolledusercourses as $course) {
 
                 // now security checks
-                $context = get_context_instance(CONTEXT_COURSE, $course->id);
-                require_capability('moodle/course:enrolreview', $context);
+                $context = get_context_instance(CONTEXT_COURSE, $course->id);               
                 try {
                     self::validate_context($context);
                 } catch (Exception $e) {
@@ -186,16 +185,16 @@ class moodle_enrol_external extends external_api {
                     throw new moodle_exception(
                             get_string('errorcoursecontextnotvalid', 'webservice', $exceptionparam));
                 }
-                require_capability('moodle/course:view', $context);
-
-                $courseinfo = array();
-                $courseinfo['id'] = $course->id;
-                $courseinfo['fullname'] = $course->fullname;
-                $courseinfo['shortname'] = $course->shortname;
-                $courseinfo['idnumber'] = $course->idnumber;
-
-                if ($courseadmin or $course->visible
+                require_capability('moodle/course:enrolreview', $context);
+                
+                if ($course->visible
                         or has_capability('moodle/course:viewhiddencourses', $context)) {
+                    $courseinfo = array();
+                    $courseinfo['id'] = $course->id;
+                    $courseinfo['fullname'] = $course->fullname;
+                    $courseinfo['shortname'] = $course->shortname;
+                    $courseinfo['idnumber'] = $course->idnumber;
+
                     $usercourses[] = $courseinfo;
                 }
             }

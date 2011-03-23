@@ -244,4 +244,89 @@ class moodle_enrol_external extends external_api {
     public static function role_unassign_returns() {
         return null;
     }
+
+    /**
+     * Returns description of method parameters
+     * @return external_function_parameters
+     */
+    public static function enrol_users_parameters() {
+        return new external_function_parameters(
+            array(
+                'enrolments' => new external_multiple_structure(
+                    new external_single_structure(
+                        array(
+                            'roleid'    => new external_value(PARAM_INT, 'Role to assign to the user'),
+                            'userid'    => new external_value(PARAM_INT, 'The user that is going to be enrolled'),
+                            'courseid' => new external_value(PARAM_INT, 'The course to enrol the user role in'),
+                            'timestart' => new external_value(PARAM_INT, 'Timestamp when the enrolment start', VALUE_OPTIONAL),
+                            'timeend' => new external_value(PARAM_INT, 'Timestamp when the enrolment end', VALUE_OPTIONAL),
+                            'suspend' => new external_value(PARAM_INT, 'set to 1 to suspend the enrolment', VALUE_OPTIONAL)
+                        )
+                    )
+                )
+            )
+        );
+    }
+
+    /**
+     * Enrolment of users
+     *
+     * @param array $enrolments  An array of user enrolment
+     * @return null
+     */
+    public static function enrol_users($enrolments) {
+        global $DB, $CFG;
+
+        require_once($CFG->libdir . '/enrollib.php');
+
+        $params = self::validate_parameters(self::enrol_users_parameters(), 
+                array('enrolments'=>$enrolments));
+
+        $transaction = $DB->start_delegated_transaction();
+
+        $enrolmentresult = array();
+
+        foreach ($params['enrolments'] as $enrolment) {
+            // Ensure the current user is allowed to run this function in the enrolment context
+            $context = get_context_instance(CONTEXT_COURSE, $enrolment['courseid']);
+            self::validate_context($context);
+
+            $enrols = enrol_get_plugins(true);
+            $enrolinstances = enrol_get_instances($enrolment['courseid'], true);
+            $enrolled = false;
+            foreach($enrolinstances as $instance) {
+                if (!isset($enrols[$instance->enrol])) {
+                    continue;
+                }
+
+                if (!$enrolled and $enrols[$instance->enrol]->allow_enrol($instance) and
+                    has_capability('enrol/'.$instance->enrol.':enrol', $context)) {
+                    $enrolment['timestart'] = isset($enrolment['timestart'])?$enrolment['timestart']:0;
+                    $enrolment['timeend'] = isset($enrolment['timeend'])?$enrolment['timeend']:0;
+                    $enrolment['status'] = (isset($enrolment['suspend']) && !empty($enrolment['suspend']))?ENROL_USER_SUSPENDED:ENROL_USER_ACTIVE;
+
+                    $enrols[$instance->enrol]->enrol_user($instance, $enrolment['userid'], 
+                            $enrolment['roleid'], $enrolment['timestart'], $enrolment['timeend'],
+                            $enrolment['status']);
+                    $enrolled = true;
+                }
+            }
+
+            if (!$enrolled) {
+                throw new moodle_exception('wscannotenrol', 'enrol', '', $enrolment['courseid']);
+            }
+        }
+
+        $transaction->allow_commit();
+
+        return null;
+    }
+
+    /**
+     * Returns description of method result value
+     * @return external_description
+     */
+    public static function enrol_users_returns() {
+        return null;
+    }
 }

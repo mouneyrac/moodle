@@ -177,6 +177,14 @@ $functions = array(
         'capabilities'=> 'moodle/role:assign',
     ),
 
+    'moodle_enrol_enrol_users' => array(
+        'classname'   => 'moodle_enrol_external',
+        'methodname'  => 'enrol_users',
+        'classpath'   => 'enrol/externallib.php',
+        'description' => 'Enrol users - this function requires enrol/PLUGINNAME:enrol capabilities.',
+        'type'        => 'write',
+    ),
+
     // === course related functions ===
 
     'moodle_course_get_courses' => array(

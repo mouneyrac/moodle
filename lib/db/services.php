@@ -181,7 +181,7 @@ $functions = array(
         'classname'   => 'moodle_enrol_external',
         'methodname'  => 'enrol_users',
         'classpath'   => 'enrol/externallib.php',
-        'description' => 'Enrol users - this function require enrol/PLUGINNAME:enrol capabilities.',
+        'description' => 'Enrol users - this function requires enrol/PLUGINNAME:enrol capabilities.',
         'type'        => 'write',
     ),
 

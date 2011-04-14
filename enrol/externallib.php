@@ -407,4 +407,98 @@ class moodle_enrol_external extends external_api {
     public static function role_unassign_returns() {
         return null;
     }
+
+    /**
+     * Returns description of method parameters
+     * @return external_function_parameters
+     */
+    public static function get_courses_by_enrolled_users_parameters() {
+        return new external_function_parameters(
+                array('users' => new external_multiple_structure(
+                        new external_single_structure(
+                            array('userid' => new external_value(PARAM_INT, 'Course id'),
+                                'onlyactive' => new external_value(PARAM_INT, 'return only active enrolment', VALUE_DEFAULT, 0),
+                                )), 'enrolled users')
+                )
+        );
+    }
+
+    /**
+     * Get courses for given users
+     * @param array $userids
+     * @return array
+     */
+    public static function get_courses_by_enrolled_users($users) {
+        global $CFG, $DB;
+        require_once($CFG->dirroot . "/course/lib.php");
+
+        //validate parameter
+        $params = self::validate_parameters(self::get_courses_by_enrolled_users_parameters(), 
+                array('users' => $users));
+        $courses = array();
+        //retrieve courses for each user
+        foreach ($params['users'] as $enrollableuser) {
+
+            $usercourses = array();
+
+            //retrieve all courses of this user
+            $enrolledusercourses = enrol_get_users_courses($enrollableuser['userid'], 
+                    $enrollableuser['onlyactive'], '*');
+
+            //create return value
+
+            foreach ($enrolledusercourses as $course) {
+
+                // now security checks
+                $context = get_context_instance(CONTEXT_COURSE, $course->id);               
+                try {
+                    self::validate_context($context);
+                } catch (Exception $e) {
+                    $exceptionparam = new stdClass();
+                    $exceptionparam->message = $e->getMessage();
+                    $exceptionparam->courseid = $course->id;
+                    throw new moodle_exception(
+                            get_string('errorcoursecontextnotvalid', 'webservice', $exceptionparam));
+                }
+                require_capability('moodle/course:enrolreview', $context);
+                
+                if ($course->visible
+                        or has_capability('moodle/course:viewhiddencourses', $context)) {
+                    $courseinfo = array();
+                    $courseinfo['id'] = $course->id;
+                    $courseinfo['fullname'] = $course->fullname;
+                    $courseinfo['shortname'] = $course->shortname;
+                    $courseinfo['idnumber'] = $course->idnumber;
+
+                    $usercourses[] = $courseinfo;
+                }
+            }
+
+             $courses[] = array('userid' => $enrollableuser['userid'], 'courses' => $usercourses);
+        }
+
+        return $courses;
+    }
+
+    /**
+     * Returns description of method result value
+     * @return external_description
+     */
+    public static function get_courses_by_enrolled_users_returns() {
+        return new external_multiple_structure(
+                new external_single_structure(
+                        array(
+                            'userid' => new external_value(PARAM_INT, 'enrolled user id'),
+                            'courses' => new external_multiple_structure(
+                                new external_single_structure(
+                                        array(
+                                            'id' => new external_value(PARAM_INT, 'course id'),
+                                            'shortname' => new external_value(PARAM_TEXT, 'course short name'),                         
+                                            'fullname' => new external_value(PARAM_TEXT, 'full name'),
+                                            'idnumber' => new external_value(PARAM_RAW, 'id number', VALUE_OPTIONAL),                                                
+                                        ), 'course', VALUE_OPTIONAL), 'courses specific to one user')
+                        )
+               )
+        );
+    }
 }

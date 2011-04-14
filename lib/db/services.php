@@ -27,20 +27,6 @@
 $functions = array(
 
     // === group related functions ===
-    'moodle_echo' => array(
-        'classname'   => 'moodle_mobile',
-        'methodname'  => 'moodle_echo',
-        'description' => 'test moodle connection',
-        'type'        => 'read',
-        'classpath'   => 'lib/externallib.php',
-    ),
-    'moodle_mobile_get_siteinfo' => array(
-        'classname'   => 'moodle_mobile',
-        'methodname'  => 'get_siteinfo',
-        'description' => 'get site info',
-        'type'        => 'read',
-        'classpath'   => 'lib/externallib.php',
-    ),
 
     'moodle_group_create_groups' => array(
         'classname'   => 'moodle_group_external',
@@ -208,6 +194,16 @@ $functions = array(
         'type'        => 'write',
         'capabilities'=> 'moodle/role:assign',
     ),
+    
+    'moodle_enrol_get_courses_by_enrolled_users' => array(
+        'classname'   => 'moodle_enrol_external',
+        'methodname'  => 'get_courses_by_enrolled_users',
+        'classpath'   => 'enrol/externallib.php',
+        'description' => 'Get list of course for given enrolled users',
+        'type'        => 'read',
+        'capabilities'=> 'moodle/course:enrolreview,moodle/course:view,
+            moodle/course:viewhiddencourses',
+    ),
 
     'moodle_enrol_get_courses_by_enrolled_users' => array(
         'classname'   => 'moodle_enrol_external',
@@ -238,5 +234,16 @@ $functions = array(
         'type'        => 'write',
         'capabilities'=> 'moodle/course:create,moodle/course:visibility',
     ),
+    
+        // === mobile web services ===
+    
+    'moodle_webservice_mobile_get_siteinfo' => array(
+        'classname'   => 'moodle_webservice_mobile_external',
+        'methodname'  => 'get_siteinfo',
+        'description' => 'get site info',
+        'type'        => 'read',
+        'classpath'   => 'webservice/externallib.php',
+    ),
+    
 
 );

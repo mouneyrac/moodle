@@ -99,7 +99,7 @@ class moodle_enrol_manual_external extends external_api {
                 throw new moodle_exception('wsusercannotassign', 'enrol_manual', '', $errorparams);
             }
 
-            //check that the plugin instance is available 
+            //check that the plugin instance is available
             //check that the plugin accept enrolment (it should always the case, it's hard coded in the plugin)
             if (!$enrol->allow_enrol($instance)) {
                 $errorparams = new stdClass();

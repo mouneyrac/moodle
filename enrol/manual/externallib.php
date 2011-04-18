@@ -1,5 +1,4 @@
 <?php
-
 // This file is part of Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
@@ -21,9 +20,9 @@
  * This api is mostly read only, the actual enrol and unenrol
  * support is in each enrol plugin.
  *
- * @package    core
- * @subpackage enrol
- * @copyright  2009 Moodle Pty Ltd (http://moodle.com)
+ * @package    enrol
+ * @subpackage manual
+ * @copyright  2011 Moodle Pty Ltd (http://moodle.com)
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 defined('MOODLE_INTERNAL') || die();
@@ -57,7 +56,7 @@ class moodle_enrol_manual_external extends external_api {
 
     /**
      * Enrolment of users
-     *
+     * Function throw an exception at the first error encountered.
      * @param array $enrolments  An array of user enrolment
      * @return null
      */
@@ -66,40 +65,61 @@ class moodle_enrol_manual_external extends external_api {
 
         require_once($CFG->libdir . '/enrollib.php');
 
-        $params = self::validate_parameters(self::manual_enrol_users_parameters(), 
+        $params = self::validate_parameters(self::manual_enrol_users_parameters(),
                 array('enrolments' => $enrolments));
 
-        $transaction = $DB->start_delegated_transaction(); //rollback all enrolment if an error occurs 
+        $transaction = $DB->start_delegated_transaction(); //rollback all enrolment if an error occurs
                                                            //(except if the DB doesn't support it)
 
         //retrieve the manual enrolment plugin
         $enrol = enrol_get_plugin('manual');
-                                           
+        if (empty($enrol)) {
+            throw new moodle_exception('manualpluginnotinstalled', 'enrol_manual');
+        }
+
         foreach ($params['enrolments'] as $enrolment) {
             // Ensure the current user is allowed to run this function in the enrolment context
             $context = get_context_instance(CONTEXT_COURSE, $enrolment['courseid']);
             self::validate_context($context);
 
             $instance = $DB->get_record('enrol', array('courseid' => $enrolment['courseid'],
-                'enrol' => 'manual'));
+                'enrol' => 'manual'), '*', MUST_EXIST);
 
-            if (!empty($instance) and $enrol->allow_enrol($instance) 
-                    and has_capability('enrol/manual:enrol', $context)) { //require_capability doesn't return a explicit error message
-                $enrolment['timestart'] = isset($enrolment['timestart']) ? $enrolment['timestart'] : 0;
-                $enrolment['timeend'] = isset($enrolment['timeend']) ? $enrolment['timeend'] : 0;
-                $enrolment['status'] = (isset($enrolment['suspend']) && !empty($enrolment['suspend'])) ?
-                        ENROL_USER_SUSPENDED : ENROL_USER_ACTIVE;
+            require_capability('enrol/manual:enrol', $context);
 
-                $enrol->enrol_user($instance, $enrolment['userid'], $enrolment['roleid'], 
-                        $enrolment['timestart'], $enrolment['timeend'], $enrolment['status']);
-            } else {
-                throw new moodle_exception('wscannotenrol', 'enrol_manual', '', $enrolment['courseid']);
+            //throw an exception if the role doesn't exist
+            $role = $DB->get_record('role', array('id' => $enrolment['roleid']), 'id', MUST_EXIST);
+
+            //throw an exception if user is not able to assign the role
+            if (!user_can_assign($context, $enrolment['roleid'])) {
+                $errorparams = new stdClass();
+                $errorparams->roleid = $enrolment['roleid'];
+                $errorparams->courseid = $enrolment['courseid'];
+                $errorparams->userid = $enrolment['userid'];
+                throw new moodle_exception('wsusercannotassign', 'enrol_manual', '', $errorparams);
             }
+
+            //check that the plugin instance is available 
+            //check that the plugin accept enrolment (it should always the case, it's hard coded in the plugin)
+            if (!$enrol->allow_enrol($instance)) {
+                $errorparams = new stdClass();
+                $errorparams->roleid = $enrolment['roleid'];
+                $errorparams->courseid = $enrolment['courseid'];
+                $errorparams->userid = $enrolment['userid'];
+                throw new moodle_exception('wscannotenrol', 'enrol_manual', '', $errorparams);
+            }
+
+            $enrolment['timestart'] = isset($enrolment['timestart']) ? $enrolment['timestart'] : 0;
+            $enrolment['timeend'] = isset($enrolment['timeend']) ? $enrolment['timeend'] : 0;
+            $enrolment['status'] = (isset($enrolment['suspend']) && !empty($enrolment['suspend'])) ?
+                    ENROL_USER_SUSPENDED : ENROL_USER_ACTIVE;
+
+            $enrol->enrol_user($instance, $enrolment['userid'], $enrolment['roleid'], 
+                    $enrolment['timestart'], $enrolment['timeend'], $enrolment['status']);
+
         }
-       
 
         $transaction->allow_commit();
-        
     }
 
     /**

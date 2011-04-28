@@ -305,7 +305,7 @@ class webservice_test extends UnitTestCase {
 
         //delete user
         $DB->delete_records('user', array('id' => $user->id));
-        
+
         //delete the context level
         set_role_contextlevels($roleid, array(CONTEXT_COURSE));
 

@@ -4371,10 +4371,6 @@ function get_user_roles_in_course($userid, $courseid) {
 function user_can_assign($context, $targetroleid) {
     global $DB;
 
-    if(is_siteadmin()){
-        return true;
-    }
-
     // first check if user has override capability
     // if not return false;
     if (!has_capability('moodle/role:assign', $context)) {

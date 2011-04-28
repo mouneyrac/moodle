@@ -42,3 +42,8 @@ $string['status_help'] = 'This setting determines whether users can be enrolled 
 $string['statusenabled'] = 'Enabled';
 $string['statusdisabled'] = 'Disabled';
 $string['unenrolselfconfirm'] = 'Do you really want to unenrol yourself from course "{$a}"?';
+$string['unenroluser'] = 'Do you really want to unenrol "{$a->user}" from course "{$a->course}"?';
+$string['unenrolusers'] = 'Unenrol users';
+$string['wscannotenrol'] = 'Plugin instance cannot manually enrol a user in the course id = {$a->courseid}';
+$string['wsroledoesntexist'] = 'The role (id = {$a->roleid}) doesn\'t exist. You cannot enrol the user (id = {$a->userid}) in the course(id = {$a->courseid})';
+$string['wsusercannotassign'] = 'You don\'t have the permission to assign this role ({$a->roleid}) to this user ({$a->userid}) in this course({$a->courseid}).';

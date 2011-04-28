@@ -250,6 +250,7 @@ class webservice_test extends UnitTestCase {
             $DB->delete_records('user', array('id' => $user->id));
         }
         if ($role = $DB->get_record('role', array('shortname' => 'role1thatshouldnotexist'))) {
+            set_role_contextlevels($role->id, array(CONTEXT_COURSE));
             delete_role($role->id);
         }
 
@@ -263,6 +264,7 @@ class webservice_test extends UnitTestCase {
         $user->id = user_create_user($user);
 
         $roleid = create_role('role1thatshouldnotexist', 'role1thatshouldnotexist', '');
+        set_role_contextlevels($roleid, array(CONTEXT_COURSE));
 
         $enrolments = array();
         $courses = $DB->get_records('course');
@@ -303,6 +305,9 @@ class webservice_test extends UnitTestCase {
 
         //delete user
         $DB->delete_records('user', array('id' => $user->id));
+        
+        //delete the context level
+        set_role_contextlevels($roleid, array(CONTEXT_COURSE));
 
         //delete role
         delete_role($roleid);

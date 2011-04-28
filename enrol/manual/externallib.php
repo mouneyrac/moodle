@@ -88,10 +88,19 @@ class moodle_enrol_manual_external extends external_api {
             require_capability('enrol/manual:enrol', $context);
 
             //throw an exception if the role doesn't exist
-            $role = $DB->get_record('role', array('id' => $enrolment['roleid']), 'id', MUST_EXIST);
+            $role = $DB->get_record('role', array('id' => $enrolment['roleid']), 'id');
+            if (!$DB->record_exists('role', array('id' => $enrolment['roleid']))) {
+                $errorparams = new stdClass();
+                $errorparams->roleid = $enrolment['roleid'];
+                $errorparams->courseid = $enrolment['courseid'];
+                $errorparams->userid = $enrolment['userid'];
+                throw new moodle_exception('wsroledoesntexist', 'enrol_manual', '', $errorparams);
+            }
 
             //throw an exception if user is not able to assign the role
-            if (!user_can_assign($context, $enrolment['roleid'])) {
+            $roles = get_assignable_roles($context); 
+
+            if (!key_exists($enrolment['roleid'], $roles)) {
                 $errorparams = new stdClass();
                 $errorparams->roleid = $enrolment['roleid'];
                 $errorparams->courseid = $enrolment['courseid'];

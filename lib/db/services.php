@@ -186,6 +186,15 @@ $functions = array(
         'capabilities'=> 'moodle/role:assign',
     ),
 
+    'moodle_enrol_manual_enrol_users' => array(
+        'classname'   => 'moodle_enrol_manual_external',
+        'methodname'  => 'manual_enrol_users',
+        'classpath'   => 'enrol/manual/externallib.php',
+        'description' => 'Manual enrol users',
+        'capabilities'=> 'enrol/manual:enrol',
+        'type'        => 'write',
+    ),
+
     // === course related functions ===
 
     'moodle_course_get_courses' => array(

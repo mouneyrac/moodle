@@ -43,9 +43,9 @@ class moodle_enrol_external extends external_api {
         return new external_function_parameters(
             array(
                 'courseid'       => new external_value(PARAM_INT, 'Course id'),
-                'withcapability' => new external_value(PARAM_CAPABILITY, 'User should have this capability'),
-                'groupid'        => new external_value(PARAM_INT, 'Group id, null means all groups'),
-                'onlyactive'     => new external_value(PARAM_INT, 'True means only active, false means all participants'),
+                'withcapability' => new external_value(PARAM_CAPABILITY, 'User should have this capability', VALUE_DEFAULT, null),
+                'groupid'        => new external_value(PARAM_INT, 'Group id, null means all groups', VALUE_DEFAULT, null),
+                'onlyactive'     => new external_value(PARAM_INT, 'True means only active, false means all participants', VALUE_DEFAULT, 0),
             )
         );
     }
@@ -59,7 +59,7 @@ class moodle_enrol_external extends external_api {
      * @param bool $onlyactive
      * @return array of course participants
      */
-    public static function get_enrolled_users($courseid, $withcapability, $groupid, $onlyactive) {
+    public static function get_enrolled_users($courseid, $withcapability = null, $groupid = null, $onlyactive = false) {
         global $DB;
 
         // Do basic automatic PARAM checks on incoming data, using params description
@@ -102,20 +102,20 @@ class moodle_enrol_external extends external_api {
         }
 
         list($sql, $params) =  get_enrolled_sql($coursecontext, $withcapability, $groupid, $onlyactive);
-        $sql = "SELECT DISTINCT ue.userid, e.courseid
-                  FROM {user_enrolments} ue
+        $sql = "SELECT DISTINCT ue.userid, e.courseid, u.firstname, u.lastname, u.username
+                  FROM {user_enrolments} ue 
                   JOIN {enrol} e ON (e.id = ue.enrolid)
+                  JOIN {user} u ON (ue.userid = u.id)
                  WHERE e.courseid = :courseid AND ue.userid IN ($sql)";
         $params['courseid'] = $courseid;
-
         $enrolledusers = $DB->get_records_sql($sql, $params);
-
         $result = array();
         foreach ($enrolledusers as $enrolleduser) {
             $result[] = array('courseid' => $enrolleduser->courseid,
-                'userid' => $enrolleduser->userid);
+                'userid' => $enrolleduser->userid, 'firstname' => $enrolleduser->firstname,
+                'lastname' => $enrolleduser->lastname, 'username' => $enrolleduser->username);
         }
-
+        
         return $result;
     }
 
@@ -129,6 +129,9 @@ class moodle_enrol_external extends external_api {
                 array(
                     'courseid' => new external_value(PARAM_INT, 'id of course'),
                     'userid' => new external_value(PARAM_INT, 'id of user'),
+                    'firstname' => new external_value(PARAM_RAW, 'first name of user'),
+                    'lastname' => new external_value(PARAM_RAW, 'last name of user'),
+                    'username' => new external_value(PARAM_RAW, 'username of user'),
                 )
             )
         );

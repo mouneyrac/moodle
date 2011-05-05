@@ -27,6 +27,20 @@
 $functions = array(
 
     // === group related functions ===
+    'moodle_echo' => array(
+        'classname'   => 'moodle_mobile',
+        'methodname'  => 'moodle_echo',
+        'description' => 'test moodle connection',
+        'type'        => 'read',
+        'classpath'   => 'lib/externallib.php',
+    ),
+    'moodle_mobile_get_siteinfo' => array(
+        'classname'   => 'moodle_mobile',
+        'methodname'  => 'get_siteinfo',
+        'description' => 'get site info',
+        'type'        => 'read',
+        'classpath'   => 'lib/externallib.php',
+    ),
 
     'moodle_group_create_groups' => array(
         'classname'   => 'moodle_group_external',
@@ -125,6 +139,15 @@ $functions = array(
         'methodname'  => 'get_users_by_id',
         'classpath'   => 'user/externallib.php',
         'description' => 'Get users by id.',
+        'type'        => 'read',
+        'capabilities'=> 'moodle/user:viewalldetails',
+    ),
+
+    'moodle_user_get_users' => array(
+        'classname'   => 'moodle_user_external',
+        'methodname'  => 'get_users',
+        'classpath'   => 'user/externallib.php',
+        'description' => 'Get users',
         'type'        => 'read',
         'capabilities'=> 'moodle/user:viewalldetails',
     ),

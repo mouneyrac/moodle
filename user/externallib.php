@@ -443,4 +443,103 @@ class moodle_user_external extends external_api {
                 )
         );
     }
+    /**
+     * Returns description of method parameters
+     * @return external_function_parameters
+     */
+    public static function get_users_parameters() {
+        return new external_function_parameters(
+                array(
+                    //'userids' => new external_multiple_structure(new external_value(PARAM_INT, 'user ID')),
+                    'msg' => new external_value(PARAM_TEXT, 'message'),
+                )
+        );
+    }
+
+    /**
+     * Get user information
+     *
+     * @param array $userids  array of user ids
+     * @return array An array of arrays describing users
+     */
+    public static function get_users($userids) {
+        global $CFG, $USER;
+        $user = $USER;
+        $fs = get_file_storage();
+        require_once($CFG->dirroot . "/user/lib.php");
+        require_once($CFG->dirroot . "/user/profile/lib.php");
+        $result = array();
+        $context = get_context_instance(CONTEXT_USER, $user->id);
+        require_capability('moodle/user:viewalldetails', $context);
+        self::validate_context($context);
+        $userarray = array();
+       //we want to return an array not an object
+        /// now we transfert all profile_field_xxx into the customfields
+        // external_multiple_structure required by description
+        $userarray['id'] = $user->id;
+        $userarray['username'] = $user->username;
+        $userarray['firstname'] = $user->firstname;
+        $userarray['lastname'] = $user->lastname;
+        $file = $fs->get_file($context->id, 'user', 'icon', 0, '/', 'f1.png');
+        $userarray['picture'] = base64_encode($file->get_content());
+        $userarray['email'] = $user->email;
+        $userarray['auth'] = $user->auth;
+        $userarray['confirmed'] = $user->confirmed;
+        $userarray['idnumber'] = $user->idnumber;
+        $userarray['lang'] = $user->lang;
+        $userarray['theme'] = $user->theme;
+        $userarray['timezone'] = $user->timezone;
+        $userarray['mailformat'] = $user->mailformat;
+        $userarray['description'] = $user->description;
+        $userarray['descriptionformat'] = $user->descriptionformat;
+        $userarray['city'] = $user->city;
+        $userarray['country'] = $user->country;
+        $userarray['customfields'] = array();
+        $customfields = profile_user_record($user->id);
+        $customfields = (array) $customfields;
+        foreach ($customfields as $key => $value) {
+            $userarray['customfields'][] = array('type' => $key, 'value' => $value);
+        }
+
+        $result[] = $userarray;
+
+        return $result;
+    }
+
+    /**
+     * Returns description of method result value
+     * @return external_description
+     */
+    public static function get_users_returns() {
+        return new external_multiple_structure(
+                new external_single_structure(
+                        array(
+                    'id'    => new external_value(PARAM_NUMBER, 'ID of the user'),
+                    'username'    => new external_value(PARAM_RAW, 'Username policy is defined in Moodle security config'),
+                    'picture' => new external_value(PARAM_RAW, 'profile image'),
+                    'firstname'   => new external_value(PARAM_NOTAGS, 'The first name(s) of the user'),
+                    'lastname'    => new external_value(PARAM_NOTAGS, 'The family name of the user'),
+                    'email'       => new external_value(PARAM_TEXT, 'An email address - allow email as root@localhost'),
+                    'auth'        => new external_value(PARAM_SAFEDIR, 'Auth plugins include manual, ldap, imap, etc'),
+                    'confirmed'   => new external_value(PARAM_NUMBER, 'Active user: 1 if confirmed, 0 otherwise'),
+                    'idnumber'    => new external_value(PARAM_RAW, 'An arbitrary ID code number perhaps from the institution'),
+                    'lang'        => new external_value(PARAM_SAFEDIR, 'Language code such as "en", must exist on server'),
+                    'theme'       => new external_value(PARAM_SAFEDIR, 'Theme name such as "standard", must exist on server'),
+                    'timezone'    => new external_value(PARAM_ALPHANUMEXT, 'Timezone code such as Australia/Perth, or 99 for default'),
+                    'mailformat'  => new external_value(PARAM_INTEGER, 'Mail format code is 0 for plain text, 1 for HTML etc'),
+                    'description' => new external_value(PARAM_RAW, 'User profile description'),
+                    'descriptionformat' => new external_value(PARAM_INT, 'User profile description format'),
+                    'city'        => new external_value(PARAM_NOTAGS, 'Home city of the user'),
+                    'country'     => new external_value(PARAM_ALPHA, 'Home country code of the user, such as AU or CZ'),
+                    'customfields' => new external_multiple_structure(
+                                    new external_single_structure(
+                                            array(
+                                                'type'  => new external_value(PARAM_ALPHANUMEXT, 'The name of the custom field'),
+                                                'value' => new external_value(PARAM_RAW, 'The value of the custom field')
+                                            )
+                                    ), 'User custom fields (also known as user profil fields)', VALUE_OPTIONAL)
+                        )
+                )
+        );
+    }
 }

@@ -60,7 +60,7 @@ class moodle_enrol_external extends external_api {
      * @return array of course participants
      */
     public static function get_enrolled_users($courseid, $withcapability = null, $groupid = null, $onlyactive = false) {
-        global $DB;
+        global $DB, $CFG;
 
         // Do basic automatic PARAM checks on incoming data, using params description
         // If any problems are found then exceptions are thrown with helpful error messages
@@ -102,10 +102,11 @@ class moodle_enrol_external extends external_api {
         }
 
         list($sql, $params) =  get_enrolled_sql($coursecontext, $withcapability, $groupid, $onlyactive);
-        $sql = "SELECT DISTINCT ue.userid, e.courseid, u.firstname, u.lastname, u.username
+        $sql = "SELECT DISTINCT ue.userid, e.courseid, u.firstname, u.lastname, u.username, c.id as usercontextid
                   FROM {user_enrolments} ue 
                   JOIN {enrol} e ON (e.id = ue.enrolid)
                   JOIN {user} u ON (ue.userid = u.id)
+                  JOIN {context} c ON (u.id = c.instanceid AND contextlevel = " . CONTEXT_USER . ")
                  WHERE e.courseid = :courseid AND ue.userid IN ($sql)";
         $params['courseid'] = $courseid;
         $enrolledusers = $DB->get_records_sql($sql, $params);
@@ -113,7 +114,8 @@ class moodle_enrol_external extends external_api {
         foreach ($enrolledusers as $enrolleduser) {
             $result[] = array('courseid' => $enrolleduser->courseid,
                 'userid' => $enrolleduser->userid, 'firstname' => $enrolleduser->firstname,
-                'lastname' => $enrolleduser->lastname, 'username' => $enrolleduser->username);
+                'lastname' => $enrolleduser->lastname, 'username' => $enrolleduser->username,
+                'profileimgurl' => $CFG->wwwroot . '' . '/pluginfile.php/' . $enrolleduser->usercontextid .'/user/icon/f1');
         }
         
         return $result;
@@ -132,6 +134,7 @@ class moodle_enrol_external extends external_api {
                     'firstname' => new external_value(PARAM_RAW, 'first name of user'),
                     'lastname' => new external_value(PARAM_RAW, 'last name of user'),
                     'username' => new external_value(PARAM_RAW, 'username of user'),
+                    'profileimgurl' => new external_value(PARAM_URL, 'url of the profile image')
                 )
             )
         );

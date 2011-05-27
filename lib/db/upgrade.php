@@ -6061,7 +6061,21 @@ WHERE gradeitemid IS NOT NULL AND grademax IS NOT NULL");
         set_config('version', 2011022100, 'auth_manual');
         upgrade_main_savepoint(true, 2011022100.01);
     }
+ 
+    if ($oldversion < 2011051800.01) {
 
+        // Define field shortname to be added to external_services
+        $table = new xmldb_table('external_services');
+        $field = new xmldb_field('shortname', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'timemodified');
+
+        // Conditionally launch add field shortname
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Main savepoint reached
+        upgrade_main_savepoint(true, 2011051800.01);
+    }
 
     return true;
 }

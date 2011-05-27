@@ -6381,6 +6381,97 @@ class admin_setting_managerepository extends admin_setting {
     }
 }
 
+/**
+ * Special checkbox for enable mobile web service
+ * If enable then we store the service id of the mobile service into config table
+ * If disable then we unstore the service id from the config table
+ */
+class admin_setting_enablemobileservice extends admin_setting_configcheckbox {
+
+    /**
+     * Builds XHTML to display the control
+     *
+     * @param string $data Unused
+     * @param string $query
+     * @return string XHTML
+     */
+    public function output_html($data, $query='') {
+        global $CFG, $OUTPUT;
+        $html = parent::output_html($data, $query);
+
+        if ((string)$data === $this->yes) {
+            require_once($CFG->dirroot . "/lib/filelib.php");
+            $curl = new curl();
+            $httpswwwroot = str_replace('http:', 'https:', $CFG->wwwroot); //force https url
+            $curl->head($httpswwwroot . "/login/index.php");
+            $info = $curl->get_info();
+            if (empty($info['http_code']) or ($info['http_code'] >= 400)) {
+               $html .= $OUTPUT->notification(get_string('nohttpsformobilewarning', 'admin'));
+            }
+        }
+
+        return $html;
+    }
+
+    /**
+     * Retrieves the current setting using the objects name
+     *
+     * @return string
+     */
+    public function get_setting() {
+        global $CFG;
+        $webservicesystem = $CFG->enablewebservices;
+        require_once($CFG->dirroot . '/webservice/lib.php');
+        $webservicemanager = new webservice();
+        $mobileservice = $webservicemanager->get_external_service_by_shortname(MOODLE_OFFICIAL_MOBILE_SERVICE);
+        if ($mobileservice->enabled and !empty($webservicesystem)) {
+            return $this->config_read($this->name);
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Save the selected setting
+     *
+     * @param string $data The selected site
+     * @return string empty string or error message
+     */
+    public function write_setting($data) {
+        global $DB, $CFG;
+        $servicename = MOODLE_OFFICIAL_MOBILE_SERVICE;
+
+        require_once($CFG->dirroot . '/webservice/lib.php');
+        $webservicemanager = new webservice();
+
+        if ((string)$data === $this->yes) {
+             //code run when enable mobile web service
+             //enable web service systeme if necessary
+             set_config('enablewebservices', true);
+
+             //enable mobile service
+             $mobileservice = $webservicemanager->get_external_service_by_shortname(MOODLE_OFFICIAL_MOBILE_SERVICE);
+             $mobileservice->enabled = 1;
+             $webservicemanager->update_external_service($mobileservice);
+
+         } else {
+             //disable web service system if no other services are enabled
+             $otherenabledservices = $DB->get_records_select('external_services',
+                     'enabled = :enabled AND (shortname != :shortname OR shortname IS NULL)', array('enabled' => 1,
+                         'shortname' => MOODLE_OFFICIAL_MOBILE_SERVICE));
+             if (empty($otherenabledservices)) {
+                 set_config('enablewebservices', false);
+             }
+
+             //disable the mobile service
+             $mobileservice = $webservicemanager->get_external_service_by_shortname(MOODLE_OFFICIAL_MOBILE_SERVICE);
+             $mobileservice->enabled = 0;
+             $webservicemanager->update_external_service($mobileservice);
+         }
+
+        return (parent::write_setting($data));
+    }
+}
 
 /**
  * Special class for management of external services

@@ -99,6 +99,7 @@ $string['generalstructure'] = 'General structure';
 $string['checkusercapability'] = 'Check user capability';
 $string['checkusercapabilitydescription'] = 'The user should have appropriate capabilities according to the protocols used, for example webservice/rest:use, webservice/soap:use. To achieve this, create a web services role with protocol capabilities allowed and assign it to the web services user as a system role.';
 $string['information'] = 'Information';
+$string['installserviceshortnameerror'] = 'A web service with the shortname "{$a}" already exists. Can not install/update a different web service with this shortname.';
 $string['invalidextparam'] = 'Invalid external api parameter: {$a}';
 $string['invalidextresponse'] = 'Invalid external api response: {$a}';
 $string['invalidiptoken'] = 'Invalid token - your IP is not supported';

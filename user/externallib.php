@@ -440,6 +440,7 @@ class moodle_user_external extends external_api {
 
                 if (isset($user->description) && (!isset($hiddenfields['description']) or $isadmin)) {
                     if (empty($CFG->profilesforenrolledusersonly) || $currentuser) {
+                        require_once($CFG->dirroot . "/lib/filelib.php");
                         $user->description = file_rewrite_pluginfile_urls($user->description, 'pluginfile.php', $context->id, 'user', 'profile', null);
                         $userarray['description'] = $user->description;
                         $userarray['descriptionformat'] = $user->descriptionformat;

@@ -422,7 +422,7 @@ class scorm_basic_report extends scorm_default_report {
                                     if ($trackdata->score_raw != '') {
                                         $score = $trackdata->score_raw;
                                         // add max score if it exists
-                                        if ($scorm->version == 'SCORM_1.3') {
+                                        if (scorm_version_check($scorm->version, SCORM_13)) {
                                             $maxkey = 'cmi.score.max';
                                         } else {
                                             $maxkey = 'cmi.core.score.max';
@@ -512,6 +512,11 @@ class scorm_basic_report extends scorm_default_report {
                     $mform->display();
                 }
             } else {
+                if ($candelete && !$download) {
+                    echo '</div>';
+                    echo '</form>';
+                }
+                echo '</div>';
                 echo $OUTPUT->notification(get_string('noactivity', 'scorm'));
             }
             if ($download == 'Excel' or $download == 'ODS') {

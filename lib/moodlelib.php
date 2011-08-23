@@ -3462,7 +3462,7 @@ function truncate_userinfo($info) {
  *
  * Any plugin that needs to purge user data should register the 'user_deleted' event.
  *
- * @param object $user User object before delete
+ * @param stdClass $user full user object before delete
  * @return boolean always true
  */
 function delete_user($user) {
@@ -3508,6 +3508,9 @@ function delete_user($user) {
 
     // last course access not necessary either
     $DB->delete_records('user_lastaccess', array('userid'=>$user->id));
+
+    // force logout - may fail if file based sessions used, sorry
+    session_kill_user($user->id);
 
     // now do a final accesslib cleanup - removes all role assignments in user context and context itself
     delete_context(CONTEXT_USER, $user->id);

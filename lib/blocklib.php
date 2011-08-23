@@ -997,26 +997,36 @@ class block_manager {
         global $CFG;
 
         if (!isset($CFG->undeletableblocktypes) || (!is_array($CFG->undeletableblocktypes) && !is_string($CFG->undeletableblocktypes))) {
-            $CFG->undeletableblocktypes = array('navigation','settings');
+            $undeletableblocktypes = array('navigation','settings');
         } else if (is_string($CFG->undeletableblocktypes)) {
-            $CFG->undeletableblocktypes = explode(',', $CFG->undeletableblocktypes);
+            $undeletableblocktypes = explode(',', $CFG->undeletableblocktypes);
+        } else {
+            $undeletableblocktypes = $CFG->undeletableblocktypes;
         }
 
         $controls = array();
         $actionurl = $this->page->url->out(false, array('sesskey'=> sesskey()));
 
-        // Assign roles icon.
-        if (has_capability('moodle/role:assign', $block->context)) {
-            //TODO: please note it is sloppy to pass urls through page parameters!!
-            //      it is shortened because some web servers (e.g. IIS by default) give
-            //      a 'security' error if you try to pass a full URL as a GET parameter in another URL.
+        if ($this->page->user_can_edit_blocks()) {
+            // Move icon.
+            $controls[] = array('url' => $actionurl . '&bui_moveid=' . $block->instance->id,
+                    'icon' => 't/move', 'caption' => get_string('move'));
+        }
 
-            $return = $this->page->url->out(false);
-            $return = str_replace($CFG->wwwroot . '/', '', $return);
+        if ($this->page->user_can_edit_blocks() || $block->user_can_edit()) {
+            // Edit config icon - always show - needed for positioning UI.
+            $controls[] = array('url' => $actionurl . '&bui_editid=' . $block->instance->id,
+                    'icon' => 't/edit', 'caption' => get_string('configuration'));
+        }
 
-            $controls[] = array('url' => $CFG->wwwroot . '/' . $CFG->admin .
-                    '/roles/assign.php?contextid=' . $block->context->id . '&returnurl=' . urlencode($return),
-                    'icon' => 'i/roles', 'caption' => get_string('assignroles', 'role'));
+        if ($this->page->user_can_edit_blocks() && $block->user_can_edit() && $block->user_can_addto($this->page)) {
+            if (!in_array($block->instance->blockname, $undeletableblocktypes)
+                    || !in_array($block->instance->pagetypepattern, array('*', 'site-index'))
+                    || $block->instance->parentcontextid != SITEID) {
+                // Delete icon.
+                $controls[] = array('url' => $actionurl . '&bui_deleteid=' . $block->instance->id,
+                        'icon' => 't/delete', 'caption' => get_string('delete'));
+            }
         }
 
         if ($this->page->user_can_edit_blocks() && $block->instance_can_be_hidden()) {
@@ -1030,24 +1040,17 @@ class block_manager {
             }
         }
 
-        if ($this->page->user_can_edit_blocks() || $block->user_can_edit()) {
-            // Edit config icon - always show - needed for positioning UI.
-            $controls[] = array('url' => $actionurl . '&bui_editid=' . $block->instance->id,
-                    'icon' => 't/edit', 'caption' => get_string('configuration'));
-        }
+        // Assign roles icon.
+        if (has_capability('moodle/role:assign', $block->context)) {
+            //TODO: please note it is sloppy to pass urls through page parameters!!
+            //      it is shortened because some web servers (e.g. IIS by default) give
+            //      a 'security' error if you try to pass a full URL as a GET parameter in another URL.
+            $return = $this->page->url->out(false);
+            $return = str_replace($CFG->wwwroot . '/', '', $return);
 
-        if ($this->page->user_can_edit_blocks() && $block->user_can_edit() && $block->user_can_addto($this->page)) {
-            if (!in_array($block->instance->blockname, $CFG->undeletableblocktypes)) {
-                // Delete icon.
-                $controls[] = array('url' => $actionurl . '&bui_deleteid=' . $block->instance->id,
-                        'icon' => 't/delete', 'caption' => get_string('delete'));
-            }
-        }
-
-        if ($this->page->user_can_edit_blocks()) {
-            // Move icon.
-            $controls[] = array('url' => $actionurl . '&bui_moveid=' . $block->instance->id,
-                    'icon' => 't/move', 'caption' => get_string('move'));
+            $controls[] = array('url' => $CFG->wwwroot . '/' . $CFG->admin .
+                    '/roles/assign.php?contextid=' . $block->context->id . '&returnurl=' . urlencode($return),
+                    'icon' => 'i/roles', 'caption' => get_string('assignroles', 'role'));
         }
 
         return $controls;

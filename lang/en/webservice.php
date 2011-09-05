@@ -182,6 +182,7 @@ $string['token'] = 'Token';
 $string['tokenauthlog'] = 'Token authentication';
 $string['tokencreatedbyadmin'] = 'Can only be reset by administrator (*)';
 $string['tokencreator'] = 'Creator';
+$string['unknownoptionkey'] = 'Unknown option key ({$a})';
 $string['updateusersettings'] = 'Update';
 $string['userasclients'] = 'Users as clients with token';
 $string['userasclientsdescription'] = 'The following steps help you to set up the Moodle web service for users as clients. These steps also help to set up the recommended token (security keys) authentication method. In this use case, the user will generate his token from the security keys page via My profile settings.';

@@ -34,6 +34,202 @@ class moodle_course_external extends external_api {
      * Returns description of method parameters
      * @return external_function_parameters
      */
+    public static function get_course_contents_parameters() {
+        return new external_function_parameters(
+                array('courseid' => new external_value(PARAM_INT, 'course id'),
+                      'options' => new external_multiple_structure (
+                              new external_single_structure(
+                                    array('key' => new external_value(PARAM_ALPHANUM, 'option name'),
+                                          'value' => new external_value(PARAM_RAW, 'the value of the option, this param is personaly validated in the external function.')
+                              )
+                      ), 'options', VALUE_DEFAULT, array())
+                )
+        );
+    }
+
+    /**
+     * Get course contents
+     * @param array $options
+     * @return array
+     */
+    public static function get_course_contents($courseid, $options) {
+        global $CFG, $DB;
+        require_once($CFG->dirroot . "/course/lib.php");
+
+        //validate parameter
+        $params = self::validate_parameters(self::get_course_contents_parameters(),
+                        array('courseid' => $courseid, 'options' => $options));
+
+        //retrieve the course
+        $course = $DB->get_record('course', array('id' => $params['courseid']), '*', MUST_EXIST);
+
+        //check course format exist
+        if (!file_exists($CFG->dirroot . '/' . '/course/format/' . $course->format . '/lib.php')) {
+            throw new moodle_exception('courseformatnotfound', 'error', '', $course->format);
+        }
+
+        //return error on unknown key
+        foreach ($params['options'] as $option) {
+            switch ($option['key']) {
+                default:
+                    throw new moodle_exception('unknownoptionkey', 'webservice', $option['key']);
+                    break;
+            }
+        }
+
+        //create return value
+        $coursecontents = array();
+
+        // now security checks
+        $context = get_context_instance(CONTEXT_COURSE, $course->id);
+        try {
+            self::validate_context($context);
+        } catch (Exception $e) {
+            $exceptionparam = new stdClass();
+            $exceptionparam->message = $e->getMessage();
+            $exceptionparam->courseid = $course->id;
+            throw new moodle_exception(
+                    get_string('errorcoursecontextnotvalid', 'webservice', $exceptionparam));
+        }
+        require_capability('moodle/course:view', $context);
+
+        $canupdatecourse = has_capability('moodle/course:update', $context);
+
+        if ($canupdatecourse or $course->visible
+                or has_capability('moodle/course:viewhiddencourses', $context)) {
+
+            //retrieve sections
+            $modinfo = get_fast_modinfo($course);
+            $sections = get_all_sections($course->id);
+
+            //for each sections (first displayed to last displayed)
+            foreach ($sections as $key => $section) {
+                // reset $sectioncontents
+                $sectionvalues = array();
+                $sectionvalues['id'] = $section->id;
+                $sectionvalues['name'] = $section->name;
+                $sectionvalues['summary'] = file_rewrite_pluginfile_urls($section->summary, 'pluginfile.php', $context->id, 'course', 'section', $section->id);
+                $sectionvalues['summaryformat'] = $section->summaryformat;
+                $sectioncontents = array();
+
+                if (!array_key_exists($section->section, $modinfo->sections)) {
+                    continue;
+                }
+
+                //for each module of the section
+                foreach ($modinfo->sections[$section->section] as $cmid) { //matching /course/lib.php:print_section() logic
+                    $cm = $modinfo->cms[$cmid];
+
+                    //return this module if:
+                    //a) the module is visible for the user
+                    //b) user can see hidden module
+                    $canviewhidden = has_capability('moodle/course:viewhiddenactivities',
+                                        get_context_instance(CONTEXT_MODULE, $cm->id));
+                    if (!$cm->uservisible && empty($canviewhidden)) {
+                        continue;
+                    }
+
+                    $module = array();
+
+                    //common info (for people being able to see the module or availability dates)
+                    $module['id'] = $cm->id;
+                    $module['name'] = $cm->name;
+                    $module['modname'] = $cm->modname;
+                    $module['modplural'] = $cm->modplural;
+                    $module['modicon'] = $cm->get_icon_url()->out(false);
+                    $module['indent'] = $cm->indent;
+                    //TODO: description will be added in MDL-27001
+                    //$module['description'] = $cm->description;
+                    $module['description'] = '';
+                    //url of the module
+                    $url = $cm->get_url();
+                    if ($url) { //labels don't have url
+                        $module['url'] = $cm->get_url()->out();
+                    }
+
+                    //user that can view hidden module should know about the visibility
+                    if ($canupdatecourse or $canviewhidden) {
+                        $module['visible'] = $cm->visible;
+                    }
+
+                    //availability date (also send to user who can see hidden module when the showavailabilyt is ON)
+                    if ($canupdatecourse or ($CFG->enableavailability && $canviewhidden && $cm->showavailability)) {
+                        $module['availablefrom'] = $cm->availablefrom;
+                        $module['availableuntil'] = $cm->availableuntil;
+                    }
+
+                    //call $modulename_export_contents
+                    //(each module callback take care about checking the capabilities)
+                    require_once($CFG->dirroot . '/mod/' . $cm->modname . '/lib.php');
+                    $getcontentfunction = $cm->modname.'_export_contents';
+                    if (function_exists($getcontentfunction)) {
+                        $module['contents'] = $getcontentfunction($cm);
+                    }
+
+                    //assign result to $sectioncontents
+                    $sectioncontents[] = $module;
+
+                }
+                $sectionvalues['modules'] = $sectioncontents;
+
+                // assign result to $coursecontents
+                $coursecontents[] = $sectionvalues;
+            }
+        }
+        return $coursecontents;
+    }
+
+    /**
+     * Returns description of method result value
+     * @return external_description
+     */
+    public static function get_course_contents_returns() {
+        return new external_multiple_structure(
+            new external_single_structure(
+                array(
+                    'id' => new external_value(PARAM_INT, 'Section ID'),
+                    'name' => new external_value(PARAM_TEXT, 'Section NAME'),
+                    'summary' => new external_value(PARAM_RAW, 'Section description'),
+                    'summaryformat' => new external_value(PARAM_ALPHANUMEXT, 'Section description format'),
+                    'modules' => new external_multiple_structure(
+                            new external_single_structure(
+                                array(
+                                    'id' => new external_value(PARAM_INT, 'activity id'),
+                                    'availablefrom' => new external_value(PARAM_INT, 'module availability start date', VALUE_OPTIONAL),
+                                    'availableuntil' => new external_value(PARAM_INT, 'module availability en date', VALUE_OPTIONAL),
+                                    'indent' => new external_value(PARAM_INT, 'number of identation in the site'),
+                                    'modicon' => new external_value(PARAM_URL, 'activity icon url'),
+                                    'modname' => new external_value(PARAM_TEXT, 'activity module type'),
+                                    'modplural' => new external_value(PARAM_TEXT, 'activity module plural name'),
+                                    'name' => new external_value(PARAM_TEXT, 'activity module name'),
+                                    'description' => new external_value(PARAM_TEXT, 'activity description'),
+                                    'visible' => new external_value(PARAM_INT, 'is the module visible', VALUE_OPTIONAL),
+                                    'url' => new external_value(PARAM_URL, 'activity url', VALUE_OPTIONAL),
+                                    'contents' => new external_multiple_structure(
+                                          new external_single_structure(
+                                              array(
+                                                  'type'=> new external_value(PARAM_TEXT, 'a file or a folder or external link'),
+                                                  'filename'=> new external_value(PARAM_FILE, 'filename'),
+                                                  'filepath'=> new external_value(PARAM_FILE, 'filepath'),
+                                                  'filesize'=> new external_value(PARAM_INT, 'filesize'),
+                                                  'fileurl' => new external_value(PARAM_URL, 'downloadable file url'),
+                                                   // perhaps an extra fields to store addtional info?
+                                                  'data' => new external_value(PARAM_RAW, 'addtional info')
+                                              )
+                                          ), VALUE_DEFAULT, array()
+                                      )
+                                )
+                            ), 'list of module'
+                    )
+                )
+            )
+        );
+    }
+
+    /**
+     * Returns description of method parameters
+     * @return external_function_parameters
+     */
     public static function get_courses_parameters() {
         return new external_function_parameters(
                 array('options' => new external_single_structure(

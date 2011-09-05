@@ -7975,3 +7975,29 @@ function forum_page_type_list($pagetype, $parentcontext, $currentcontext) {
     );
     return $forum_pagetype;
 }
+
+/**
+ * DUMMY FUNCTION FOR TESTING
+ *
+ * Return contents
+ * A file content: array(
+      'type'=> new external_value(PARAM_TEXT, 'a file or a folder or external link'),
+      'filename'=> new external_value(PARAM_FILE, 'filename'),
+      'filepath'=> new external_value(PARAM_FILE, 'filepath'),
+      'filesize'=> new external_value(PARAM_INT, 'filesize'),
+      'fileurl' => new external_value(PARAM_URL, 'downloadable file url'),
+       // perhaps an extra fields to store addtional info?
+      'data' => new external_value(PARAM_RAW, 'addtional info')
+  )
+ * @return array of file content
+ */
+function forum_export_contents($cm) {
+    $contents = array();
+    $contentone = array('type' => 'file', 'filename' => 'image.jpg', 'filepath' => 'filename.jpg', 'filesize' => 100,
+        'fileurl' => 'http://www.google.com/img.jpg', 'data' => 'djhidjgiuhfgiu - binary most likely');
+    $contenttwo = array('type' => 'file', 'filename' => 'image.jpg', 'filepath' => 'filename.jpg', 'filesize' => 100,
+        'fileurl' => 'http://www.google.com/img.jpg', 'data' => 'djhidjgiuhfgiu - binary most likely');
+    $contents[] = $contentone;
+    $contents[] = $contenttwo;
+    return $contents;
+}

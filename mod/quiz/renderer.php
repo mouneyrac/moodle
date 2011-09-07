@@ -203,7 +203,7 @@ class mod_quiz_renderer extends plugin_renderer_base {
                 quiz_get_js_module());
 
         $output = '';
-        $output .= html_writer::start_tag('form', array('action' => $attemptobj->review_url(0,
+        $output .= html_writer::start_tag('form', array('action' => $attemptobj->review_url(null,
                 $page, $showall), 'method' => 'post', 'class' => 'questionflagsaveform'));
         $output .= html_writer::start_tag('div');
         $output .= $content;
@@ -249,7 +249,7 @@ class mod_quiz_renderer extends plugin_renderer_base {
         if ($lastpage) {
             $nav = $this->finish_review_link($attemptobj->view_url());
         } else {
-            $nav = link_arrow_right(get_string('next'), $attemptobj->review_url(0, $page + 1));
+            $nav = link_arrow_right(get_string('next'), $attemptobj->review_url(null, $page + 1));
         }
         return html_writer::tag('div', $nav, array('class' => 'submitbtns'));
     }
@@ -316,8 +316,6 @@ class mod_quiz_renderer extends plugin_renderer_base {
             $classes[] = 'thispage';
             $attributes[] = get_string('onthispage', 'quiz');
         }
-
-        $attributes[] = $button->statestring;
 
         // Flagged?
         if ($button->flagged) {
@@ -417,8 +415,8 @@ class mod_quiz_renderer extends plugin_renderer_base {
 
         // Print all the questions
         foreach ($slots as $slot) {
-            $output .= $attemptobj->render_question($slot, false, $attemptobj->attempt_url($id,
-                    $page));
+            $output .= $attemptobj->render_question($slot, false,
+                    $attemptobj->attempt_url($slot, $page));
         }
 
         $output .= html_writer::start_tag('div', array('class' => 'submitbtns'));
@@ -761,8 +759,9 @@ class mod_quiz_renderer extends plugin_renderer_base {
             }
             $row[] = $datecompleted;
 
-            if ($viewobj->markcolumn && $attempt->timefinish > 0) {
-                if ($attemptoptions->marks >= question_display_options::MARK_AND_MAX) {
+            if ($viewobj->markcolumn) {
+                if ($attemptoptions->marks >= question_display_options::MARK_AND_MAX &&
+                        $attempt->timefinish > 0) {
                     $row[] = quiz_format_grade($quiz, $attempt->sumgrades);
                 } else {
                     $row[] = '';

@@ -46,7 +46,7 @@ $itemid    = optional_param('itemid', 0, PARAM_INT);            // Itemid
 $page      = optional_param('page', '', PARAM_RAW);             // Page
 $maxbytes  = optional_param('maxbytes', 0, PARAM_INT);          // Maxbytes
 $req_path  = optional_param('p', '', PARAM_RAW);                // Path
-$accepted_types  = optional_param('accepted_types', '*', PARAM_RAW);
+$accepted_types  = optional_param_array('accepted_types', '*', PARAM_RAW);
 $saveas_filename = optional_param('title', '', PARAM_FILE);     // save as file name
 $saveas_path   = optional_param('savepath', '/', PARAM_PATH);   // save as file path
 $search_text   = optional_param('s', '', PARAM_CLEANHTML);
@@ -249,17 +249,8 @@ switch ($action) {
         }
         break;
     case 'upload':
-        // handle exception here instead moodle default exception handler
-        // see MDL-23407
-        try {
-            // TODO: add file scanning MDL-19380 into each plugin
-            $result = $repo->upload($saveas_filename, $maxbytes);
-            echo json_encode($result);
-        } catch (Exception $e) {
-            $err->error = $e->getMessage();
-            echo json_encode($err);
-            die;
-        }
+        $result = $repo->upload($saveas_filename, $maxbytes);
+        echo json_encode($result);
         break;
 
     case 'overwrite':

@@ -31,6 +31,15 @@ $functions = array(
         'classname'   => 'moodle_enrol_manual_external',
         'methodname'  => 'manual_enrol_users',
         'classpath'   => 'enrol/manual/externallib.php',
+        'description' => 'DEPRECATED: use enrol_manual_create()',
+        'capabilities'=> 'enrol/manual:enrol',
+        'type'        => 'write',
+    ),
+
+    'enrol_manual_create' => array(
+        'classname'   => 'moodle_enrol_manual_external',
+        'methodname'  => 'manual_enrol_users',
+        'classpath'   => 'enrol/manual/externallib.php',
         'description' => 'Manual enrol users',
         'capabilities'=> 'enrol/manual:enrol',
         'type'        => 'write',

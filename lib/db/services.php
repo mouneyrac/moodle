@@ -32,12 +32,30 @@ $functions = array(
         'classname'   => 'moodle_group_external',
         'methodname'  => 'create_groups',
         'classpath'   => 'group/externallib.php',
+        'description' => 'DEPRECATED: use core_create_groups()',
+        'type'        => 'write',
+        'capabilities'=> 'moodle/course:managegroups',
+    ),
+
+    'core_create_groups' => array(
+        'classname'   => 'moodle_group_external',
+        'methodname'  => 'create_groups',
+        'classpath'   => 'group/externallib.php',
         'description' => 'Creates new groups.',
         'type'        => 'write',
         'capabilities'=> 'moodle/course:managegroups',
     ),
 
     'moodle_group_get_groups' => array(
+        'classname'   => 'moodle_group_external',
+        'methodname'  => 'get_groups',
+        'classpath'   => 'group/externallib.php',
+        'description' => 'DEPRECATED: use core_get_groups()',
+        'type'        => 'read',
+        'capabilities'=> 'moodle/course:managegroups',
+    ),
+
+    'core_get_groups' => array(
         'classname'   => 'moodle_group_external',
         'methodname'  => 'get_groups',
         'classpath'   => 'group/externallib.php',
@@ -50,12 +68,30 @@ $functions = array(
         'classname'   => 'moodle_group_external',
         'methodname'  => 'get_course_groups',
         'classpath'   => 'group/externallib.php',
+        'description' => 'DEPRECATED: use core_get_course_groups()',
+        'type'        => 'read',
+        'capabilities'=> 'moodle/course:managegroups',
+    ),
+
+    'core_get_course_groups' => array(
+        'classname'   => 'moodle_group_external',
+        'methodname'  => 'get_course_groups',
+        'classpath'   => 'group/externallib.php',
         'description' => 'Returns all groups in specified course.',
         'type'        => 'read',
         'capabilities'=> 'moodle/course:managegroups',
     ),
 
     'moodle_group_delete_groups' => array(
+        'classname'   => 'moodle_group_external',
+        'methodname'  => 'delete_groups',
+        'classpath'   => 'group/externallib.php',
+        'description' => 'DEPRECATED: use core_delete_groups()',
+        'type'        => 'delete',
+        'capabilities'=> 'moodle/course:managegroups',
+    ),
+
+    'core_delete_groups' => array(
         'classname'   => 'moodle_group_external',
         'methodname'  => 'delete_groups',
         'classpath'   => 'group/externallib.php',
@@ -68,12 +104,30 @@ $functions = array(
         'classname'   => 'moodle_group_external',
         'methodname'  => 'get_groupmembers',
         'classpath'   => 'group/externallib.php',
+        'description' => 'DEPRECATED: use core_get_groupmembers()',
+        'type'        => 'read',
+        'capabilities'=> 'moodle/course:managegroups',
+    ),
+
+    'core_get_groupmembers' => array(
+        'classname'   => 'moodle_group_external',
+        'methodname'  => 'get_groupmembers',
+        'classpath'   => 'group/externallib.php',
         'description' => 'Returns group members.',
         'type'        => 'read',
         'capabilities'=> 'moodle/course:managegroups',
     ),
 
     'moodle_group_add_groupmembers' => array(
+        'classname'   => 'moodle_group_external',
+        'methodname'  => 'add_groupmembers',
+        'classpath'   => 'group/externallib.php',
+        'description' => 'DEPRECATED: use core_add_groupmembers()',
+        'type'        => 'write',
+        'capabilities'=> 'moodle/course:managegroups',
+    ),
+
+    'core_add_groupmembers' => array(
         'classname'   => 'moodle_group_external',
         'methodname'  => 'add_groupmembers',
         'classpath'   => 'group/externallib.php',
@@ -86,22 +140,47 @@ $functions = array(
         'classname'   => 'moodle_group_external',
         'methodname'  => 'delete_groupmembers',
         'classpath'   => 'group/externallib.php',
-        'description' => 'Deletes group members.',
+        'description' => 'DEPRECATED: use core_delete_groupmembers()',
         'type'        => 'delete',
         'capabilities'=> 'moodle/course:managegroups',
     ),
 
+    'core_delete_groupmembers' => array(
+        'classname'   => 'moodle_group_external',
+        'methodname'  => 'delete_groupmembers',
+        'classpath'   => 'group/externallib.php',
+        'description' => 'Deletes group members.',
+        'type'        => 'delete',
+        'capabilities'=> 'moodle/course:managegroups',
+    ),
 
     // === file related functions ===
 
     'moodle_file_get_files' => array(
         'classname'   => 'moodle_file_external',
         'methodname'  => 'get_files',
+        'description' => 'DEPRECATED: use core_get_files()',
+        'type'        => 'read',
+        'classpath'   => 'files/externallib.php',
+    ),
+
+    'core_get_files' => array(
+        'classname'   => 'moodle_file_external',
+        'methodname'  => 'get_files',
         'description' => 'browse moodle files',
         'type'        => 'read',
         'classpath'   => 'files/externallib.php',
     ),
+
     'moodle_file_upload' => array(
+        'classname'   => 'moodle_file_external',
+        'methodname'  => 'upload',
+        'description' => 'DEPRECATED: use core_upload()',
+        'type'        => 'write',
+        'classpath'   => 'files/externallib.php',
+    ),
+
+    'core_upload' => array(
         'classname'   => 'moodle_file_external',
         'methodname'  => 'upload',
         'description' => 'upload a file to moodle',
@@ -115,12 +194,30 @@ $functions = array(
         'classname'   => 'moodle_user_external',
         'methodname'  => 'create_users',
         'classpath'   => 'user/externallib.php',
+        'description' => 'DEPRECATED: use core_create_users()',
+        'type'        => 'write',
+        'capabilities'=> 'moodle/user:create',
+    ),
+
+    'core_create_users' => array(
+        'classname'   => 'moodle_user_external',
+        'methodname'  => 'create_users',
+        'classpath'   => 'user/externallib.php',
         'description' => 'Create users.',
         'type'        => 'write',
         'capabilities'=> 'moodle/user:create',
     ),
 
     'moodle_user_get_users_by_id' => array(
+        'classname'   => 'moodle_user_external',
+        'methodname'  => 'get_users_by_id',
+        'classpath'   => 'user/externallib.php',
+        'description' => 'DEPRECATED: use core_get_users_by_id()',
+        'type'        => 'read',
+        'capabilities'=> 'moodle/user:viewdetails, moodle/user:viewhiddendetails, moodle/course:useremail, moodle/user:update',
+    ),
+
+    'core_get_users_by_id' => array(
         'classname'   => 'moodle_user_external',
         'methodname'  => 'get_users_by_id',
         'classpath'   => 'user/externallib.php',
@@ -133,12 +230,30 @@ $functions = array(
         'classname'   => 'moodle_user_external',
         'methodname'  => 'delete_users',
         'classpath'   => 'user/externallib.php',
+        'description' => 'DEPRECATED: use core_delete_users()',
+        'type'        => 'write',
+        'capabilities'=> 'moodle/user:delete',
+    ),
+
+    'core_delete_users' => array(
+        'classname'   => 'moodle_user_external',
+        'methodname'  => 'delete_users',
+        'classpath'   => 'user/externallib.php',
         'description' => 'Delete users.',
         'type'        => 'write',
         'capabilities'=> 'moodle/user:delete',
     ),
 
     'moodle_user_update_users' => array(
+        'classname'   => 'moodle_user_external',
+        'methodname'  => 'update_users',
+        'classpath'   => 'user/externallib.php',
+        'description' => 'DEPRECATED: use core_update_users()',
+        'type'        => 'write',
+        'capabilities'=> 'moodle/user:update',
+    ),
+
+    'core_update_users' => array(
         'classname'   => 'moodle_user_external',
         'methodname'  => 'update_users',
         'classpath'   => 'user/externallib.php',
@@ -153,7 +268,7 @@ $functions = array(
         'classname'   => 'moodle_enrol_external',
         'methodname'  => 'get_enrolled_users',
         'classpath'   => 'enrol/externallib.php',
-        'description' => 'Get list of course participants',
+        'description' => 'DEPRECATED: update your site to Moodle 2.1 or later, and use get_users_by_courseid()',
         'type'        => 'read',
         'capabilities'=> 'moodle/site:viewparticipants, moodle/course:viewparticipants,
             moodle/role:review, moodle/site:accessallgroups, moodle/course:enrolreview',
@@ -163,12 +278,30 @@ $functions = array(
         'classname'   => 'moodle_enrol_external',
         'methodname'  => 'role_assign',
         'classpath'   => 'enrol/externallib.php',
+        'description' => 'DEPRECATED: use core_assign_role()',
+        'type'        => 'write',
+        'capabilities'=> 'moodle/role:assign',
+    ),
+
+    'core_assign_role' => array(
+        'classname'   => 'moodle_enrol_external',
+        'methodname'  => 'role_assign',
+        'classpath'   => 'enrol/externallib.php',
         'description' => 'Manual role assignments.',
         'type'        => 'write',
         'capabilities'=> 'moodle/role:assign',
     ),
 
     'moodle_role_unassign' => array(
+        'classname'   => 'moodle_enrol_external',
+        'methodname'  => 'role_unassign',
+        'classpath'   => 'enrol/externallib.php',
+        'description' => 'DEPRECATED: use core_unassign_role()',
+        'type'        => 'write',
+        'capabilities'=> 'moodle/role:assign',
+    ),
+
+    'core_unassign_role' => array(
         'classname'   => 'moodle_enrol_external',
         'methodname'  => 'role_unassign',
         'classpath'   => 'enrol/externallib.php',
@@ -183,12 +316,30 @@ $functions = array(
         'classname'   => 'moodle_course_external',
         'methodname'  => 'get_courses',
         'classpath'   => 'course/externallib.php',
+        'description' => 'DEPRECATED: use core_get_courses()',
+        'type'        => 'read',
+        'capabilities'=> 'moodle/course:view,moodle/course:update,moodle/course:viewhiddencourses',
+    ),
+
+    'core_get_courses' => array(
+        'classname'   => 'moodle_course_external',
+        'methodname'  => 'get_courses',
+        'classpath'   => 'course/externallib.php',
         'description' => 'Return course details',
         'type'        => 'read',
         'capabilities'=> 'moodle/course:view,moodle/course:update,moodle/course:viewhiddencourses',
     ),
 
     'moodle_course_create_courses' => array(
+        'classname'   => 'moodle_course_external',
+        'methodname'  => 'create_courses',
+        'classpath'   => 'course/externallib.php',
+        'description' => 'DEPRECATED: use core_create_courses()',
+        'type'        => 'write',
+        'capabilities'=> 'moodle/course:create,moodle/course:visibility',
+    ),
+
+    'core_create_courses' => array(
         'classname'   => 'moodle_course_external',
         'methodname'  => 'create_courses',
         'classpath'   => 'course/externallib.php',

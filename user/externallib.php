@@ -110,17 +110,23 @@ class moodle_user_external extends external_api {
         foreach ($params['users'] as $user) {
             // Make sure that the username doesn't already exist
             if ($DB->record_exists('user', array('username'=>$user['username'], 'mnethostid'=>$CFG->mnet_localhost_id))) {
-                throw new invalid_parameter_exception('Username already exists: '.$user['username']);
+                throw new moodle_exception('usernamealreadyused', 'error', '', $user['username']);
             }
 
             // Make sure auth is valid
             if (empty($availableauths[$user['auth']])) {
-                throw new invalid_parameter_exception('Invalid authentication type: '.$user['auth']);
+                $msgparams = new stdClass();
+                $msgparams->auth = $user['auth'];
+                $msgparams->username = $user['username'];
+                throw new moodle_exception('userinvalidauth', 'error', '', $msgparams);
             }
 
             // Make sure lang is valid
             if (empty($availablelangs[$user['lang']])) {
-                throw new invalid_parameter_exception('Invalid language code: '.$user['lang']);
+                $msgparams = new stdClass();
+                $msgparams->lang = $user['lang'];
+                $msgparams->username = $user['username'];
+                throw new moodle_exception('userinvalidlang', 'error', '', $msgparams);
             }
 
             // Make sure lang is valid
@@ -128,14 +134,21 @@ class moodle_user_external extends external_api {
                                                                                      // so no default value.
                                                                                      // We need to test if the client sent it
                                                                                      // => !empty($user['theme'])
-                throw new invalid_parameter_exception('Invalid theme: '.$user['theme']);
+                $msgparams = new stdClass();
+                $msgparams->theme = $user['theme'];
+                $msgparams->username = $user['username'];
+                throw new moodle_exception('userinvalidtheme', 'error', '', $msgparams);
             }
 
             // make sure there is no data loss during truncation
             $truncated = truncate_userinfo($user);
             foreach ($truncated as $key=>$value) {
                     if ($truncated[$key] !== $user[$key]) {
-                        throw new invalid_parameter_exception('Property: '.$key.' is too long: '.$user[$key]);
+                        $msgparams = new stdClass();
+                        $msgparams->key = $key;
+                        $msgparams->value = $user[$key];
+                        $msgparams->username = $user['username'];
+                        throw new moodle_exception('userinvalidproperty', 'error', '', $msgparams);
                     }
             }
 

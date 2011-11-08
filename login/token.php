@@ -30,6 +30,10 @@ $username = required_param('username', PARAM_USERNAME);
 $password = required_param('password', PARAM_RAW);
 $serviceshortname  = required_param('service',  PARAM_ALPHANUMEXT);
 
+if (isset($_REQUEST['jsonp'])) {
+    set_exception_handler('jsonp_exception_handler');
+}
+
 echo $OUTPUT->header();
 
 if (!$CFG->enablewebservices) {
@@ -172,7 +176,25 @@ if (!empty($user)) {
 
     $usertoken = new stdClass;
     $usertoken->token = $token->token;
-    echo json_encode($usertoken);
+    $jsonresponse = json_encode($usertoken);
+    if (isset($_REQUEST['jsonp'])) {
+      $jsonresponse = $_REQUEST['jsonpcallback'] . '(' . $jsonresponse . ')';
+    }
+    echo $jsonresponse;
 } else {
     throw new moodle_exception('usernamenotfound', 'moodle');
+}
+
+/**
+ * Handle jsonp answer
+ * @global type $_REQUEST
+ * @param type $ex
+ */
+function jsonp_exception_handler($ex) {
+    global $_REQUEST;
+    $errorinfo = new stdClass();
+    $errorinfo->exception = get_class($ex);
+    $errorinfo->message = $ex->getMessage();
+    $errorinfo->debuginfo = $ex->debuginfo;
+    echo  $_REQUEST['jsonpcallback'] . '(' . json_encode($errorinfo) . ')';
 }

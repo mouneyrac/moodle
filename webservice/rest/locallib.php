@@ -31,16 +31,25 @@ require_once("$CFG->dirroot/webservice/lib.php");
  */
 class webservice_rest_server extends webservice_base_server {
 
-    /** @property string $alt return method (XML / JSON) */
+    /** @property string $alt return method (XML / JSON / JSONP) */
     protected $restformat;
 
-    /**
-     * Contructor
+    /** @property format options - for example jsonp format need to know about the 'callback' function name
+     *  Note: the param sent by your client to the REST/JSONP server must be named 'callback'
      */
-    public function __construct($authmethod, $restformat = 'xml') {
+    protected $formatoptions;
+
+    /**
+      * Constructor
+      * @param type $authmethod
+      * @param type $restformat
+      * @param type $options
+      */
+    public function __construct($authmethod, $restformat = 'xml', $options = array()) {
         parent::__construct($authmethod);
         $this->wsname = 'rest';
-        $this->restformat = ($restformat != 'xml' && $restformat != 'json')?'xml':$restformat; //sanity check, we accept only xml or json
+        $this->restformat = ($restformat != 'xml' && $restformat != 'json' && $restformat != 'jsonp')?'xml':$restformat; //sanity check, we accept only xml or json
+        $this->formatoptions = $options;
     }
 
     /**
@@ -94,8 +103,11 @@ class webservice_rest_server extends webservice_base_server {
             $response =  $this->generate_error($exception);
         } else {
             //We can now convert the response to the requested REST format
-            if ($this->restformat == 'json') {
+            if ($this->restformat == 'json' || $this->restformat == 'jsonp') {
                 $response = json_encode($validatedvalues);
+                if ($this->restformat == 'jsonp' && isset($this->formatoptions['jsonpcallback'])) {
+                    $response = $this->formatoptions['jsonpcallback'] . '(' . $response . ')';
+                }
             } else {
                 $response = '<?xml version="1.0" encoding="UTF-8" ?>'."\n";
                 $response .= '<RESPONSE>'."\n";
@@ -127,7 +139,7 @@ class webservice_rest_server extends webservice_base_server {
      * @return string the error in the requested REST format
      */
     protected function generate_error($ex) {
-        if ($this->restformat == 'json') {
+        if ($this->restformat == 'json' || $this->restformat == 'jsonp') {
             $errorobject = new stdClass;
             $errorobject->exception = get_class($ex);
             $errorobject->message = $ex->getMessage();
@@ -152,7 +164,7 @@ class webservice_rest_server extends webservice_base_server {
      * @return void
      */
     protected function send_headers() {
-        if ($this->restformat == 'json') {
+        if ($this->restformat == 'json' || $this->restformat == 'jsonp') {
             header('Content-type: application/json');
         } else {
             header('Content-Type: application/xml; charset=utf-8');

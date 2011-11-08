@@ -35,18 +35,29 @@ if (!webservice_protocol_is_enabled('rest')) {
 }
 
 $restformat = optional_param('moodlewsrestformat', 'xml', PARAM_ALPHA);
-//remove the alt from the request
-if(isset($_REQUEST['moodlewsrestformat'])) {
-    unset($_REQUEST['moodlewsrestformat']);
-}
-if(isset($_GET['moodlewsrestformat'])) {
-    unset($_GET['moodlewsrestformat']);
-}
-if(isset($_POST['moodlewsrestformat'])) {
-    unset($_POST['moodlewsrestformat']);
+
+//retrieve the callback param (usefull for JSONP)
+$options = array();
+$callback = optional_param('moodlewsrestjsonpcallback', '', PARAM_FILE); //for Sencha JSONP function name
+if (!empty($callback)) {
+    $options['jsonpcallback'] = $callback;
 }
 
-$server = new webservice_rest_server(WEBSERVICE_AUTHMETHOD_PERMANENT_TOKEN, $restformat);
+$paramstoreset = array('moodlewsrestformat', 'moodlewsrestjsonpcallback');
+foreach ($paramstoreset as $paramtoreset) {
+
+    if(isset($_REQUEST[$paramtoreset])) {
+        unset($_REQUEST[$paramtoreset]);
+    }
+    if(isset($_GET[$paramtoreset])) {
+        unset($_GET[$paramtoreset]);
+    }
+    if(isset($_POST[$paramtoreset])) {
+        unset($_POST[$paramtoreset]);
+    }
+}
+
+$server = new webservice_rest_server(WEBSERVICE_AUTHMETHOD_PERMANENT_TOKEN, $restformat, $options);
 $server->run();
 die;
 

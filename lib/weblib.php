@@ -2329,8 +2329,9 @@ function redirect($url, $message='', $delay=-1) {
     $url = preg_replace('/[\x00-\x1F\x7F]/', '', $url);
     $url = str_replace('"', '%22', $url);
     $encodedurl = preg_replace("/\&(?![a-zA-Z0-9#]{1,8};)/", "&amp;", $url);
-    $encodedurl = preg_replace('/^.*href="([^"]*)".*$/', "\\1", clean_text('<a href="'.$encodedurl.'" />', FORMAT_HTML));
+    //the following line is a fix done for MDL-30297
     $url = str_replace('&amp;', '&', $encodedurl);
+    $encodedurl = preg_replace('/^.*href="([^"]*)".*$/', "\\1", clean_text('<a href="'.$encodedurl.'" />', FORMAT_HTML));
 
     if (!empty($message)) {
         if ($delay === -1 || !is_numeric($delay)) {

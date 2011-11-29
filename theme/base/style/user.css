@@ -53,3 +53,12 @@
 .dir-rtl .userlist table#participants td,
 .dir-rtl .userlist table#participants th {text-align: right;}
 .dir-rtl .userlist table#participants {margin: 0 auto;}
+
+/** **/
+.autocompletionresultuser { color: black; clear: both}
+.autocompletionresultuserimg {float: left; padding-right: 9px;}
+.autocompletionresultuserimage {}
+.autocompletionresultuserinfo {}
+.autocompletionresultuserfullname {}
+.autocompletionresultuserusername {font-size: 80%}
+.autocompletedisplayedresult {padding-top: 6px;}

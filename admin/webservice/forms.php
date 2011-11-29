@@ -174,26 +174,36 @@ class external_service_functions_form extends moodleform {
 class web_service_token_form extends moodleform {
 
     function definition() {
-        global $USER, $DB;
+        global $USER, $DB, $CFG;
 
         $mform = $this->_form;
         $data = $this->_customdata;
 
         $mform->addElement('header', 'token', get_string('token', 'webservice'));
 
-        if (empty($data->nouserselection)) {
-            //user searchable selector - get all users (admin and guest included)
-            $sql = "SELECT u.id, u.firstname, u.lastname
-            FROM {user} u
-            ORDER BY u.lastname";
-            $users = $DB->get_records_sql($sql, array());
-            $options = array();
-            foreach ($users as $userid => $user) {
-                $options[$userid] = $user->firstname . " " . $user->lastname;
-            }
-            $mform->addElement('searchableselector', 'user', get_string('user'), $options);
-            $mform->addRule('user', get_string('required'), 'required', null, 'client');
-        }
+//        if (empty($data->nouserselection)) {
+//            //user searchable selector - get all users (admin and guest included)
+//            $sql = "SELECT u.id, u.firstname, u.lastname
+//            FROM {user} u
+//            ORDER BY u.lastname";
+//            $users = $DB->get_records_sql($sql, array());
+//            $options = array();
+//            foreach ($users as $userid => $user) {
+//                $options[$userid] = $user->firstname . " " . $user->lastname;
+//            }
+//            $mform->addElement('searchableselector', 'user', get_string('user'), $options);
+//            $mform->addRule('user', get_string('required'), 'required', null, 'client');
+//        }
+        
+        
+//        $autocompleteoptions = array('source' => 'http://query.yahooapis.com/v1/public/yql?format=json',
+//            'setelementid' => 'user', 
+//            'requesttemplate' => '&q=select%20*%20from%20music.artist.search%20where%20keyword%3D%22{query}%22');
+        $autocompleteoptions = array('source' => $CFG->wwwroot . '/user/user_ajax.php?sesskey=' 
+            .  sesskey().'&action=get&q={query}&usermax=10', 'setelementid' => 'user');
+        $mform->addElement('autocompletetext', 'selecteduser', get_string('user'), array('size' => 50), $autocompleteoptions);
+        $mform->addRule('selecteduser', get_string('required'), 'required', null, 'client');
+        $mform->addElement('hidden', 'user', 'toto', 'id="user"'); //the set element of the auto-complete text
 
         //service selector
         $services = $DB->get_records('external_services');

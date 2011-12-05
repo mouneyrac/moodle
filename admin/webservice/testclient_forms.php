@@ -12,7 +12,7 @@ class webservice_test_client_form extends moodleform {
 
         $mform->addElement('header', 'wstestclienthdr', get_string('testclient', 'webservice'));
 
-        $authmethod = array('simple' => 'simple', 'token' => 'token');
+        $authmethod = array('simple' => 'simple', 'token' => 'token', 'oauth' => 'oauth');
         $mform->addElement('select', 'authmethod', get_string('authmethod', 'webservice'), $authmethod);
 
         $mform->addElement('select', 'protocol', get_string('protocol', 'webservice'), $protocols);
@@ -25,26 +25,41 @@ class webservice_test_client_form extends moodleform {
 
 // === Test client forms ===
 
+/**
+ * Add the common header for all webservice test functions
+ */
+function add_ws_test_client_common_header($mform, $customdata) {
+    $mform->addElement('header', 'wstestclienthdr', get_string('testclient', 'webservice'));
+
+    //note: these values are intentionally PARAM_RAW - we want users to test any rubbish as parameters
+    $data = $customdata;
+    if ($data['authmethod'] == 'simple') {
+        $mform->addElement('text', 'wsusername', 'wsusername');
+        $mform->addElement('text', 'wspassword', 'wspassword');
+    } else  if ($data['authmethod'] == 'token') {
+        $mform->addElement('text', 'token', 'token');
+    } else  if ($data['authmethod'] == 'oauth') {
+        $mform->addElement('text', 'identifier', 'identifier');
+        $mform->addElement('text', 'secret', 'secret');
+        $options = array(
+            webservice::OAUTH_PLAINTEXT => get_string('oauth_plaintext', 'webservice'),
+            webservice::OAUTH_HMAC_SHA1 => get_string('oauth_hmac_sha1', 'webservice'),
+            //webservice::OAUTH_RSA_SHA1 => get_string('oauth_rsa_sha1', 'webservice')
+        );
+        $mform->addElement('select', 'signmethod', get_string('oauthsignmethod', 'webservice'), $options);
+    }
+
+    $mform->addElement('hidden', 'authmethod', $data['authmethod']);
+    $mform->setType('authmethod', PARAM_SAFEDIR);
+}
+
 class moodle_user_create_users_form extends moodleform {
     public function definition() {
         global $CFG;
 
         $mform = $this->_form;
 
-
-        $mform->addElement('header', 'wstestclienthdr', get_string('testclient', 'webservice'));
-
-        //note: these values are intentionally PARAM_RAW - we want users to test any rubbish as parameters
-        $data = $this->_customdata;
-        if ($data['authmethod'] == 'simple') {
-            $mform->addElement('text', 'wsusername', 'wsusername');
-            $mform->addElement('text', 'wspassword', 'wspassword');
-        } else  if ($data['authmethod'] == 'token') {
-            $mform->addElement('text', 'token', 'token');
-        }
-
-        $mform->addElement('hidden', 'authmethod', $data['authmethod']);
-        $mform->setType('authmethod', PARAM_SAFEDIR);
+        add_ws_test_client_common_header($mform, $this->_customdata);
 
         /// specific to the create users function
         $mform->addElement('text', 'username', 'username');
@@ -105,20 +120,7 @@ class moodle_user_update_users_form extends moodleform {
 
         $mform = $this->_form;
 
-
-        $mform->addElement('header', 'wstestclienthdr', get_string('testclient', 'webservice'));
-
-        //note: these values are intentionally PARAM_RAW - we want users to test any rubbish as parameters
-        $data = $this->_customdata;
-        if ($data['authmethod'] == 'simple') {
-            $mform->addElement('text', 'wsusername', 'wsusername');
-            $mform->addElement('text', 'wspassword', 'wspassword');
-        } else  if ($data['authmethod'] == 'token') {
-            $mform->addElement('text', 'token', 'token');
-        }
-
-        $mform->addElement('hidden', 'authmethod', $data['authmethod']);
-        $mform->setType('authmethod', PARAM_SAFEDIR);
+        add_ws_test_client_common_header($mform, $this->_customdata);
 
         /// specific to the create users function
         $mform->addElement('text', 'id', 'id');
@@ -188,20 +190,7 @@ class moodle_user_delete_users_form extends moodleform {
 
         $mform = $this->_form;
 
-
-        $mform->addElement('header', 'wstestclienthdr', get_string('testclient', 'webservice'));
-
-        //note: these values are intentionally PARAM_RAW - we want users to test any rubbish as parameters
-        $data = $this->_customdata;
-        if ($data['authmethod'] == 'simple') {
-            $mform->addElement('text', 'wsusername', 'wsusername');
-            $mform->addElement('text', 'wspassword', 'wspassword');
-        } else  if ($data['authmethod'] == 'token') {
-            $mform->addElement('text', 'token', 'token');
-        }
-
-        $mform->addElement('hidden', 'authmethod', $data['authmethod']);
-        $mform->setType('authmethod', PARAM_SAFEDIR);
+        add_ws_test_client_common_header($mform, $this->_customdata);
 
         /// beginning of specific code to the create users function
         $mform->addElement('text', 'userids[0]', 'userids[0]');
@@ -258,20 +247,7 @@ class moodle_user_get_users_by_id_form extends moodleform {
 
         $mform = $this->_form;
 
-
-        $mform->addElement('header', 'wstestclienthdr', get_string('testclient', 'webservice'));
-
-        //note: these values are intentionally PARAM_RAW - we want users to test any rubbish as parameters
-        $data = $this->_customdata;
-        if ($data['authmethod'] == 'simple') {
-            $mform->addElement('text', 'wsusername', 'wsusername');
-            $mform->addElement('text', 'wspassword', 'wspassword');
-        } else  if ($data['authmethod'] == 'token') {
-            $mform->addElement('text', 'token', 'token');
-        }
-
-        $mform->addElement('hidden', 'authmethod', $data['authmethod']);
-        $mform->setType('authmethod', PARAM_SAFEDIR);
+        add_ws_test_client_common_header($mform, $this->_customdata);
 
         /// beginning of specific code to the create users function
         $mform->addElement('text', 'userids[0]', 'userids[0]');
@@ -327,20 +303,7 @@ class moodle_group_create_groups_form extends moodleform {
 
         $mform = $this->_form;
 
-
-        $mform->addElement('header', 'wstestclienthdr', get_string('testclient', 'webservice'));
-
-        //note: these values are intentionally PARAM_RAW - we want users to test any rubbish as parameters
-        $data = $this->_customdata;
-        if ($data['authmethod'] == 'simple') {
-            $mform->addElement('text', 'wsusername', 'wsusername');
-            $mform->addElement('text', 'wspassword', 'wspassword');
-        } else  if ($data['authmethod'] == 'token') {
-            $mform->addElement('text', 'token', 'token');
-        }
-
-        $mform->addElement('hidden', 'authmethod', $data['authmethod']);
-        $mform->setType('authmethod', PARAM_SAFEDIR);
+        add_ws_test_client_common_header($mform, $this->_customdata);
 
         $mform->addElement('text', 'courseid', 'courseid');
         $mform->addElement('text', 'name', 'name');
@@ -387,19 +350,8 @@ class moodle_group_get_groups_form extends moodleform {
 
         $mform = $this->_form;
 
-        $mform->addElement('header', 'wstestclienthdr', get_string('testclient', 'webservice'));
+        add_ws_test_client_common_header($mform, $this->_customdata);
 
-        //note: these values are intentionally PARAM_RAW - we want users to test any rubbish as parameters
-        $data = $this->_customdata;
-        if ($data['authmethod'] == 'simple') {
-            $mform->addElement('text', 'wsusername', 'wsusername');
-            $mform->addElement('text', 'wspassword', 'wspassword');
-        } else  if ($data['authmethod'] == 'token') {
-            $mform->addElement('text', 'token', 'token');
-        }
-
-        $mform->addElement('hidden', 'authmethod', $data['authmethod']);
-        $mform->setType('authmethod', PARAM_SAFEDIR);
         $mform->addElement('text', 'groupids[0]', 'groupids[0]');
         $mform->addElement('text', 'groupids[1]', 'groupids[1]');
         $mform->addElement('text', 'groupids[2]', 'groupids[2]');
@@ -446,19 +398,8 @@ class moodle_group_get_course_groups_form extends moodleform {
 
         $mform = $this->_form;
 
-        $mform->addElement('header', 'wstestclienthdr', get_string('testclient', 'webservice'));
+        add_ws_test_client_common_header($mform, $this->_customdata);
 
-        //note: these values are intentionally PARAM_RAW - we want users to test any rubbish as parameters
-        $data = $this->_customdata;
-        if ($data['authmethod'] == 'simple') {
-            $mform->addElement('text', 'wsusername', 'wsusername');
-            $mform->addElement('text', 'wspassword', 'wspassword');
-        } else  if ($data['authmethod'] == 'token') {
-            $mform->addElement('text', 'token', 'token');
-        }
-
-        $mform->addElement('hidden', 'authmethod', $data['authmethod']);
-        $mform->setType('authmethod', PARAM_SAFEDIR);
         $mform->addElement('text', 'courseid', 'courseid');
 
         $mform->addElement('hidden', 'function');
@@ -496,19 +437,8 @@ class moodle_group_delete_groups_form extends moodleform {
 
         $mform = $this->_form;
 
-        $mform->addElement('header', 'wstestclienthdr', get_string('testclient', 'webservice'));
+        add_ws_test_client_common_header($mform, $this->_customdata);
 
-        //note: these values are intentionally PARAM_RAW - we want users to test any rubbish as parameters
-        $data = $this->_customdata;
-        if ($data['authmethod'] == 'simple') {
-            $mform->addElement('text', 'wsusername', 'wsusername');
-            $mform->addElement('text', 'wspassword', 'wspassword');
-        } else  if ($data['authmethod'] == 'token') {
-            $mform->addElement('text', 'token', 'token');
-        }
-
-        $mform->addElement('hidden', 'authmethod', $data['authmethod']);
-        $mform->setType('authmethod', PARAM_SAFEDIR);
         $mform->addElement('text', 'groupids[0]', 'groupids[0]');
         $mform->addElement('text', 'groupids[1]', 'groupids[1]');
         $mform->addElement('text', 'groupids[2]', 'groupids[2]');
@@ -557,19 +487,8 @@ class moodle_group_get_groupmembers_form extends moodleform {
 
         $mform = $this->_form;
 
-        $mform->addElement('header', 'wstestclienthdr', get_string('testclient', 'webservice'));
+        add_ws_test_client_common_header($mform, $this->_customdata);
 
-        //note: these values are intentionally PARAM_RAW - we want users to test any rubbish as parameters
-        $data = $this->_customdata;
-        if ($data['authmethod'] == 'simple') {
-            $mform->addElement('text', 'wsusername', 'wsusername');
-            $mform->addElement('text', 'wspassword', 'wspassword');
-        } else  if ($data['authmethod'] == 'token') {
-            $mform->addElement('text', 'token', 'token');
-        }
-
-        $mform->addElement('hidden', 'authmethod', $data['authmethod']);
-        $mform->setType('authmethod', PARAM_SAFEDIR);
         $mform->addElement('text', 'groupids[0]', 'groupids[0]');
         $mform->addElement('text', 'groupids[1]', 'groupids[1]');
         $mform->addElement('text', 'groupids[2]', 'groupids[2]');
@@ -616,19 +535,8 @@ class moodle_group_add_groupmembers_form extends moodleform {
 
         $mform = $this->_form;
 
-        $mform->addElement('header', 'wstestclienthdr', get_string('testclient', 'webservice'));
+        add_ws_test_client_common_header($mform, $this->_customdata);
 
-        //note: these values are intentionally PARAM_RAW - we want users to test any rubbish as parameters
-        $data = $this->_customdata;
-        if ($data['authmethod'] == 'simple') {
-            $mform->addElement('text', 'wsusername', 'wsusername');
-            $mform->addElement('text', 'wspassword', 'wspassword');
-        } else  if ($data['authmethod'] == 'token') {
-            $mform->addElement('text', 'token', 'token');
-        }
-
-        $mform->addElement('hidden', 'authmethod', $data['authmethod']);
-        $mform->setType('authmethod', PARAM_SAFEDIR);
         $mform->addElement('text', 'userid[0]', 'userid[0]');
         $mform->addElement('text', 'groupid[0]', 'groupid[0]');
         $mform->addElement('text', 'userid[1]', 'userid[1]');
@@ -675,19 +583,8 @@ class moodle_group_delete_groupmembers_form extends moodleform {
 
         $mform = $this->_form;
 
-        $mform->addElement('header', 'wstestclienthdr', get_string('testclient', 'webservice'));
+        add_ws_test_client_common_header($mform, $this->_customdata);
 
-        //note: these values are intentionally PARAM_RAW - we want users to test any rubbish as parameters
-        $data = $this->_customdata;
-        if ($data['authmethod'] == 'simple') {
-            $mform->addElement('text', 'wsusername', 'wsusername');
-            $mform->addElement('text', 'wspassword', 'wspassword');
-        } else  if ($data['authmethod'] == 'token') {
-            $mform->addElement('text', 'token', 'token');
-        }
-
-        $mform->addElement('hidden', 'authmethod', $data['authmethod']);
-        $mform->setType('authmethod', PARAM_SAFEDIR);
         $mform->addElement('text', 'userid[0]', 'userid[0]');
         $mform->addElement('text', 'groupid[0]', 'groupid[0]');
         $mform->addElement('text', 'userid[1]', 'userid[1]');

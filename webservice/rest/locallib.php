@@ -65,6 +65,12 @@ class webservice_rest_server extends webservice_base_server {
 
             $this->parameters = $_REQUEST;
 
+        } else if ($this->authmethod == WEBSERVICE_AUTHMETHOD_OAUTH) {
+            $this->functionname = isset($_REQUEST['wsfunction']) ? $_REQUEST['wsfunction'] : null;
+            unset($_REQUEST['wsfunction']);
+
+            $webservicemanager = new webservice();
+            $this->parameters = $webservicemanager->oauth_parameter_filter($_REQUEST, false);
         } else {
             $this->token = isset($_REQUEST['wstoken']) ? $_REQUEST['wstoken'] : null;
             unset($_REQUEST['wstoken']);
@@ -219,6 +225,30 @@ class webservice_rest_test_client implements webservice_test_client_interface {
      * @return mixed
      */
     public function simpletest($serverurl, $function, $params) {
-        return download_file_content($serverurl.'&wsfunction='.$function, null, $params);
+        global $CFG;
+        $murl = new moodle_url($serverurl, array('wsfunction' => $function));
+
+        if (isset($this->oauth_identifier)) {
+            // munge request for OAuth
+            require_once($CFG->libdir.'/OAuth.php');
+            // flatten the params array, to avoid confusing OAuth
+            foreach ($params as $key => $param) {
+                if (is_array($param)) {
+                    unset($params[$key]);
+                    foreach($param as $k => $p) {
+                        $params[$key.'['.$k.']'] = $p;
+                    }
+                }
+            }
+            $webservicemanager = new webservice();
+            $signmethod = $webservicemanager->oauth_get_signature_method($this->oauth_signmethod);
+            $consumer = new OAuthConsumer($this->oauth_identifier, $this->oauth_secret, null);
+            $request = OAuthRequest::from_consumer_and_token($consumer, null, 'POST', $murl->out_omit_querystring(), array_merge($murl->params(), $params));
+            $request->sign_request($signmethod, $consumer, null);
+
+            $murl->params($webservicemanager->oauth_parameter_filter($request->get_parameters(), true));
+        }
+
+        return download_file_content($murl->out(false), null, $params);
     }
 }

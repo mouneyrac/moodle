@@ -7605,6 +7605,150 @@ class admin_setting_managewebservicetokens extends admin_setting {
 
 
 /**
+ * Special class for OAuth credentials administration.
+ *
+ * @author Hubert Chathi
+ */
+class admin_setting_manageoauthcredentials extends admin_setting {
+
+    /**
+     * Calls parent::__construct with specific arguments
+     */
+    public function __construct() {
+        $this->nosave = true;
+        parent::__construct('oauthcredentialsui', get_string('manageoauthcredentials', 'webservice'), '', '');
+    }
+
+    /**
+     * Always returns true, does nothing
+     *
+     * @return true
+     */
+    public function get_setting() {
+        return true;
+    }
+
+    /**
+     * Always returns true, does nothing
+     *
+     * @return true
+     */
+    public function get_defaultsetting() {
+        return true;
+    }
+
+    /**
+     * Always returns '', does not write anything
+     *
+     * @return string Always returns ''
+     */
+    public function write_setting($data) {
+    // do not write any setting
+        return '';
+    }
+
+    /**
+     * Builds the XHTML to display the control
+     *
+     * @param string $data Unused
+     * @param string $query
+     * @return string
+     */
+    public function output_html($data, $query='') {
+        global $CFG, $OUTPUT, $DB, $USER;
+
+        // display strings
+        $stroperation = get_string('operation', 'webservice');
+        $stridentifier = get_string('identifier', 'webservice');
+        $strsignmethod = get_string('oauthsignmethod', 'webservice');
+        $strsecret = get_string('sharedsecret', 'webservice');
+        $strservice = get_string('service', 'webservice');
+        $struser = get_string('user');
+        $strcontext = get_string('context', 'webservice');
+        $strvaliduntil = get_string('validuntil', 'webservice');
+        $striprestriction = get_string('iprestriction', 'webservice');
+
+        $strviewsecret = get_string('viewsecret', 'webservice');
+        $strdelete = get_string('delete');
+
+        $return = $OUTPUT->box_start('generalbox webservicestokenui');
+
+        $table = new html_table();
+        $table->head  = array($stridentifier, $strsecret, $strsignmethod, $struser, $strservice, $striprestriction, $strvaliduntil, $stroperation);
+        $table->align = array('left', 'left', 'left', 'left', 'left', 'center', 'center', 'center');
+        $table->width = '100%';
+        $table->data  = array();
+
+        $credentialspageurl = "$CFG->wwwroot/$CFG->admin/webservice/oauthcredentials.php?sesskey=" . sesskey();
+        $viewsecretpageurl = "$CFG->httpswwwroot/$CFG->admin/webservice/oauthcredentials.php?action=viewsecret";
+
+        //TODO: in order to let the administrator delete obsolete credential, split this request in multiple request or use LEFT JOIN
+
+        //here retrieve credentials list (including linked users firstname/lastname and linked services name)
+        $sql = "SELECT t.id, t.identifier, t.signmethod, u.id AS userid, u.firstname, u.lastname, s.name, t.validuntil, s.id AS serviceid
+                  FROM {oauth_client_credentials} t, {user} u, {external_services} s
+                 WHERE t.creatorid=? AND s.id = t.externalserviceid AND t.userid = u.id";
+        $credentials = $DB->get_records_sql($sql, array($USER->id));
+        if (!empty($credentials)) {
+            foreach ($credentials as $credential) {
+                //TODO: retrieve context
+
+                $viewsecret = html_writer::link($viewsecretpageurl.'&credentialsid='.$credential->id, $strviewsecret);
+                $delete = html_writer::link($credentialspageurl.'&action=delete&credentialsid='.$credential->id, $strdelete);
+
+                $validuntil = '';
+                if (!empty($credential->validuntil)) {
+                    $validuntil = userdate($credential->validuntil, get_string('strftimedaydate', 'langconfig'));
+                }
+
+                $iprestriction = '';
+                if (!empty($credential->iprestriction)) {
+                    $iprestriction = $credential->iprestriction;
+                }
+
+                $userprofilurl = new moodle_url('/user/profile.php?id='.$credential->userid);
+                $useratag = html_writer::start_tag('a', array('href' => $userprofilurl));
+                $useratag .= fullname($credential);
+                $useratag .= html_writer::end_tag('a');
+
+                //check user missing capabilities
+                require_once($CFG->dirroot . '/webservice/lib.php');
+                $webservicemanager = new webservice();
+                $usermissingcaps = $webservicemanager->get_missing_capabilities_by_users(
+                        array(array('id' => $credential->userid)), $credential->serviceid);
+
+                if (!is_siteadmin($credential->userid) and
+                        key_exists($credential->userid, $usermissingcaps)) {
+                    $missingcapabilities = implode(',',
+                            $usermissingcaps[$credential->userid]);
+                    if (!empty($missingcapabilities)) {
+                        $useratag .= html_writer::tag('div',
+                                        get_string('usermissingcaps', 'webservice',
+                                                $missingcapabilities)
+                                        . '&nbsp;' . $OUTPUT->help_icon('missingcaps', 'webservice'),
+                                        array('class' => 'missingcaps'));
+                    }
+                }
+
+                $table->data[] = array($credential->identifier, $viewsecret, $credential->signmethod, $useratag, $credential->name, $iprestriction, $validuntil, $delete);
+            }
+
+            $return .= html_writer::table($table);
+        } else {
+            $return .= get_string('notoken', 'webservice');
+        }
+
+        $return .= $OUTPUT->box_end();
+        // add a credential to the table
+        $return .= "<a href=\"".$credentialspageurl."&amp;action=create\">";
+        $return .= get_string('add')."</a>";
+
+        return highlight($query, $return);
+    }
+}
+
+
+/**
  * Colour picker
  *
  * @copyright 2010 Sam Hemelryk

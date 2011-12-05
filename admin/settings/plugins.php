@@ -395,6 +395,14 @@ if ($hassiteconfig) {
         $temp->add(new admin_setting_heading('webservicesaredisabled', '', get_string('disabledwarning', 'webservice')));
     }
     $ADMIN->add('webservicesettings', $temp);
+    /// manage OAuth credentials page link
+    $ADMIN->add('webservicesettings', new admin_externalpage('addoauthcredentials', get_string('oauthcredentials', 'webservice'), "$CFG->wwwroot/$CFG->admin/webservice/oauthcredentials.php", 'moodle/site:config', true));
+    $temp = new admin_settingpage('oauthcredentials', get_string('oauthcredentials', 'webservice'));
+    $temp->add(new admin_setting_manageoauthcredentials());
+    if (empty($CFG->enablewebservices)) {
+        $temp->add(new admin_setting_heading('webservicesaredisabled', '', get_string('disabledwarning', 'webservice')));
+    }
+    $ADMIN->add('webservicesettings', $temp);
 
 // Question type settings
 if ($hassiteconfig || has_capability('moodle/question:config', $systemcontext)) {

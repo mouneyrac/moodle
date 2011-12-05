@@ -474,6 +474,56 @@ function external_generate_token($tokentype, $serviceorid, $userid, $contextorid
     $DB->insert_record('external_tokens', $newtoken);
     return $newtoken->token;
 }
+
+function oauth_generate_credentials($serviceorid, $userid, $contextorid, $signmethod, $rsakey=null, $validuntil=0, $iprestriction=''){
+    global $DB, $USER, $CFG;
+    require_once($CFG->dirroot.'/webservice/lib.php');
+    // make sure the identifier doesn't exist (even if it should be almost impossible with the random generation)
+    $numtries = 0;
+    do {
+        $numtries ++;
+        $generatedidentifier = random_string(64);
+        if ($numtries > 5){
+            throw new moodle_exception('tokengenerationfailed');
+        }
+    } while ($DB->record_exists('oauth_client_credentials', array('identifier'=>$generatedidentifier)));
+    $newcredentials = new stdClass();
+    $newcredentials->identifier = $generatedidentifier;
+    if (!is_object($serviceorid)){
+        $service = $DB->get_record('external_services', array('id' => $serviceorid));
+    } else {
+        $service = $serviceorid;
+    }
+    if (!is_object($contextorid)){
+        $context = get_context_instance_by_id($contextorid, MUST_EXIST);
+    } else {
+        $context = $contextorid;
+    }
+    if (empty($service->requiredcapability) || has_capability($service->requiredcapability, $context, $userid)) {
+        $newcredentials->externalserviceid = $service->id;
+    } else {
+        throw new moodle_exception('nocapabilitytousethisservice');
+    }
+    $newcredentials->userid = $userid;
+
+    $newcredentials->contextid = $context->id;
+    $newcredentials->creatorid = $USER->id;
+    $newcredentials->timecreated = time();
+    $newcredentials->validuntil = $validuntil;
+    if (!empty($iprestriction)) {
+        $newcredentials->iprestriction = $iprestriction;
+    }
+    $newcredentials->signmethod = $signmethod;
+    if ($signmethod == webservice::OAUTH_RSA_SHA1) {
+        // put the RSA key in the secret field, since RSA-SHA1 doesn't use a secret
+        $newcredentials->secret = $rsakey;
+    } else {
+        $newcredentials->secret = random_string(64);
+    }
+    $id = $DB->insert_record('oauth_client_credentials', $newcredentials);
+    return $newcredentials->identifier;
+}
+
 /**
  * Create and return a session linked token. Token to be used for html embedded client apps that want to communicate
  * with the Moodle server through web services. The token is linked to the current session for the current page request.

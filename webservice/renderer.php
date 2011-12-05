@@ -188,6 +188,27 @@ class core_webservice_renderer extends plugin_renderer_base {
     }
 
     /**
+     * Display a confirmation page to delete a token
+     * @param object $token
+     * @return string html
+     */
+    public function admin_delete_oauth_credentials_confirmation($credentials) {
+        global $CFG;
+        $optionsyes = array('credentialsid' => $credentials->id, 'action' => 'delete',
+            'confirm' => 1, 'sesskey' => sesskey());
+        $optionsno = array('section' => 'oauthcredentials', 'sesskey' => sesskey());
+        $formcontinue = new single_button(
+                        new moodle_url('/' . $CFG->admin . '/webservice/oauthcredentials.php', $optionsyes),
+                        get_string('delete'));
+        $formcancel = new single_button(
+                        new moodle_url('/' . $CFG->admin . '/settings.php', $optionsno),
+                        get_string('cancel'), 'get');
+        return $this->output->confirm(get_string('deleteoauthcredentialsconfirm', 'webservice',
+                        (object) array('user' => fullname($credentials), 'service' => $credentials->name)),
+                $formcontinue, $formcancel);
+    }
+
+    /**
      * Display list of function for a given service
      * If the service is build-in do not display remove/add operation (read-only)
      * @param array $functions

@@ -236,3 +236,78 @@ class web_service_token_form extends moodleform {
     }
 
 }
+
+class oauth_credentials_form extends moodleform {
+
+    function definition() {
+        global $USER, $DB;
+
+        $mform = $this->_form;
+        $data = $this->_customdata;
+
+        $mform->addElement('header', 'credentials', get_string('oauthcredentials', 'webservice'));
+
+        if (empty($data->nouserselection)) {
+            //user searchable selector - get all users (admin and guest included)
+            $sql = "SELECT u.id, u.firstname, u.lastname
+            FROM {user} u
+            ORDER BY u.lastname";
+            $users = $DB->get_records_sql($sql, array());
+            $options = array();
+            foreach ($users as $userid => $user) {
+                $options[$userid] = fullname($user);
+            }
+            $mform->addElement('searchableselector', 'user', get_string('user'), $options);
+            $mform->addRule('user', get_string('required'), 'required', null, 'client');
+        }
+
+        //service selector
+        $services = $DB->get_records('external_services');
+        $options = array();
+        $systemcontext = get_context_instance(CONTEXT_SYSTEM);
+        foreach ($services as $serviceid => $service) {
+            //check that the user has the required capability
+            //(only for generation by the profile page)
+            if (empty($data->nouserselection)
+                    || empty($service->requiredcapability)
+                    || has_capability($service->requiredcapability, $systemcontext, $USER->id)) {
+                $options[$serviceid] = $service->name;
+            }
+        }
+        $mform->addElement('select', 'service', get_string('service', 'webservice'), $options);
+        $mform->addRule('service', get_string('required'), 'required', null, 'client');
+
+
+        $mform->addElement('text', 'iprestriction', get_string('iprestriction', 'webservice'));
+
+        $mform->addElement('date_selector', 'validuntil',
+                get_string('validuntil', 'webservice'), array('optional' => true));
+
+        $mform->addElement('hidden', 'action');
+        $mform->setType('action', PARAM_ACTION);
+
+        $options = array(
+            webservice::OAUTH_PLAINTEXT => get_string('oauth_plaintext', 'webservice'),
+            webservice::OAUTH_HMAC_SHA1 => get_string('oauth_hmac_sha1', 'webservice'),
+            webservice::OAUTH_RSA_SHA1 => get_string('oauth_rsa_sha1', 'webservice')
+        );
+        $mform->addElement('select', 'signmethod', get_string('oauthsignmethod', 'webservice'), $options);
+
+        // FIXME: create formslib element that can fetch the key from a URL,
+        // display the fingerprint, etc
+        $mform->addElement('textarea', 'rsapublickey', get_string('oauthrsapublickey', 'webservice'), array('cols' => 80, 'rows' => 8));
+        $mform->setType('rsapublickey', PARAM_RAW);
+        $mform->disabledIf('rsapublickey', 'signmethod', 'noteq', 'RSA-SHA1');
+
+        $this->add_action_buttons(true);
+
+        $this->set_data($data);
+    }
+
+    function validation($data, $files) {
+        $errors = parent::validation($data, $files);
+        // FIXME: RSA key is required if signature type is RSA-SHA1
+        return $errors;
+    }
+
+}

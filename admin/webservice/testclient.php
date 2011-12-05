@@ -136,6 +136,11 @@ if ($mform->is_cancelled()) {
     } else if ($authmethod == 'token') {
         $serverurl .= 'server.php';
         $serverurl .= '?wstoken='.urlencode($data->token);
+    } else if ($authmethod == 'oauth') {
+        $serverurl .= 'oauthserver.php';
+        $testclient->oauth_identifier = $data->identifier;
+        $testclient->oauth_secret = $data->secret;
+        $testclient->oauth_signmethod = $data->signmethod;
     }
 
     // now get the function parameters

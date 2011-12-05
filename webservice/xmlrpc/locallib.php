@@ -24,6 +24,9 @@
  */
 
 require_once("$CFG->dirroot/webservice/lib.php");
+require_once($CFG->libdir.'/OAuth.php');
+require_once($CFG->libdir.'/zend/Zend/Http/Client/Adapter/Interface.php');
+
 require_once 'Zend/XmlRpc/Server.php';
 
 /**
@@ -88,6 +91,77 @@ class webservice_xmlrpc_server extends webservice_zend_server {
 }
 
 /**
+ * Zend HTTP client adapter that signs requests using OAuth.  It mostly just
+ * passes requests up to a parent adapter, but adds the OAuth parameters when
+ * necessary.
+ */
+class moodle_http_client_adapter_oauth implements Zend_Http_Client_Adapter_Interface
+{
+    public function __construct($parent) {
+        $this->parent = $parent;
+    }
+
+    /**
+     * Set the configuration array for the adapter
+     *
+     * @param array $config
+     */
+    public function setConfig($config = array())
+    {
+        if ($config instanceof Zend_Config) {
+            $config = $config->toArray();
+        } elseif (! is_array($config)) {
+            require_once 'Zend/Http/Client/Adapter/Exception.php';
+            throw new Zend_Http_Client_Adapter_Exception(
+                'Array or Zend_Config object expected, got ' . gettype($config)
+            );
+        }
+
+        foreach ($config as $k => $v) {
+            $this->config[strtolower($k)] = $v;
+        }
+
+        if (isset($config['oauth_signmethod'])) {
+            $webservicemanager = new webservice();
+            $this->signmethod = $webservicemanager->oauth_get_signature_method($config['oauth_signmethod']);
+        }
+    }
+
+    public function connect($host, $port = 80, $secure = false)
+    {
+        return $this->parent->connect($host, $port, $secure);
+    }
+
+    public function write($method,
+                          $url,
+                          $http_ver = '1.1',
+                          $headers = array(),
+                          $body = '')
+    {
+        // Send request to the remote server.
+        // This function is expected to return the full request
+        // (headers and body) as a string
+        $murl = new moodle_url($url);
+        $consumer = new OAuthConsumer($this->config['oauth_identifier'], $this->config['oauth_secret'], null);
+        $request = OAuthRequest::from_consumer_and_token($consumer, null, $method, $murl->out_omit_querystring(), $murl->params());
+        $request->sign_request($this->signmethod, $consumer, null);
+        $headers[] = $request->to_header();
+
+        return $this->parent->write($method, $url, $http_ver, $headers, $body);
+    }
+
+    public function read()
+    {
+        return $this->parent->read();
+    }
+
+    public function close()
+    {
+        return $this->parent->close();
+    }
+}
+
+/**
  * XML-RPC test client class
  */
 class webservice_xmlrpc_test_client implements webservice_test_client_interface {
@@ -104,6 +178,19 @@ class webservice_xmlrpc_test_client implements webservice_test_client_interface 
 
         require_once 'Zend/XmlRpc/Client.php';
         $client = new Zend_XmlRpc_Client($serverurl);
+        if (isset($this->oauth_identifier)) {
+            // munge XML-RPC client for OAuth
+            $httpclient = $client->getHttpClient();
+            $httpclient->setAdapter('Zend_Http_Client_Adapter_Socket');
+            $config = array(
+                'oauth_identifier' => $this->oauth_identifier,
+                'oauth_secret' => $this->oauth_secret,
+                'oauth_signmethod' => $this->oauth_signmethod,
+                );
+            $adapter = new moodle_http_client_adapter_oauth($client->getHttpClient()->getAdapter());
+            $httpclient->setConfig($config);
+            $httpclient->setAdapter($adapter);
+        }
         return $client->call($function, $params);
     }
 }

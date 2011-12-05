@@ -102,6 +102,10 @@ class webservice_soap_server extends webservice_zend_server {
             $url = $CFG->wwwroot.'/webservice/soap/simpleserver.php/'.urlencode($username).'/'.urlencode($password);
             // the Zend server is using this uri directly in xml - weird :-(
             $this->zend_server->setUri(htmlentities($url));
+        } else if ($this->authmethod == WEBSERVICE_AUTHMETHOD_OAUTH) {
+            $url = $CFG->wwwroot.'/webservice/soap/oauthserver.php';
+            // the Zend server is using this uri directly in xml - weird :-(
+            $this->zend_server->setUri(htmlentities($url));
         } else {
             $wstoken = optional_param('wstoken', '', PARAM_RAW);
             $url = $CFG->wwwroot.'/webservice/soap/server.php?wstoken='.urlencode($wstoken);
@@ -217,10 +221,39 @@ class webservice_soap_test_client implements webservice_test_client_interface {
      * @return mixed
      */
     public function simpletest($serverurl, $function, $params) {
+        global $CFG;
+        $murl = new moodle_url($serverurl, array('wsdl' => 1));
+
+        if (isset($this->oauth_identifier)) {
+            require_once($CFG->libdir.'/OAuth.php');
+            // munge request for OAuth
+            $webservicemanager = new webservice();
+            $signmethod = $webservicemanager->oauth_get_signature_method($this->oauth_signmethod);
+            $consumer = new OAuthConsumer($this->oauth_identifier, $this->oauth_secret, null);
+
+            // we need to get two OAuth signatures: one for the WSDL request, and one
+            // for the actual function call (if we make more than one function
+            // call, we would need a separate signature for each, since each
+            // call needs a unique nonce)
+            // First, the signature for the WSDL request
+            $wsdlrequest = OAuthRequest::from_consumer_and_token($consumer, null, 'GET', $murl->out_omit_querystring(), $murl->params());
+            $wsdlrequest->sign_request($signmethod, $consumer, null);
+
+            // Next, the signature for the function call
+            $fcrequest = OAuthRequest::from_consumer_and_token($consumer, null, 'POST', $murl->out_omit_querystring(), $murl->params());
+            $fcrequest->unset_parameter('wsdl');
+            $fcrequest->sign_request($signmethod, $consumer, null);
+            $options = array('location' => $fcrequest->to_url());
+
+            $murl->params($webservicemanager->oauth_parameter_filter($wsdlrequest->get_parameters(), true));
+        } else {
+            $options = null;
+        }
+
         //zend expects 0 based array with numeric indexes
         $params = array_values($params);
         require_once 'Zend/Soap/Client.php';
-        $client = new Zend_Soap_Client($serverurl.'&wsdl=1');
+        $client = new Zend_Soap_Client($murl->out(false), $options);
         return $client->__call($function, $params);
     }
 }

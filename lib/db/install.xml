@@ -2826,7 +2826,7 @@
         <KEY NAME="fk_usercreated" TYPE="foreign" FIELDS="usercreated" REFTABLE="user" REFFIELDS="id" PREVIOUS="uq_area_method"/>
       </KEYS>
     </TABLE>
-    <TABLE NAME="grading_instances" COMMENT="Grading form instance is an assessment record for one gradable item assessed by one rater" PREVIOUS="grading_definitions">
+    <TABLE NAME="grading_instances" COMMENT="Grading form instance is an assessment record for one gradable item assessed by one rater" PREVIOUS="grading_definitions" NEXT="oauth_client_credentials">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="true" NEXT="definitionid"/>
         <FIELD NAME="definitionid" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="false" COMMENT="The ID of the form definition this is instance of" PREVIOUS="id" NEXT="raterid"/>
@@ -2843,6 +2843,47 @@
         <KEY NAME="fk_definitionid" TYPE="foreign" FIELDS="definitionid" REFTABLE="grading_definitions" REFFIELDS="id" PREVIOUS="primary" NEXT="fk_raterid"/>
         <KEY NAME="fk_raterid" TYPE="foreign" FIELDS="raterid" REFTABLE="user" REFFIELDS="id" PREVIOUS="fk_definitionid"/>
       </KEYS>
+    <TABLE NAME="oauth_client_credentials" COMMENT="Client credentials for accessing web services using OAuth" PREVIOUS="grading_instances" NEXT="oauth_nonces">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="true" NEXT="identifier"/>
+        <FIELD NAME="identifier" TYPE="char" LENGTH="128" NOTNULL="true" SEQUENCE="false" PREVIOUS="id" NEXT="userid"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="false" PREVIOUS="identifier" NEXT="externalserviceid"/>
+        <FIELD NAME="externalserviceid" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="false" PREVIOUS="userid" NEXT="contextid"/>
+        <FIELD NAME="contextid" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="false" PREVIOUS="externalserviceid" NEXT="creatorid"/>
+        <FIELD NAME="creatorid" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="false" PREVIOUS="contextid" NEXT="timecreated"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="false" PREVIOUS="creatorid" NEXT="iprestriction"/>
+        <FIELD NAME="iprestriction" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" PREVIOUS="timecreated" NEXT="validuntil"/>
+        <FIELD NAME="validuntil" TYPE="int" LENGTH="10" NOTNULL="false" UNSIGNED="true" SEQUENCE="false" PREVIOUS="iprestriction" NEXT="lastaccess"/>
+        <FIELD NAME="lastaccess" TYPE="int" LENGTH="10" NOTNULL="false" UNSIGNED="true" SEQUENCE="false" PREVIOUS="validuntil" NEXT="signmethod"/>
+        <FIELD NAME="signmethod" TYPE="char" LENGTH="16" NOTNULL="true" SEQUENCE="false" PREVIOUS="lastaccess" NEXT="secret"/>
+        <FIELD NAME="secret" TYPE="text" LENGTH="medium" NOTNULL="true" SEQUENCE="false" PREVIOUS="signmethod"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id" NEXT="userid"/>
+        <KEY NAME="userid" TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id" PREVIOUS="primary" NEXT="externalserviceid"/>
+        <KEY NAME="externalserviceid" TYPE="foreign" FIELDS="externalserviceid" REFTABLE="external_services" REFFIELDS="id" PREVIOUS="userid" NEXT="contextid"/>
+        <KEY NAME="contextid" TYPE="foreign" FIELDS="contextid" REFTABLE="context" REFFIELDS="id" PREVIOUS="externalserviceid" NEXT="creatorid"/>
+        <KEY NAME="creatorid" TYPE="foreign" FIELDS="creatorid" REFTABLE="user" REFFIELDS="id" PREVIOUS="contextid"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="identifier_idx" UNIQUE="false" FIELDS="identifier"/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="oauth_nonces" COMMENT="OAuth client nonces" PREVIOUS="oauth_client_credentials">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="true" NEXT="credentialsid"/>
+        <FIELD NAME="credentialsid" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="false" PREVIOUS="id" NEXT="nonce"/>
+        <FIELD NAME="nonce" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" PREVIOUS="credentialsid" NEXT="timestamp"/>
+        <FIELD NAME="timestamp" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="false" PREVIOUS="nonce"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id" NEXT="tokenid"/>
+        <KEY NAME="credentialsid" TYPE="foreign" FIELDS="clientcredentialsid" REFTABLE="oauth_client_credentials" REFFIELDS="id" PREVIOUS="primary"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="credentialsnonce_idx" UNIQUE="true" FIELDS="credentialsid, nonce" NEXT="timestamp_idx"/>
+        <INDEX NAME="timestamp_idx" UNIQUE="false" FIELDS="timestamp" PREVIOUS="credentialsnonce_idx"/>
+      </INDEXES>
     </TABLE>
   </TABLES>
 </XMLDB>

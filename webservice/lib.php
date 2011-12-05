@@ -24,15 +24,21 @@
  */
 
 require_once($CFG->libdir.'/externallib.php');
+require_once($CFG->libdir.'/OAuth.php');
 
 define('WEBSERVICE_AUTHMETHOD_USERNAME', 0);
 define('WEBSERVICE_AUTHMETHOD_PERMANENT_TOKEN', 1);
 define('WEBSERVICE_AUTHMETHOD_SESSION_TOKEN', 2);
+define('WEBSERVICE_AUTHMETHOD_OAUTH', 3);
 
 /**
  * General web service library
  */
 class webservice {
+
+    const OAUTH_PLAINTEXT = 'PLAINTEXT';
+    const OAUTH_HMAC_SHA1 = 'HMAC-SHA1';
+    const OAUTH_RSA_SHA1 = 'RSA-SHA1';
 
     /**
      * Authenticate user (used by download/upload file scripts)
@@ -355,6 +361,7 @@ class webservice {
         $DB->delete_records('external_services_users', array('externalserviceid' => $serviceid));
         $DB->delete_records('external_services_functions', array('externalserviceid' => $serviceid));
         $DB->delete_records('external_tokens', array('externalserviceid' => $serviceid));
+        $DB->delete_records('oauth_credentials', array('externalserviceid' => $serviceid));
         $DB->delete_records('external_services', array('id' => $serviceid));
     }
 
@@ -366,6 +373,62 @@ class webservice {
     public function get_user_ws_token($token) {
         global $DB;
         return $DB->get_record('external_tokens', array('token'=>$token), '*', MUST_EXIST);
+    }
+
+    /**
+     * Return OAuth client credentials that has been created by the user
+     * If doesn't exist a exception is thrown
+     * @param integer $userid
+     * @param integer $credentialsid
+     * @return object credentials
+     * ->id credentials id
+     * ->identifier
+     * ->secret
+     * ->firstname user firstname
+     * ->lastname
+     * ->name service name
+     */
+    public function get_created_by_user_oauth_credentials($userid, $credentialsid) {
+        global $DB;
+        $sql = "SELECT
+                        c.id, c.identifier, c.secret, u.firstname, u.lastname, s.name
+                    FROM
+                        {oauth_client_credentials} c, {user} u, {external_services} s
+                    WHERE
+                        c.creatorid=? AND c.id=? "
+                . " AND s.id = c.externalserviceid AND c.userid = u.id";
+        //must be the token creator
+        $credentials = $DB->get_record_sql($sql, array($userid, $credentialsid), MUST_EXIST);
+        return $credentials;
+    }
+
+    /**
+     * Return OAuth client credentials for a given credentials ID
+     * @param integer $credentials
+     * @return object credentials
+     */
+    public function get_oauth_credentials_by_id($credentialsid) {
+        global $DB;
+        return $DB->get_record('oauth_client_credentials', array('id' => $credentialsid));
+    }
+
+    /**
+     * Delete OAuth client credential
+     * @param int $credentialsid
+     */
+    public function delete_user_oauth_credentials($credentialsid) {
+        global $DB;
+        $DB->delete_records('oauth_client_credentials', array('id'=>$credentialsid));
+    }
+
+    /**
+     * Get OAuth client credentials by identifier
+     * @param string $identifier
+     * @throws moodle_exception if there is multiple result
+     */
+    public function get_user_oauth_credentials($identifier) {
+        global $DB;
+        return $DB->get_record('oauth_client_credentials', array('identifier'=>$identifier), '*', MUST_EXIST);
     }
 
     /**
@@ -619,7 +682,36 @@ class webservice {
 
     }
 
+    /**
+     * Filter OAuth parameters from an array of HTTP parameters.
+     *
+     * @param array $params HTTP parameters
+     * @param bool $keepoauthparams whether to keep the OAuth parameters and
+     * discard the others (true), or discard the OAuth parameters.
+     * @return array the HTTP parameters either with the OAuth parameters removed,
+     * or with only the OAuth parameters
+     */
+    function oauth_parameter_filter(array $params, $keepoauthparams = true) {
+        foreach ($params as $key => $param) {
+            if ((strncmp($key, 'oauth_', 6) != 0) == $keepoauthparams) {
+                unset($params[$key]);
+            }
+        }
+        return $params;
+    }
 
+    function oauth_get_signature_method($signmethod) {
+        switch ($signmethod) {
+            case self::OAUTH_PLAINTEXT:
+                return new OAuthSignatureMethod_PLAINTEXT();
+            case self::OAUTH_HMAC_SHA1:
+                return new OAuthSignatureMethod_HMAC_SHA1();
+            case self::OAUTH_RSA_SHA1:
+                return new moodle_oauth_signature_method_RSA_SHA1();
+            default:
+                throw new Exception('unknown signature method');
+        }
+    }
 }
 
 /**
@@ -679,6 +771,62 @@ interface webservice_server_interface {
      * @return void
      */
     public function run();
+}
+
+class moodle_oauth_data_store extends OAuthDataStore {
+    function lookup_consumer($identifier) {
+        global $DB;
+        $credentials = $DB->get_record('oauth_client_credentials', array('identifier' => $identifier));
+        if (empty($credentials)) {
+            return null;
+        }
+        return new OAuthConsumer($credentials->identifier, $credentials->secret);
+    }
+
+    function lookup_token($consumer, $token_type, $token) {
+        // we only support 2-legged OAuth for now
+        if ($token_type === 'access' && empty($token)) {
+            return new OAuthToken('', '');
+        }
+        return null;
+    }
+
+    function lookup_nonce($consumer, $token, $nonce, $timestamp) {
+        global $DB;
+        // remove expired nonces
+        $DB->delete_records_select('oauth_nonces', 'timestamp < ?', array(time() - 10*MINSECS));
+        // check if the nonce has already been used
+        $credentials = $DB->get_record('oauth_client_credentials', array('identifier' => $consumer->key), '*', MUST_EXIST);
+        if ($DB->record_exists('oauth_nonces', array('credentialsid' => $credentials->id, 'nonce' => $nonce))) {
+            return true;
+        }
+        // record the nonce
+        $noncerec = new stdClass;
+        $noncerec->credentialsid = $credentials->id;
+        $noncerec->nonce = $nonce;
+        $noncerec->timestamp = $timestamp;
+        $DB->insert_record('oauth_nonces', $noncerec);
+
+        return false;
+    }
+}
+
+class moodle_oauth_signature_method_RSA_SHA1 extends OAuthSignatureMethod_RSA_SHA1 {
+    public function fetch_private_cert(&$request) {
+        // not implemented -- don't need a private key for server
+    }
+
+    public function fetch_public_cert(&$request) {
+        global $DB;
+        $identifier = $request->get_parameter('oauth_consumer_key');
+        if (!$identifier) {
+            // by this point, we should already know that the request has a
+            // consumer key, so if we don't have one, then something bad has happened
+            throw new invalid_state_exception('OAuth request has no consumer key');
+        }
+
+        return $DB->get_field('oauth_client_credentials', 'secret', array('identifier' => $identifier), MUST_EXIST);
+    }
 }
 
 /**
@@ -765,6 +913,8 @@ abstract class webservice_server implements webservice_server_interface {
 
             $user = $DB->get_record('user', array('username'=>$this->username, 'mnethostid'=>$CFG->mnet_localhost_id), '*', MUST_EXIST);
 
+        } else if ($this->authmethod == WEBSERVICE_AUTHMETHOD_OAUTH) {
+            $user = $this->authenticate_by_oauth();
         } else if ($this->authmethod == WEBSERVICE_AUTHMETHOD_PERMANENT_TOKEN){
             $user = $this->authenticate_by_token(EXTERNAL_TOKEN_PERMANENT);
         } else {
@@ -825,6 +975,40 @@ abstract class webservice_server implements webservice_server_interface {
         }
 
         external_api::set_context_restriction($this->restricted_context);
+    }
+
+    protected function authenticate_by_oauth() {
+        global $DB;
+
+        $oauthserver = new OAuthServer(new moodle_oauth_data_store);
+        $hmacmethod = new OAuthSignatureMethod_HMAC_SHA1();
+        $plaintextmethod = new OAuthSignatureMethod_PLAINTEXT();
+        $rsamethod = new moodle_oauth_signature_method_RSA_SHA1();
+
+        $oauthserver->add_signature_method($hmacmethod);
+        $oauthserver->add_signature_method($plaintextmethod);
+        $oauthserver->add_signature_method($rsamethod);
+
+        $req = OAuthRequest::from_request();
+        list($consumer, $token) = $oauthserver->verify_request($req);
+
+        $credentials = $DB->get_record('oauth_client_credentials', array('identifier' => $consumer->key));
+        $this->restricted_context = get_context_instance_by_id($credentials->contextid);
+        $this->restricted_serviceid = $credentials->externalserviceid;
+
+        // check that signature method is the same as what the credentials specifies
+        $signmethod = $req->get_parameter("oauth_signature_method");
+        if ($credentials->signmethod !== $signmethod) {
+            throw new webservice_access_exception(get_string('incorrectsignmethod', 'webservice'));
+        }
+        // FIXME: enforce HTTPS for PLAINTEXT (unless configured to allow HTTP)
+
+        $user = $DB->get_record('user', array('id'=>$credentials->userid, 'deleted'=>0), '*', MUST_EXIST);
+
+        // log token access
+        $DB->set_field('oauth_client_credentials', 'lastaccess', time(), array('id'=>$credentials->id));
+
+        return $user;
     }
 
     protected function authenticate_by_token($tokentype){
@@ -1224,7 +1408,7 @@ class '.$classname.' {
             if (isset($_REQUEST['wspassword'])) {
                 $this->password = $_REQUEST['wspassword'];
             }
-        } else {
+        } else if ($this->authmethod != WEBSERVICE_AUTHMETHOD_OAUTH) {
             if (isset($_REQUEST['wstoken'])) {
                 $this->token = $_REQUEST['wstoken'];
             }

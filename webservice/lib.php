@@ -65,7 +65,7 @@ class webservice {
             throw new webservice_access_exception(get_string('invalidiptoken', 'webservice'));
         }
 
-        //retrieve user link to the token
+        //retrieve the user info from the token
         $user = $DB->get_record('user', array('id' => $token->userid, 'deleted' => 0), '*', MUST_EXIST);
 
         // let enrol plugins deal with new enrolments if necessary
@@ -83,7 +83,7 @@ class webservice {
             }
         }
 
-        //Non admin can not authenticate if maintenance mode
+        //Refuse non-admin authentication in maintenance mode
         $hassiteconfig = has_capability('moodle/site:config', get_context_instance(CONTEXT_SYSTEM), $user);
         if (!empty($CFG->maintenance_enabled) and !$hassiteconfig) {
             throw new webservice_access_exception(get_string('sitemaintenance', 'admin'));

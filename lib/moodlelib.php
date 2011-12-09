@@ -284,6 +284,29 @@ define('PARAM_TIMEZONE', 'timezone');
  */
 define('PARAM_CLEANFILE', 'file');
 
+/**
+ * PARAM_COMPONENT is used for full component names (aka frankenstyle) such as 'mod_forum', 'core_rating', 'auth_ldap'.
+ * Short legacy subsystem names and module names are accepted too ex: 'forum', 'rating', 'user'.
+ * Only lowercase ascii letters, numbers and underscores are allowed, it has to start with a letter.
+ * NOTE: numbers and underscores are strongly discouraged in plugin names!
+ */
+define('PARAM_COMPONENT', 'component');
+
+/**
+ * PARAM_AREA is a name of area used when addressing files, comments, ratings, etc.
+ * It is usually used together with context id and component.
+ * Only lowercase ascii letters, numbers and underscores are allowed, it has to start with a letter.
+ */
+define('PARAM_AREA', 'area');
+
+/**
+ * PARAM_PLUGIN is used for plugin names such as 'forum', 'glossary', 'ldap', 'radius', 'paypal', 'completionstatus'.
+ * Only lowercase ascii letters, numbers and underscores are allowed, it has to start with a letter.
+ * NOTE: numbers and underscores are strongly discouraged in plugin names! Underscores are forbidden in module names.
+ */
+define('PARAM_PLUGIN', 'plugin');
+
+
 /// Web Services ///
 
 /**
@@ -353,6 +376,8 @@ define ('PASSWORD_NONALPHANUM', '.,;:!?_-+/*@#&$');
 define('FEATURE_GRADE_HAS_GRADE', 'grade_has_grade');
 /** True if module supports outcomes */
 define('FEATURE_GRADE_OUTCOMES', 'outcomes');
+/** True if module supports advanced grading methods */
+define('FEATURE_ADVANCED_GRADING', 'grade_advanced_grading');
 
 /** True if module has code to track whether somebody viewed it */
 define('FEATURE_COMPLETION_TRACKS_VIEWS', 'completion_tracks_views');
@@ -382,6 +407,9 @@ define('FEATURE_COMMENT', 'comment');
 define('FEATURE_RATE', 'rate');
 /** True if module supports backup/restore of moodle2 format */
 define('FEATURE_BACKUP_MOODLE2', 'backup_moodle2');
+
+/** True if module can show description on course main page */
+define('FEATURE_SHOW_DESCRIPTION', 'showdescription');
 
 /** Unspecified module archetype */
 define('MOD_ARCHETYPE_OTHER', 0);
@@ -818,6 +846,34 @@ function clean_param($param, $type) {
             // easy, just strip all tags, if we ever want to fix orphaned '&' we have to do that in format_string()
             return strip_tags($param);
 
+        case PARAM_COMPONENT:
+            // we do not want any guessing here, either the name is correct or not
+            // please note only normalised component names are accepted
+            if (!preg_match('/^[a-z]+(_[a-z][a-z0-9_]*)?[a-z0-9]$/', $param)) {
+                return '';
+            }
+            if (strpos($param, '__') !== false) {
+                return '';
+            }
+            if (strpos($param, 'mod_') === 0) {
+                // module names must not contain underscores because we need to differentiate them from invalid plugin types
+                if (substr_count($param, '_') != 1) {
+                    return '';
+                }
+            }
+            return $param;
+
+        case PARAM_PLUGIN:
+        case PARAM_AREA:
+            // we do not want any guessing here, either the name is correct or not
+            if (!preg_match('/^[a-z][a-z0-9_]*[a-z0-9]$/', $param)) {
+                return '';
+            }
+            if (strpos($param, '__') !== false) {
+                return '';
+            }
+            return $param;
+
         case PARAM_SAFEDIR:      // Remove everything not a-zA-Z0-9_-
             return preg_replace('/[^a-zA-Z0-9_-]/i', '', $param);
 
@@ -985,8 +1041,10 @@ function clean_param($param, $type) {
             }
 
         case PARAM_AUTH:
-            $param = clean_param($param, PARAM_SAFEDIR);
-            if (exists_auth_plugin($param)) {
+            $param = clean_param($param, PARAM_PLUGIN);
+            if (empty($param)) {
+                return '';
+            } else if (exists_auth_plugin($param)) {
                 return $param;
             } else {
                 return '';
@@ -1001,8 +1059,10 @@ function clean_param($param, $type) {
             }
 
         case PARAM_THEME:
-            $param = clean_param($param, PARAM_SAFEDIR);
-            if (file_exists("$CFG->dirroot/theme/$param/config.php")) {
+            $param = clean_param($param, PARAM_PLUGIN);
+            if (empty($param)) {
+                return '';
+            } else if (file_exists("$CFG->dirroot/theme/$param/config.php")) {
                 return $param;
             } else if (!empty($CFG->themedir) and file_exists("$CFG->themedir/$param/config.php")) {
                 return $param;
@@ -1305,7 +1365,9 @@ function unset_config($name, $plugin=NULL) {
 function unset_all_config_for_plugin($plugin) {
     global $DB;
     $DB->delete_records('config_plugins', array('plugin' => $plugin));
-    $DB->delete_records_select('config', 'name LIKE ?', array($plugin . '_%'));
+    $like = $DB->sql_like('name', '?', true, true, false, '|');
+    $params = array($DB->sql_like_escape($plugin.'_', '|') . '%');
+    $DB->delete_records_select('config', $like, $params);
     return true;
 }
 
@@ -1367,16 +1429,14 @@ function purge_all_caches() {
     get_string_manager()->reset_caches();
 
     // purge all other caches: rss, simplepie, etc.
-    remove_dir($CFG->dataroot.'/cache', true);
+    remove_dir($CFG->cachedir.'', true);
 
     // make sure cache dir is writable, throws exception if not
-    make_upload_directory('cache');
+    make_cache_directory('');
 
     // hack: this script may get called after the purifier was initialised,
     // but we do not want to verify repeatedly this exists in each call
-    make_upload_directory('cache/htmlpurifier');
-
-    clearstatcache();
+    make_cache_directory('htmlpurifier');
 }
 
 /**
@@ -2698,13 +2758,6 @@ function require_login($courseorid = NULL, $autologinguest = true, $cm = NULL, $
             }
         }
 
-        // very simple enrolment caching - changes in course setting are not reflected immediately
-        if (!isset($USER->enrol)) {
-            $USER->enrol = array();
-            $USER->enrol['enrolled'] = array();
-            $USER->enrol['tempguest'] = array();
-        }
-
         $access = false;
 
         if (is_viewing($coursecontext, $USER)) {
@@ -2713,10 +2766,12 @@ function require_login($courseorid = NULL, $autologinguest = true, $cm = NULL, $
 
         } else {
             if (isset($USER->enrol['enrolled'][$course->id])) {
-                if ($USER->enrol['enrolled'][$course->id] == 0) {
+                if ($USER->enrol['enrolled'][$course->id] > time()) {
                     $access = true;
-                } else if ($USER->enrol['enrolled'][$course->id] > time()) {
-                    $access = true;
+                    if (isset($USER->enrol['tempguest'][$course->id])) {
+                        unset($USER->enrol['tempguest'][$course->id]);
+                        remove_temp_course_roles($coursecontext);
+                    }
                 } else {
                     //expired
                     unset($USER->enrol['enrolled'][$course->id]);
@@ -2730,64 +2785,54 @@ function require_login($courseorid = NULL, $autologinguest = true, $cm = NULL, $
                 } else {
                     //expired
                     unset($USER->enrol['tempguest'][$course->id]);
-                    $USER->access = remove_temp_roles($coursecontext, $USER->access);
+                    remove_temp_course_roles($coursecontext);
                 }
             }
 
             if ($access) {
                 // cache ok
-            } else if (is_enrolled($coursecontext, $USER, '', true)) {
-                // active participants may always access
-                // TODO: refactor this into some new function
-                $now = time();
-                $sql = "SELECT MAX(ue.timeend)
-                          FROM {user_enrolments} ue
-                          JOIN {enrol} e ON (e.id = ue.enrolid AND e.courseid = :courseid)
-                          JOIN {user} u ON u.id = ue.userid
-                         WHERE ue.userid = :userid AND ue.status = :active AND e.status = :enabled AND u.deleted = 0
-                               AND ue.timestart < :now1 AND (ue.timeend = 0 OR ue.timeend > :now2)";
-                $params = array('enabled'=>ENROL_INSTANCE_ENABLED, 'active'=>ENROL_USER_ACTIVE,
-                                'userid'=>$USER->id, 'courseid'=>$coursecontext->instanceid, 'now1'=>$now, 'now2'=>$now);
-                $until = $DB->get_field_sql($sql, $params);
-                if (!$until or $until > time() + ENROL_REQUIRE_LOGIN_CACHE_PERIOD) {
-                    $until = time() + ENROL_REQUIRE_LOGIN_CACHE_PERIOD;
-                }
-
-                $USER->enrol['enrolled'][$course->id] = $until;
-                $access = true;
-
-                // remove traces of previous temp guest access
-                $USER->access = remove_temp_roles($coursecontext, $USER->access);
-
             } else {
-                $instances = $DB->get_records('enrol', array('courseid'=>$course->id, 'status'=>ENROL_INSTANCE_ENABLED), 'sortorder, id ASC');
-                $enrols = enrol_get_plugins(true);
-                // first ask all enabled enrol instances in course if they want to auto enrol user
-                foreach($instances as $instance) {
-                    if (!isset($enrols[$instance->enrol])) {
-                        continue;
+                $until = enrol_get_enrolment_end($coursecontext->instanceid, $USER->id);
+                if ($until !== false) {
+                    // active participants may always access, a timestamp in the future, 0 (always) or false.
+                    if ($until == 0) {
+                        $until = ENROL_MAX_TIMESTAMP;
                     }
-                    // Get a duration for the guestaccess, a timestamp in the future or false.
-                    $until = $enrols[$instance->enrol]->try_autoenrol($instance);
-                    if ($until !== false) {
-                        $USER->enrol['enrolled'][$course->id] = $until;
-                        $USER->access = remove_temp_roles($coursecontext, $USER->access);
-                        $access = true;
-                        break;
-                    }
-                }
-                // if not enrolled yet try to gain temporary guest access
-                if (!$access) {
+                    $USER->enrol['enrolled'][$course->id] = $until;
+                    $access = true;
+
+                } else {
+                    $instances = $DB->get_records('enrol', array('courseid'=>$course->id, 'status'=>ENROL_INSTANCE_ENABLED), 'sortorder, id ASC');
+                    $enrols = enrol_get_plugins(true);
+                    // first ask all enabled enrol instances in course if they want to auto enrol user
                     foreach($instances as $instance) {
                         if (!isset($enrols[$instance->enrol])) {
                             continue;
                         }
-                        // Get a duration for the guestaccess, a timestamp in the future or false.
-                        $until = $enrols[$instance->enrol]->try_guestaccess($instance);
+                        // Get a duration for the enrolment, a timestamp in the future, 0 (always) or false.
+                        $until = $enrols[$instance->enrol]->try_autoenrol($instance);
                         if ($until !== false) {
-                            $USER->enrol['tempguest'][$course->id] = $until;
+                            if ($until == 0) {
+                                $until = ENROL_MAX_TIMESTAMP;
+                            }
+                            $USER->enrol['enrolled'][$course->id] = $until;
                             $access = true;
                             break;
+                        }
+                    }
+                    // if not enrolled yet try to gain temporary guest access
+                    if (!$access) {
+                        foreach($instances as $instance) {
+                            if (!isset($enrols[$instance->enrol])) {
+                                continue;
+                            }
+                            // Get a duration for the guest access, a timestamp in the future or false.
+                            $until = $enrols[$instance->enrol]->try_guestaccess($instance);
+                            if ($until !== false and $until > time()) {
+                                $USER->enrol['tempguest'][$course->id] = $until;
+                                $access = true;
+                                break;
+                            }
                         }
                     }
                 }
@@ -2971,6 +3016,7 @@ function require_user_key_login($script, $instance=null) {
     }
 
 /// emulate normal session
+    enrol_check_plugins($user);
     session_set_user($user);
 
 /// note we are not using normal login
@@ -3291,6 +3337,88 @@ function fullname($user, $override=false) {
     }
 
     return get_string('fullnamedisplay', '', $user);
+}
+
+/**
+ * Checks if current user is shown any extra fields when listing users.
+ * @param object $context Context
+ * @param array $already Array of fields that we're going to show anyway
+ *   so don't bother listing them
+ * @return array Array of field names from user table, not including anything
+ *   listed in $already
+ */
+function get_extra_user_fields($context, $already = array()) {
+    global $CFG;
+
+    // Only users with permission get the extra fields
+    if (!has_capability('moodle/site:viewuseridentity', $context)) {
+        return array();
+    }
+
+    // Split showuseridentity on comma
+    if ($CFG->showuseridentity === '') {
+        // Explode gives wrong result with empty string
+        $extra = array();
+    } else {
+        $extra =  explode(',', $CFG->showuseridentity);
+    }
+    $renumber = false;
+    foreach ($extra as $key => $field) {
+        if (in_array($field, $already)) {
+            unset($extra[$key]);
+            $renumber = true;
+        }
+    }
+    if ($renumber) {
+        // For consistency, if entries are removed from array, renumber it
+        // so they are numbered as you would expect
+        $extra = array_merge($extra);
+    }
+    return $extra;
+}
+
+/**
+ * If the current user is to be shown extra user fields when listing or
+ * selecting users, returns a string suitable for including in an SQL select
+ * clause to retrieve those fields.
+ * @param object $context Context
+ * @param string $alias Alias of user table, e.g. 'u' (default none)
+ * @param string $prefix Prefix for field names using AS, e.g. 'u_' (default none)
+ * @param array $already Array of fields that we're going to include anyway
+ *   so don't list them (default none)
+ * @return string Partial SQL select clause, beginning with comma, for example
+ *   ',u.idnumber,u.department' unless it is blank
+ */
+function get_extra_user_fields_sql($context, $alias='', $prefix='',
+        $already = array()) {
+    $fields = get_extra_user_fields($context, $already);
+    $result = '';
+    // Add punctuation for alias
+    if ($alias !== '') {
+        $alias .= '.';
+    }
+    foreach ($fields as $field) {
+        $result .= ', ' . $alias . $field;
+        if ($prefix) {
+            $result .= ' AS ' . $prefix . $field;
+        }
+    }
+    return $result;
+}
+
+/**
+ * Returns the display name of a field in the user table. Works for most fields
+ * that are commonly displayed to users.
+ * @param string $field Field name, e.g. 'phone1'
+ * @return string Text description taken from language file, e.g. 'Phone number'
+ */
+function get_user_field_name($field) {
+    // Some fields have language strings which are not the same as field name
+    switch ($field) {
+        case 'phone1' : return get_string('phone');
+    }
+    // Otherwise just use the same lang string
+    return get_string($field);
 }
 
 /**
@@ -3766,8 +3894,12 @@ function authenticate_user_login($username, $password) {
                 $user = update_user_record($username);
             }
         } else {
-            // if user not found, create him
-            $user = create_user_record($username, $password, $auth);
+            // if user not found and user creation is not disabled, create it
+            if (empty($CFG->authpreventaccountcreation)) {
+                $user = create_user_record($username, $password, $auth);
+            } else {
+                continue;
+            }
         }
 
         $authplugin->sync_roles($user);
@@ -3818,12 +3950,15 @@ function complete_user_login($user) {
     // this helps prevent session fixation attacks from the same domain
     session_regenerate_id(true);
 
+    // let enrol plugins deal with new enrolments if necessary
+    enrol_check_plugins($user);
+
     // check enrolments, load caps and setup $USER object
     session_set_user($user);
 
     // reload preferences from DB
-    unset($user->preference);
-    check_user_preferences_loaded($user);
+    unset($USER->preference);
+    check_user_preferences_loaded($USER);
 
     // update login times
     update_user_login_times();
@@ -4150,58 +4285,122 @@ function delete_course($courseorid, $showfeedback = true) {
  * This function does not verify any permissions.
  *
  * Please note this function also deletes all user enrolments,
- * enrolment instances and role assignments.
+ * enrolment instances and role assignments by default.
+ *
+ * $options:
+ *  - 'keep_roles_and_enrolments' - false by default
+ *  - 'keep_groups_and_groupings' - false by default
  *
  * @param int $courseid The id of the course that is being deleted
  * @param bool $showfeedback Whether to display notifications of each action the function performs.
+ * @param array $options extra options
  * @return bool true if all the removals succeeded. false if there were any failures. If this
  *             method returns false, some of the removals will probably have succeeded, and others
  *             failed, but you have no way of knowing which.
  */
-function remove_course_contents($courseid, $showfeedback = true) {
+function remove_course_contents($courseid, $showfeedback = true, array $options = null) {
     global $CFG, $DB, $OUTPUT;
     require_once($CFG->libdir.'/completionlib.php');
     require_once($CFG->libdir.'/questionlib.php');
     require_once($CFG->libdir.'/gradelib.php');
     require_once($CFG->dirroot.'/group/lib.php');
     require_once($CFG->dirroot.'/tag/coursetagslib.php');
+    require_once($CFG->dirroot.'/comment/lib.php');
+    require_once($CFG->dirroot.'/rating/lib.php');
+
+    // NOTE: these concatenated strings are suboptimal, but it is just extra info...
+    $strdeleted = get_string('deleted').' - ';
+
+    // Some crazy wishlist of stuff we should skip during purging of course content
+    $options = (array)$options;
 
     $course = $DB->get_record('course', array('id'=>$courseid), '*', MUST_EXIST);
-    $context = get_context_instance(CONTEXT_COURSE, $courseid, MUST_EXIST);
+    $coursecontext = context_course::instance($courseid);
+    $fs = get_file_storage();
 
-    $strdeleted = get_string('deleted');
-
-    // Delete course completion information,
-    // this has to be done before grades and enrols
+    // Delete course completion information, this has to be done before grades and enrols
     $cc = new completion_info($course);
     $cc->clear_criteria();
-
-    // remove roles and enrolments
-    role_unassign_all(array('contextid'=>$context->id), true);
-    enrol_course_delete($course);
-
-    // Clean up course formats (iterate through all formats in the even the course format was ever changed)
-    $formats = get_plugin_list('format');
-    foreach ($formats as $format=>$formatdir) {
-        $formatdelete = 'format_'.$format.'_delete_course';
-        $formatlib    = "$formatdir/lib.php";
-        if (file_exists($formatlib)) {
-            include_once($formatlib);
-            if (function_exists($formatdelete)) {
-                if ($showfeedback) {
-                    echo $OUTPUT->notification($strdeleted.' '.$format);
-                }
-                $formatdelete($course->id);
-            }
-        }
+    if ($showfeedback) {
+        echo $OUTPUT->notification($strdeleted.get_string('completion', 'completion'), 'notifysuccess');
     }
 
     // Remove all data from gradebook - this needs to be done before course modules
     // because while deleting this information, the system may need to reference
     // the course modules that own the grades.
     remove_course_grades($courseid, $showfeedback);
-    remove_grade_letters($context, $showfeedback);
+    remove_grade_letters($coursecontext, $showfeedback);
 
+    // Delete course blocks in any all child contexts,
+    // they may depend on modules so delete them first
+    $childcontexts = $coursecontext->get_child_contexts(); // returns all subcontexts since 2.2
+    foreach ($childcontexts as $childcontext) {
+        blocks_delete_all_for_context($childcontext->id);
+    }
+    unset($childcontexts);
+    blocks_delete_all_for_context($coursecontext->id);
+    if ($showfeedback) {
+        echo $OUTPUT->notification($strdeleted.get_string('type_block_plural', 'plugin'), 'notifysuccess');
+    }
+
+    // Delete every instance of every module,
+    // this has to be done before deleting of course level stuff
+    $locations = get_plugin_list('mod');
+    foreach ($locations as $modname=>$moddir) {
+        if ($modname === 'NEWMODULE') {
+            continue;
+        }
+        if ($module = $DB->get_record('modules', array('name'=>$modname))) {
+            include_once("$moddir/lib.php");                 // Shows php warning only if plugin defective
+            $moddelete = $modname .'_delete_instance';       // Delete everything connected to an instance
+            $moddeletecourse = $modname .'_delete_course';   // Delete other stray stuff (uncommon)
+
+            if ($instances = $DB->get_records($modname, array('course'=>$course->id))) {
+                foreach ($instances as $instance) {
+                    if ($cm = get_coursemodule_from_instance($modname, $instance->id, $course->id)) {
+                        /// Delete activity context questions and question categories
+                        question_delete_activity($cm,  $showfeedback);
+                    }
+                    if (function_exists($moddelete)) {
+                        // This purges all module data in related tables, extra user prefs, settings, etc.
+                        $moddelete($instance->id);
+                    } else {
+                        // NOTE: we should not allow installation of modules with missing delete support!
+                        debugging("Defective module '$modname' detected when deleting course contents: missing function $moddelete()!");
+                        $DB->delete_records($modname, array('id'=>$instance->id));
+                    }
+
+                    if ($cm) {
+                        // Delete cm and its context - orphaned contexts are purged in cron in case of any race condition
+                        context_helper::delete_instance(CONTEXT_MODULE, $cm->id);
+                        $DB->delete_records('course_modules', array('id'=>$cm->id));
+                    }
+                }
+            }
+            if (function_exists($moddeletecourse)) {
+                // Execute ptional course cleanup callback
+                $moddeletecourse($course, $showfeedback);
+            }
+            if ($instances and $showfeedback) {
+                echo $OUTPUT->notification($strdeleted.get_string('pluginname', $modname), 'notifysuccess');
+            }
+        } else {
+            // Ooops, this module is not properly installed, force-delete it in the next block
+        }
+    }
+    // We have tried to delete everything the nice way - now let's force-delete any remaining module data
+    $cms = $DB->get_records('course_modules', array('course'=>$course->id));
+    foreach ($cms as $cm) {
+        if ($module = $DB->get_record('module', array('id'=>$cm->module))) {
+            try {
+                $DB->delete_records($module->name, array('id'=>$cm->instance));
+            } catch (Exception $e) {
+                // Ignore weird or missing table problems
+            }
+        }
+        context_helper::delete_instance(CONTEXT_MODULE, $cm->id);
+        $DB->delete_records('course_modules', array('id'=>$cm->id));
+    }
     // Remove all data from availability and completion tables that is associated
     // with course-modules belonging to this course. Note this is done even if the
     // features are not enabled now, in case they were enabled previously
@@ -4211,102 +4410,122 @@ function remove_course_contents($courseid, $showfeedback = true) {
     $DB->delete_records_select('course_modules_availability',
            'coursemoduleid IN (SELECT id from {course_modules} WHERE course=?)',
            array($courseid));
+    if ($showfeedback) {
+        echo $OUTPUT->notification($strdeleted.get_string('type_mod_plural', 'plugin'), 'notifysuccess');
+    }
 
-    // Delete course blocks - they may depend on modules so delete them first
-    blocks_delete_all_for_context($context->id);
+    // Cleanup the rest of plugins
+    $cleanuplugintypes = array('report', 'coursereport', 'format');
+    foreach ($cleanuplugintypes as $type) {
+        $plugins = get_plugin_list_with_function($type, 'delete_course', 'lib.php');
+        foreach ($plugins as $plugin=>$pluginfunction) {
+            $pluginfunction($course->id, $showfeedback);
+        }
+        if ($showfeedback) {
+            echo $OUTPUT->notification($strdeleted.get_string('type_'.$type.'_plural', 'plugin'), 'notifysuccess');
+        }
+    }
 
-    // Delete every instance of every module
-    if ($allmods = $DB->get_records('modules') ) {
-        foreach ($allmods as $mod) {
-            $modname = $mod->name;
-            $modfile = $CFG->dirroot .'/mod/'. $modname .'/lib.php';
-            $moddelete = $modname .'_delete_instance';       // Delete everything connected to an instance
-            $moddeletecourse = $modname .'_delete_course';   // Delete other stray stuff (uncommon)
-            $count=0;
-            if (file_exists($modfile)) {
-                include_once($modfile);
-                if (function_exists($moddelete)) {
-                    if ($instances = $DB->get_records($modname, array('course'=>$course->id))) {
-                        foreach ($instances as $instance) {
-                            if ($cm = get_coursemodule_from_instance($modname, $instance->id, $course->id)) {
-                                /// Delete activity context questions and question categories
-                                question_delete_activity($cm,  $showfeedback);
-                            }
-                            if ($moddelete($instance->id)) {
-                                $count++;
+    // Delete questions and question categories
+    question_delete_course($course, $showfeedback);
+    if ($showfeedback) {
+        echo $OUTPUT->notification($strdeleted.get_string('questions', 'question'), 'notifysuccess');
+    }
 
-                            } else {
-                                echo $OUTPUT->notification('Could not delete '. $modname .' instance '. $instance->id .' ('. format_string($instance->name) .')');
-                            }
-                            if ($cm) {
-                                // delete cm and its context in correct order
-                                delete_context(CONTEXT_MODULE, $cm->id); // some callbacks may try to fetch context, better delete first
-                                $DB->delete_records('course_modules', array('id'=>$cm->id));
-                            }
-                        }
-                    }
-                } else {
-                    //note: we should probably delete these anyway
-                    echo $OUTPUT->notification('Function '.$moddelete.'() doesn\'t exist!');
-                }
+    // Make sure there are no subcontexts left - all valid blocks and modules should be already gone
+    $childcontexts = $coursecontext->get_child_contexts(); // returns all subcontexts since 2.2
+    foreach ($childcontexts as $childcontext) {
+        $childcontext->delete();
+    }
+    unset($childcontexts);
 
-                if (function_exists($moddeletecourse)) {
-                    $moddeletecourse($course, $showfeedback);
-                }
-            }
-            if ($showfeedback) {
-                echo $OUTPUT->notification($strdeleted .' '. $count .' x '. $modname);
-            }
+    // Remove all roles and enrolments by default
+    if (empty($options['keep_roles_and_enrolments'])) {
+        // this hack is used in restore when deleting contents of existing course
+        role_unassign_all(array('contextid'=>$coursecontext->id), true);
+        enrol_course_delete($course);
+        if ($showfeedback) {
+            echo $OUTPUT->notification($strdeleted.get_string('type_enrol_plural', 'plugin'), 'notifysuccess');
         }
     }
 
     // Delete any groups, removing members and grouping/course links first.
-    groups_delete_groupings($course->id, $showfeedback);
-    groups_delete_groups($course->id, $showfeedback);
+    if (empty($options['keep_groups_and_groupings'])) {
+        groups_delete_groupings($course->id, $showfeedback);
+        groups_delete_groups($course->id, $showfeedback);
+    }
 
-    // Delete questions and question categories
-    question_delete_course($course, $showfeedback);
+    // filters be gone!
+    filter_delete_all_for_context($coursecontext->id);
+
+    // die comments!
+    comment::delete_comments($coursecontext->id);
+
+    // ratings are history too
+    $delopt = new stdclass();
+    $delopt->contextid = $coursecontext->id;
+    $rm = new rating_manager();
+    $rm->delete_ratings($delopt);
 
     // Delete course tags
     coursetag_delete_course_tags($course->id, $showfeedback);
 
-    // Delete legacy files (just in case some files are still left there after conversion to new file api)
-    fulldelete($CFG->dataroot.'/'.$course->id);
+    // Delete calendar events
+    $DB->delete_records('event', array('courseid'=>$course->id));
+    $fs->delete_area_files($coursecontext->id, 'calendar');
 
-    // cleanup course record - remove links to delted stuff
-    $oldcourse = new stdClass();
-    $oldcourse->id                = $course->id;
-    $oldcourse->summary           = '';
-    $oldcourse->modinfo           = NULL;
-    $oldcourse->legacyfiles       = 0;
-    $oldcourse->defaultgroupingid = 0;
-    $oldcourse->enablecompletion  = 0;
-    $DB->update_record('course', $oldcourse);
-
-    // Delete all related records in other tables that may have a courseid
+    // Delete all related records in other core tables that may have a courseid
     // This array stores the tables that need to be cleared, as
     // table_name => column_name that contains the course id.
     $tablestoclear = array(
-        'event' => 'courseid', // Delete events
-        'log' => 'course', // Delete logs
-        'course_sections' => 'course', // Delete any course stuff
-        'course_modules' => 'course',
-        'course_display' => 'course',
-        'backup_courses' => 'courseid', // Delete scheduled backup stuff
-        'user_lastaccess' => 'courseid',
-        'backup_log' => 'courseid'
+        'log' => 'course',               // Course logs (NOTE: this might be changed in the future)
+        'backup_courses' => 'courseid',  // Scheduled backup stuff
+        'user_lastaccess' => 'courseid', // User access info
     );
     foreach ($tablestoclear as $table => $col) {
         $DB->delete_records($table, array($col=>$course->id));
     }
 
-    // Delete all remaining stuff linked to context,
-    // such as remaining roles, files, comments, etc.
-    // Keep the context record for now.
-    delete_context(CONTEXT_COURSE, $course->id, false);
+    // delete all course backup files
+    $fs->delete_area_files($coursecontext->id, 'backup');
 
-    //trigger events
-    $course->context = $context; // you can not access context in cron event later after course is deleted
+    // cleanup course record - remove links to deleted stuff
+    $oldcourse = new stdClass();
+    $oldcourse->id               = $course->id;
+    $oldcourse->summary          = '';
+    $oldcourse->modinfo          = NULL;
+    $oldcourse->legacyfiles      = 0;
+    $oldcourse->enablecompletion = 0;
+    if (!empty($options['keep_groups_and_groupings'])) {
+        $oldcourse->defaultgroupingid = 0;
+    }
+    $DB->update_record('course', $oldcourse);
+
+    // Delete course sections and user selections
+    $DB->delete_records('course_sections', array('course'=>$course->id));
+    $DB->delete_records('course_display', array('course'=>$course->id));
+
+    // delete legacy, section and any other course files
+    $fs->delete_area_files($coursecontext->id, 'course'); // files from summary and section
+
+    // Delete all remaining stuff linked to context such as files, comments, ratings, etc.
+    if (empty($options['keep_roles_and_enrolments']) and empty($options['keep_groups_and_groupings'])) {
+        // Easy, do not delete the context itself...
+        $coursecontext->delete_content();
+
+    } else {
+        // Hack alert!!!!
+        // We can not drop all context stuff because it would bork enrolments and roles,
+        // there might be also files used by enrol plugins...
+    }
+
+    // Delete legacy files - just in case some files are still left there after conversion to new file api,
+    // also some non-standard unsupported plugins may try to store something there
+    fulldelete($CFG->dataroot.'/'.$course->id);
+
+    // Finally trigger the event
+    $course->context = $coursecontext; // you can not access context in cron event later after course is deleted
+    $course->options = $options;       // not empty if we used any crazy hack
     events_trigger('course_content_removed', $course);
 
     return true;
@@ -5260,7 +5479,7 @@ function get_file_storage() {
         $trashdirdir = $CFG->dataroot.'/trashdir';
     }
 
-    $fs = new file_storage($filedir, $trashdirdir, "$CFG->dataroot/temp/filestorage", $CFG->directorypermissions, $CFG->filepermissions);
+    $fs = new file_storage($filedir, $trashdirdir, "$CFG->tempdir/filestorage", $CFG->directorypermissions, $CFG->filepermissions);
 
     return $fs;
 }
@@ -5682,7 +5901,7 @@ function get_string_manager($forcereload=false) {
         if (empty($CFG->early_install_lang)) {
 
             if (empty($CFG->langcacheroot)) {
-                $langcacheroot = $CFG->dataroot . '/cache/lang';
+                $langcacheroot = $CFG->cachedir . '/lang';
             } else {
                 $langcacheroot = $CFG->langcacheroot;
             }
@@ -5694,7 +5913,7 @@ function get_string_manager($forcereload=false) {
             }
 
             if (empty($CFG->langmenucachefile)) {
-                $langmenucache = $CFG->dataroot . '/cache/languages';
+                $langmenucache = $CFG->cachedir . '/languages';
             } else {
                 $langmenucache = $CFG->langmenucachefile;
             }
@@ -6077,7 +6296,17 @@ class core_string_manager implements string_manager {
             }
             if (!isset($string[$identifier])) {
                 // the string is still missing - should be fixed by developer
-                debugging("Invalid get_string() identifier: '$identifier' or component '$component'", DEBUG_DEVELOPER);
+                list($plugintype, $pluginname) = normalize_component($component);
+                if ($plugintype == 'core') {
+                    $file = "lang/en/{$component}.php";
+                } else if ($plugintype == 'mod') {
+                    $file = "mod/{$pluginname}/lang/en/{$pluginname}.php";
+                } else {
+                    $path = get_plugin_directory($plugintype, $pluginname);
+                    $file = "{$path}/lang/en/{$plugintype}_{$pluginname}.php";
+                }
+                debugging("Invalid get_string() identifier: '{$identifier}' or component '{$component}'. " .
+                        "Perhaps you are missing \$string['{$identifier}'] = ''; in {$file}?", DEBUG_DEVELOPER);
                 return "[[$identifier]]";
             }
         }
@@ -6143,7 +6372,7 @@ class core_string_manager implements string_manager {
         }
 
         $countries = $this->load_component_strings('core_countries', $lang);
-        textlib_get_instance()->asort($countries);
+        collatorlib::asort($countries);
         if (!$returnall and !empty($CFG->allcountrycodes)) {
             $enabled = explode(',', $CFG->allcountrycodes);
             $return = array();
@@ -6315,12 +6544,13 @@ class core_string_manager implements string_manager {
 
             if (!empty($CFG->langcache) and !empty($this->menucache)) {
                 // cache the list so that it can be used next time
-                textlib_get_instance()->asort($languages);
+                collatorlib::asort($languages);
+                check_dir_exists(dirname($this->menucache), true, true);
                 file_put_contents($this->menucache, json_encode($languages));
             }
         }
 
-        textlib_get_instance()->asort($languages);
+        collatorlib::asort($languages);
 
         return $languages;
     }
@@ -6632,6 +6862,7 @@ class install_string_manager implements string_manager {
  * @return string The localized string.
  */
 function get_string($identifier, $component = '', $a = NULL) {
+    global $CFG;
 
     $identifier = clean_param($identifier, PARAM_STRINGID);
     if (empty($identifier)) {
@@ -6667,7 +6898,13 @@ function get_string($identifier, $component = '', $a = NULL) {
         }
     }
 
-    return get_string_manager()->get_string($identifier, $component, $a);
+    $result = get_string_manager()->get_string($identifier, $component, $a);
+
+    // Debugging feature lets you display string identifier and component
+    if (isset($CFG->debugstringids) && $CFG->debugstringids && optional_param('strings', 0, PARAM_INT)) {
+        $result .= ' {' . $identifier . '/' . $component . '}';
+    }
+    return $result;
 }
 
 /**
@@ -6739,7 +6976,6 @@ function get_list_of_charsets() {
 /**
  * Returns a list of valid and compatible themes
  *
- * @global object
  * @return array
  */
 function get_list_of_themes() {
@@ -6757,7 +6993,8 @@ function get_list_of_themes() {
         $theme = theme_config::load($themename);
         $themes[$themename] = $theme;
     }
-    asort($themes);
+
+    collatorlib::asort_objects_by_method($themes, 'get_theme_name');
 
     return $themes;
 }
@@ -7210,6 +7447,7 @@ function get_core_subsystems() {
             'fonts'       => NULL,
             'form'        => 'lib/form',
             'grades'      => 'grade',
+            'grading'     => 'grade/grading',
             'group'       => 'group',
             'help'        => NULL,
             'hub'         => NULL,
@@ -7234,11 +7472,10 @@ function get_core_subsystems() {
             'publish'     => 'course/publish',
             'question'    => 'question',
             'rating'      => 'rating',
-            'register'    => 'admin/registration',
+            'register'    => 'admin/registration', //TODO: this is wrong, unfortunately we would need to modify hub code to pass around the correct url
             'repository'  => 'repository',
             'rss'         => 'rss',
             'role'        => $CFG->admin.'/role',
-            'simpletest'  => NULL,
             'search'      => 'search',
             'table'       => NULL,
             'tag'         => 'tag',
@@ -7246,7 +7483,6 @@ function get_core_subsystems() {
             'user'        => 'user',
             'userkey'     => NULL,
             'webservice'  => 'webservice',
-            'xmldb'       => NULL,
         );
     }
 
@@ -7275,11 +7511,12 @@ function get_plugin_types($fullpaths=true) {
                       'editor'        => 'lib/editor',
                       'format'        => 'course/format',
                       'profilefield'  => 'user/profile/field',
-                      'report'        => $CFG->admin.'/report',
+                      'report'        => 'report',
                       'coursereport'  => 'course/report', // must be after system reports
                       'gradeexport'   => 'grade/export',
                       'gradeimport'   => 'grade/import',
                       'gradereport'   => 'grade/report',
+                      'gradingform'   => 'grade/grading/form',
                       'mnetservice'   => 'mnet/service',
                       'webservice'    => 'webservice',
                       'repository'    => 'repository',
@@ -7287,7 +7524,9 @@ function get_plugin_types($fullpaths=true) {
                       'qbehaviour'    => 'question/behaviour',
                       'qformat'       => 'question/format',
                       'plagiarism'    => 'plagiarism',
-                      'theme'         => 'theme'); // this is a bit hacky, themes may be in $CFG->themedir too
+                      'tool'          => $CFG->admin.'/tool',
+                      'theme'         => 'theme',  // this is a bit hacky, themes may be in $CFG->themedir too
+        );
 
         $mods = get_plugin_list('mod');
         foreach ($mods as $mod => $moddir) {
@@ -7373,7 +7612,8 @@ function get_plugin_list($plugintype) {
             if (in_array($pluginname, $ignored)) {
                 continue;
             }
-            if ($pluginname !== clean_param($pluginname, PARAM_SAFEDIR)) {
+            $pluginname = clean_param($pluginname, PARAM_PLUGIN);
+            if (empty($pluginname)) {
                 // better ignore plugins with problematic names here
                 continue;
             }
@@ -7389,45 +7629,96 @@ function get_plugin_list($plugintype) {
 }
 
 /**
- * Gets a list of all plugin API functions for given plugin type, function
- * name, and filename.
- * @param string $plugintype Plugin type, e.g. 'mod' or 'report'
- * @param string $function Name of function after the frankenstyle prefix;
- *   e.g. if the function is called report_courselist_hook then this value
- *   would be 'hook'
- * @param string $file Name of file that includes function within plugin,
- *   default 'lib.php'
- * @return Array of plugin frankenstyle (e.g. 'report_courselist', 'mod_forum')
- *   to valid, existing plugin function name (e.g. 'report_courselist_hook',
- *   'forum_hook')
+ * Get a list of all the plugins of a given type that contain a particular file.
+ * @param string $plugintype the type of plugin, e.g. 'mod' or 'report'.
+ * @param string $file the name of file that must be present in the plugin.
+ *      (e.g. 'view.php', 'db/install.xml').
+ * @param bool $include if true (default false), the file will be include_once-ed if found.
+ * @return array with plugin name as keys (e.g. 'forum', 'courselist') and the path
+ *      to the file relative to dirroot as value (e.g. "$CFG->dirroot/mod/forum/view.php").
  */
-function get_plugin_list_with_function($plugintype, $function, $file='lib.php') {
-    global $CFG; // mandatory in case it is referenced by include()d PHP script
+function get_plugin_list_with_file($plugintype, $file, $include = false) {
+    global $CFG; // Necessary in case it is referenced by include()d PHP scripts.
 
-    $result = array();
-    // Loop through list of plugins with given type
-    $list = get_plugin_list($plugintype);
-    foreach($list as $plugin => $dir) {
+    $plugins = array();
+
+    foreach(get_plugin_list($plugintype) as $plugin => $dir) {
         $path = $dir . '/' . $file;
-        // If file exists, require it and look for function
         if (file_exists($path)) {
-            include_once($path);
-            $fullfunction = $plugintype . '_' . $plugin . '_' . $function;
-            if (function_exists($fullfunction)) {
-                // Function exists with standard name. Store, indexed by
-                // frankenstyle name of plugin
-                $result[$plugintype . '_' . $plugin] = $fullfunction;
-            } else if ($plugintype === 'mod') {
-                // For modules, we also allow plugin without full frankenstyle
-                // but just starting with the module name
-                $shortfunction = $plugin . '_' . $function;
-                if (function_exists($shortfunction)) {
-                    $result[$plugintype . '_' . $plugin] = $shortfunction;
-                }
+            if ($include) {
+                include_once($path);
+            }
+            $plugins[$plugin] = $path;
+        }
+    }
+
+    return $plugins;
+}
+
+/**
+ * Get a list of all the plugins of a given type that define a certain API function
+ * in a certain file. The plugin component names and function names are returned.
+ *
+ * @param string $plugintype the type of plugin, e.g. 'mod' or 'report'.
+ * @param string $function the part of the name of the function after the
+ *      frankenstyle prefix. e.g 'hook' if you are looking for functions with
+ *      names like report_courselist_hook.
+ * @param string $file the name of file within the plugin that defines the
+ *      function. Defaults to lib.php.
+ * @return array with frankenstyle plugin names as keys (e.g. 'report_courselist', 'mod_forum')
+ *      and the function names as values (e.g. 'report_courselist_hook', 'forum_hook').
+ */
+function get_plugin_list_with_function($plugintype, $function, $file = 'lib.php') {
+    $pluginfunctions = array();
+    foreach (get_plugin_list_with_file($plugintype, $file, true) as $plugin => $notused) {
+        $fullfunction = $plugintype . '_' . $plugin . '_' . $function;
+
+        if (function_exists($fullfunction)) {
+            // Function exists with standard name. Store, indexed by
+            // frankenstyle name of plugin
+            $pluginfunctions[$plugintype . '_' . $plugin] = $fullfunction;
+
+        } else if ($plugintype === 'mod') {
+            // For modules, we also allow plugin without full frankenstyle
+            // but just starting with the module name
+            $shortfunction = $plugin . '_' . $function;
+            if (function_exists($shortfunction)) {
+                $pluginfunctions[$plugintype . '_' . $plugin] = $shortfunction;
             }
         }
     }
-    return $result;
+    return $pluginfunctions;
+}
+
+/**
+ * Get a list of all the plugins of a given type that define a certain class
+ * in a certain file. The plugin component names and class names are returned.
+ *
+ * @param string $plugintype the type of plugin, e.g. 'mod' or 'report'.
+ * @param string $class the part of the name of the class after the
+ *      frankenstyle prefix. e.g 'thing' if you are looking for classes with
+ *      names like report_courselist_thing. If you are looking for classes with
+ *      the same name as the plugin name (e.g. qtype_multichoice) then pass ''.
+ * @param string $file the name of file within the plugin that defines the class.
+ * @return array with frankenstyle plugin names as keys (e.g. 'report_courselist', 'mod_forum')
+ *      and the class names as values (e.g. 'report_courselist_thing', 'qtype_multichoice').
+ */
+function get_plugin_list_with_class($plugintype, $class, $file) {
+    if ($class) {
+        $suffix = '_' . $class;
+    } else {
+        $suffix = '';
+    }
+
+    $pluginclasses = array();
+    foreach (get_plugin_list_with_file($plugintype, $file, true) as $plugin => $notused) {
+        $classname = $plugintype . '_' . $plugin . $suffix;
+        if (class_exists($classname)) {
+            $pluginclasses[$plugintype . '_' . $plugin] = $classname;
+        }
+    }
+
+    return $pluginclasses;
 }
 
 /**
@@ -7481,23 +7772,43 @@ function get_list_of_plugins($directory='mod', $exclude='', $basedir='') {
  *
  * @param string $type Plugin type e.g. 'mod'
  * @param string $name Plugin name
- * @param string $feature Feature code (FEATURE_xx constant)
+ * @param string $feature Feature name
  * @param string $action Feature's action
  * @param string $options parameters of callback function, should be an array
  * @param mixed $default default value if callback function hasn't been defined
  * @return mixed
  */
 function plugin_callback($type, $name, $feature, $action, $options = null, $default=null) {
-    global $CFG;
+    global $CFG; // this is needed for require_once() bellow
 
-    $name = clean_param($name, PARAM_SAFEDIR);
-    $function = $name.'_'.$feature.'_'.$action;
-    $file = get_component_directory($type . '_' . $name) . '/lib.php';
+    $component = clean_param($type . '_' . $name, PARAM_COMPONENT);
+    if (empty($component)) {
+        throw new coding_exception('Invalid component used in plugin_callback():' . $type . '_' . $name);
+    }
+
+    list($type, $name) = normalize_component($component);
+    $component = $type . '_' . $name;
+
+    $function = $component.'_'.$feature.'_'.$action;
+    $oldfunction = $name.'_'.$feature.'_'.$action;
+
+    $dir = get_component_directory($component);
+    if (empty($dir)) {
+        throw new coding_exception('Invalid component used in plugin_callback():' . $type . '_' . $name);
+    }
 
     // Load library and look for function
-    if (file_exists($file)) {
-        require_once($file);
+    if (file_exists($dir.'/lib.php')) {
+        require_once($dir.'/lib.php');
     }
+
+    if (!function_exists($function) and function_exists($oldfunction)) {
+        if ($type !== 'mod' and $type !== 'core') {
+            debugging("Please use new function name $function instead of legacy $oldfunction");
+        }
+        $function = $oldfunction;
+    }
+
     if (function_exists($function)) {
         // Function exists, so just return function result
         $ret = call_user_func_array($function, (array)$options);
@@ -7523,24 +7834,30 @@ function plugin_callback($type, $name, $feature, $action, $options = null, $defa
 function plugin_supports($type, $name, $feature, $default = NULL) {
     global $CFG;
 
-    $name = clean_param($name, PARAM_SAFEDIR); //bit of extra security
+    if ($type === 'mod' and $name === 'NEWMODULE') {
+        //somebody forgot to rename the module template
+        return false;
+    }
+
+    $component = clean_param($type . '_' . $name, PARAM_COMPONENT);
+    if (empty($component)) {
+        throw new coding_exception('Invalid component used in plugin_supports():' . $type . '_' . $name);
+    }
 
     $function = null;
 
     if ($type === 'mod') {
         // we need this special case because we support subplugins in modules,
         // otherwise it would end up in infinite loop
-        if ($name === 'NEWMODULE') {
-            //somebody forgot to rename the module template
-            return false;
-        }
         if (file_exists("$CFG->dirroot/mod/$name/lib.php")) {
             include_once("$CFG->dirroot/mod/$name/lib.php");
-            $function = $type.'_'.$name.'_supports';
+            $function = $component.'_supports';
             if (!function_exists($function)) {
                 // legacy non-frankenstyle function name
                 $function = $name.'_supports';
             }
+        } else {
+            // invalid module
         }
 
     } else {
@@ -7550,7 +7867,7 @@ function plugin_supports($type, $name, $feature, $default = NULL) {
         }
         if (file_exists("$path/lib.php")) {
             include_once("$path/lib.php");
-            $function = $type.'_'.$name.'_supports';
+            $function = $component.'_supports';
         }
     }
 
@@ -8169,124 +8486,6 @@ function upgrade_set_timeout($max_execution_time=300) {
 /// MISCELLANEOUS ////////////////////////////////////////////////////////////////////
 
 /**
- * Notify admin users or admin user of any failed logins (since last notification).
- *
- * Note that this function must be only executed from the cron script
- * It uses the cache_flags system to store temporary records, deleting them
- * by name before finishing
- *
- * @global object
- * @global object
- * @uses HOURSECS
- */
-function notify_login_failures() {
-    global $CFG, $DB, $OUTPUT;
-
-    $recip = get_users_from_config($CFG->notifyloginfailures, 'moodle/site:config');
-
-    if (empty($CFG->lastnotifyfailure)) {
-        $CFG->lastnotifyfailure=0;
-    }
-
-    // we need to deal with the threshold stuff first.
-    if (empty($CFG->notifyloginthreshold)) {
-        $CFG->notifyloginthreshold = 10; // default to something sensible.
-    }
-
-/// Get all the IPs with more than notifyloginthreshold failures since lastnotifyfailure
-/// and insert them into the cache_flags temp table
-    $sql = "SELECT ip, COUNT(*)
-              FROM {log}
-             WHERE module = 'login' AND action = 'error'
-                   AND time > ?
-          GROUP BY ip
-            HAVING COUNT(*) >= ?";
-    $params = array($CFG->lastnotifyfailure, $CFG->notifyloginthreshold);
-    $rs = $DB->get_recordset_sql($sql, $params);
-    foreach ($rs as $iprec) {
-        if (!empty($iprec->ip)) {
-            set_cache_flag('login_failure_by_ip', $iprec->ip, '1', 0);
-        }
-    }
-    $rs->close();
-
-/// Get all the INFOs with more than notifyloginthreshold failures since lastnotifyfailure
-/// and insert them into the cache_flags temp table
-    $sql = "SELECT info, count(*)
-              FROM {log}
-             WHERE module = 'login' AND action = 'error'
-                   AND time > ?
-          GROUP BY info
-            HAVING count(*) >= ?";
-    $params = array($CFG->lastnotifyfailure, $CFG->notifyloginthreshold);
-    $rs = $DB->get_recordset_sql($sql, $params);
-    foreach ($rs as $inforec) {
-        if (!empty($inforec->info)) {
-            set_cache_flag('login_failure_by_info', $inforec->info, '1', 0);
-        }
-    }
-    $rs->close();
-
-/// Now, select all the login error logged records belonging to the ips and infos
-/// since lastnotifyfailure, that we have stored in the cache_flags table
-    $sql = "SELECT l.*, u.firstname, u.lastname
-              FROM {log} l
-              JOIN {cache_flags} cf ON l.ip = cf.name
-         LEFT JOIN {user} u         ON l.userid = u.id
-             WHERE l.module = 'login' AND l.action = 'error'
-                   AND l.time > ?
-                   AND cf.flagtype = 'login_failure_by_ip'
-        UNION ALL
-            SELECT l.*, u.firstname, u.lastname
-              FROM {log} l
-              JOIN {cache_flags} cf ON l.info = cf.name
-         LEFT JOIN {user} u         ON l.userid = u.id
-             WHERE l.module = 'login' AND l.action = 'error'
-                   AND l.time > ?
-                   AND cf.flagtype = 'login_failure_by_info'
-          ORDER BY time DESC";
-    $params = array($CFG->lastnotifyfailure, $CFG->lastnotifyfailure);
-
-/// Init some variables
-    $count = 0;
-    $messages = '';
-/// Iterate over the logs recordset
-    $rs = $DB->get_recordset_sql($sql, $params);
-    foreach ($rs as $log) {
-        $log->time = userdate($log->time);
-        $messages .= get_string('notifyloginfailuresmessage','',$log)."\n";
-        $count++;
-    }
-    $rs->close();
-
-/// If we haven't run in the last hour and
-/// we have something useful to report and we
-/// are actually supposed to be reporting to somebody
-    if ((time() - HOURSECS) > $CFG->lastnotifyfailure && $count > 0 && is_array($recip) && count($recip) > 0) {
-        $site = get_site();
-        $subject = get_string('notifyloginfailuressubject', '', format_string($site->fullname));
-    /// Calculate the complete body of notification (start + messages + end)
-        $body = get_string('notifyloginfailuresmessagestart', '', $CFG->wwwroot) .
-                (($CFG->lastnotifyfailure != 0) ? '('.userdate($CFG->lastnotifyfailure).')' : '')."\n\n" .
-                $messages .
-                "\n\n".get_string('notifyloginfailuresmessageend','',$CFG->wwwroot)."\n\n";
-
-    /// For each destination, send mail
-        mtrace('Emailing admins about '. $count .' failed login attempts');
-        foreach ($recip as $admin) {
-            //emailing the admins directly rather than putting these through the messaging system
-            email_to_user($admin,get_admin(), $subject, $body);
-        }
-
-    /// Update lastnotifyfailure with current time
-        set_config('lastnotifyfailure', time());
-    }
-
-/// Finally, delete all the temp records we have created in cache_flags
-    $DB->delete_records_select('cache_flags', "flagtype IN ('login_failure_by_ip', 'login_failure_by_info')");
-}
-
-/**
  * Sets the system locale
  *
  * @todo Finish documenting this function
@@ -8619,12 +8818,17 @@ function generate_password($maxlen=10) {
         $filler1 = $fillers[rand(0, strlen($fillers) - 1)];
         $password = $word1 . $filler1 . $word2;
     } else {
-        $maxlen = !empty($CFG->minpasswordlength) ? $CFG->minpasswordlength : 0;
+        $minlen = !empty($CFG->minpasswordlength) ? $CFG->minpasswordlength : 0;
         $digits = $CFG->minpassworddigits;
         $lower = $CFG->minpasswordlower;
         $upper = $CFG->minpasswordupper;
         $nonalphanum = $CFG->minpasswordnonalphanum;
-        $additional = $maxlen - ($lower + $upper + $digits + $nonalphanum);
+        $total = $lower + $upper + $digits + $nonalphanum;
+        // minlength should be the greater one of the two ( $minlen and $total )
+        $minlen = $minlen < $total ? $total : $minlen;
+        // maxlen can never be smaller than minlen
+        $maxlen = $minlen > $maxlen ? $minlen : $maxlen;
+        $additional = $maxlen - $total;
 
         // Make sure we have enough characters to fulfill
         // complexity requirements
@@ -9675,11 +9879,6 @@ function get_performance_info() {
     $info['html'] .= '<span class="dbqueries">DB reads/writes: '.$info['dbqueries'].'</span> ';
     $info['txt'] .= 'db reads/writes: '.$info['dbqueries'].' ';
 
-    if (!empty($PERF->profiling) && $PERF->profiling) {
-        require_once($CFG->dirroot .'/lib/profilerlib.php');
-        $info['html'] .= '<span class="profilinginfo">'.Profiler::get_profiling(array('-R')).'</span>';
-    }
-
     if (function_exists('posix_times')) {
         $ptimes = posix_times();
         if (is_array($ptimes)) {
@@ -9761,9 +9960,12 @@ function remove_dir($dir, $content_only=false) {
     }
     closedir($handle);
     if ($content_only) {
+        clearstatcache(); // make sure file stat cache is properly invalidated
         return $result;
     }
-    return rmdir($dir); // if anything left the result will be false, no need for && $result
+    $result = rmdir($dir); // if anything left the result will be false, no need for && $result
+    clearstatcache(); // make sure file stat cache is properly invalidated
+    return $result;
 }
 
 /**

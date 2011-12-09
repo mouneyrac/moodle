@@ -76,7 +76,7 @@ class blog_edit_form extends moodleform {
                     $mform->addElement('header', 'assochdr', get_string('associations', 'blog'));
                     $context = get_context_instance(CONTEXT_COURSE, $courseid);
                     $a = new stdClass();
-                    $a->coursename = $course->fullname;
+                    $a->coursename = format_string($course->fullname, true, array('context' => $context));
                     $contextid = $context->id;
                 } else {
                     $sql = 'SELECT fullname FROM {course} cr LEFT JOIN {context} ct ON ct.instanceid = cr.id WHERE ct.id = ?';
@@ -95,7 +95,7 @@ class blog_edit_form extends moodleform {
                     $a->modname = $mod->name;
                     $context = get_context_instance(CONTEXT_MODULE, $modid);
                 } else {
-                    $context = $DB->get_record('context', array('id' => $entry->modassoc));
+                    $context = get_context_instance_by_id($entry->modassoc);
                     $cm = $DB->get_record('course_modules', array('id' => $context->instanceid));
                     $a = new stdClass();
                     $a->modtype = $DB->get_field('modules', 'name', array('id' => $cm->module));
@@ -134,7 +134,7 @@ class blog_edit_form extends moodleform {
 
         // validate course association
         if (!empty($data['courseassoc']) && has_capability('moodle/blog:associatecourse', $sitecontext)) {
-            $coursecontext = $DB->get_record('context', array('id' => $data['courseassoc'], 'contextlevel' => CONTEXT_COURSE));
+            $coursecontext = get_context_instance(CONTEXT_COURSE, $data['courseassoc']);
 
             if ($coursecontext)  {
                 if (!is_enrolled($coursecontext) and !is_viewing($coursecontext)) {
@@ -149,12 +149,12 @@ class blog_edit_form extends moodleform {
         if (!empty($data['modassoc'])) {
             $modcontextid = $data['modassoc'];
 
-            $modcontext = $DB->get_record('context', array('id' => $modcontextid, 'contextlevel' => CONTEXT_MODULE));
+            $modcontext = get_context_instance(CONTEXT_MODULE, $modcontextid);
 
             if ($modcontext) {
                 // get context of the mod's course
                 $path = explode('/', $modcontext->path);
-                $coursecontext = $DB->get_record('context', array('id' => $path[(count($path) - 2)]));
+                $coursecontext = get_context_instance_by_id($path[(count($path) - 2)]);
 
                 // ensure only one course is associated
                 if (!empty($data['courseassoc'])) {

@@ -693,6 +693,62 @@ class moodlelib_test extends UnitTestCase {
                 ',9789,42897');
     }
 
+    function test_clean_param_component() {
+        // please note the cleaning of component names is very strict, no guessing here
+        $this->assertIdentical(clean_param('mod_forum', PARAM_COMPONENT), 'mod_forum');
+        $this->assertIdentical(clean_param('block_online_users', PARAM_COMPONENT), 'block_online_users');
+        $this->assertIdentical(clean_param('block_blond_online_users', PARAM_COMPONENT), 'block_blond_online_users');
+        $this->assertIdentical(clean_param('mod_something2', PARAM_COMPONENT), 'mod_something2');
+        $this->assertIdentical(clean_param('forum', PARAM_COMPONENT), 'forum');
+        $this->assertIdentical(clean_param('user', PARAM_COMPONENT), 'user');
+        $this->assertIdentical(clean_param('rating', PARAM_COMPONENT), 'rating');
+        $this->assertIdentical(clean_param('mod_2something', PARAM_COMPONENT), '');
+        $this->assertIdentical(clean_param('2mod_something', PARAM_COMPONENT), '');
+        $this->assertIdentical(clean_param('mod_something_xx', PARAM_COMPONENT), '');
+        $this->assertIdentical(clean_param('auth_something__xx', PARAM_COMPONENT), '');
+        $this->assertIdentical(clean_param('mod_Something', PARAM_COMPONENT), '');
+        $this->assertIdentical(clean_param('mod_somethíng', PARAM_COMPONENT), '');
+        $this->assertIdentical(clean_param('auth_xx-yy', PARAM_COMPONENT), '');
+        $this->assertIdentical(clean_param('_auth_xx', PARAM_COMPONENT), '');
+        $this->assertIdentical(clean_param('a2uth_xx', PARAM_COMPONENT), '');
+        $this->assertIdentical(clean_param('auth_xx_', PARAM_COMPONENT), '');
+        $this->assertIdentical(clean_param('auth_xx.old', PARAM_COMPONENT), '');
+        $this->assertIdentical(clean_param('_user', PARAM_COMPONENT), '');
+        $this->assertIdentical(clean_param('2rating', PARAM_COMPONENT), '');
+        $this->assertIdentical(clean_param('user_', PARAM_COMPONENT), '');
+    }
+
+    function test_clean_param_plugin() {
+        // please note the cleaning of plugin names is very strict, no guessing here
+        $this->assertIdentical(clean_param('forum', PARAM_PLUGIN), 'forum');
+        $this->assertIdentical(clean_param('forum2', PARAM_PLUGIN), 'forum2');
+        $this->assertIdentical(clean_param('online_users', PARAM_PLUGIN), 'online_users');
+        $this->assertIdentical(clean_param('blond_online_users', PARAM_PLUGIN), 'blond_online_users');
+        $this->assertIdentical(clean_param('online__users', PARAM_PLUGIN), '');
+        $this->assertIdentical(clean_param('forum ', PARAM_PLUGIN), '');
+        $this->assertIdentical(clean_param('forum.old', PARAM_PLUGIN), '');
+        $this->assertIdentical(clean_param('xx-yy', PARAM_PLUGIN), '');
+        $this->assertIdentical(clean_param('2xx', PARAM_PLUGIN), '');
+        $this->assertIdentical(clean_param('Xx', PARAM_PLUGIN), '');
+        $this->assertIdentical(clean_param('_xx', PARAM_PLUGIN), '');
+        $this->assertIdentical(clean_param('xx_', PARAM_PLUGIN), '');
+    }
+
+    function test_clean_param_area() {
+        // please note the cleaning of area names is very strict, no guessing here
+        $this->assertIdentical(clean_param('something', PARAM_AREA), 'something');
+        $this->assertIdentical(clean_param('something2', PARAM_AREA), 'something2');
+        $this->assertIdentical(clean_param('some_thing', PARAM_AREA), 'some_thing');
+        $this->assertIdentical(clean_param('some_thing_xx', PARAM_AREA), 'some_thing_xx');
+        $this->assertIdentical(clean_param('_something', PARAM_AREA), '');
+        $this->assertIdentical(clean_param('something_', PARAM_AREA), '');
+        $this->assertIdentical(clean_param('2something', PARAM_AREA), '');
+        $this->assertIdentical(clean_param('Something', PARAM_AREA), '');
+        $this->assertIdentical(clean_param('some-thing', PARAM_AREA), '');
+        $this->assertIdentical(clean_param('somethííng', PARAM_AREA), '');
+        $this->assertIdentical(clean_param('something.x', PARAM_AREA), '');
+    }
+
     function test_clean_param_text() {
         $this->assertEqual(PARAM_TEXT, PARAM_MULTILANG);
         //standard
@@ -1145,6 +1201,81 @@ class moodlelib_test extends UnitTestCase {
         } catch (Exception $ex) {
             $this->assertTrue(true);
         }
+    }
+
+    public function test_get_extra_user_fields() {
+        global $CFG;
+        $oldshowuseridentity = $CFG->showuseridentity;
+
+        // It would be really nice if there were a way to 'mock' has_capability
+        // checks (either to return true or false) but as there is not, this
+        // test doesn't test the capability check. Presumably, anyone running
+        // unit tests will have the capability.
+        $context = context_system::instance();
+
+        // No fields
+        $CFG->showuseridentity = '';
+        $this->assertEqual(array(), get_extra_user_fields($context));
+
+        // One field
+        $CFG->showuseridentity = 'frog';
+        $this->assertEqual(array('frog'), get_extra_user_fields($context));
+
+        // Two fields
+        $CFG->showuseridentity = 'frog,zombie';
+        $this->assertEqual(array('frog', 'zombie'), get_extra_user_fields($context));
+
+        // No fields, except
+        $CFG->showuseridentity = '';
+        $this->assertEqual(array(), get_extra_user_fields($context, array('frog')));
+
+        // One field
+        $CFG->showuseridentity = 'frog';
+        $this->assertEqual(array(), get_extra_user_fields($context, array('frog')));
+
+        // Two fields
+        $CFG->showuseridentity = 'frog,zombie';
+        $this->assertEqual(array('zombie'), get_extra_user_fields($context, array('frog')));
+
+        // As long as this test passes, the value will be set back. This is only
+        // in-memory anyhow
+        $CFG->showuseridentity = $oldshowuseridentity;
+    }
+
+    public function test_get_extra_user_fields_sql() {
+        global $CFG;
+        $oldshowuseridentity = $CFG->showuseridentity;
+        $context = context_system::instance();
+
+        // No fields
+        $CFG->showuseridentity = '';
+        $this->assertEqual('', get_extra_user_fields_sql($context));
+
+        // One field
+        $CFG->showuseridentity = 'frog';
+        $this->assertEqual(', frog', get_extra_user_fields_sql($context));
+
+        // Two fields with table prefix
+        $CFG->showuseridentity = 'frog,zombie';
+        $this->assertEqual(', u1.frog, u1.zombie', get_extra_user_fields_sql($context, 'u1'));
+
+        // Two fields with field prefix
+        $CFG->showuseridentity = 'frog,zombie';
+        $this->assertEqual(', frog AS u_frog, zombie AS u_zombie',
+                get_extra_user_fields_sql($context, '', 'u_'));
+
+        // One field excluded
+        $CFG->showuseridentity = 'frog';
+        $this->assertEqual('', get_extra_user_fields_sql($context, '', '', array('frog')));
+
+        // Two fields, one excluded, table+field prefix
+        $CFG->showuseridentity = 'frog,zombie';
+        $this->assertEqual(', u1.zombie AS u_zombie',
+                get_extra_user_fields_sql($context, 'u1', 'u_', array('frog')));
+
+        // As long as this test passes, the value will be set back. This is only
+        // in-memory anyhow
+        $CFG->showuseridentity = $oldshowuseridentity;
     }
 
     public function test_userdate() {

@@ -85,8 +85,8 @@ class lesson_page_type_shortanswer extends lesson_page {
 
             if ($useregexp) { //we are using 'normal analysis', which ignores case
                 $ignorecase = '';
-                if (substr($expectedanswer,0,-2) == '/i') {
-                    $expectedanswer = substr($expectedanswer,0,-2);
+                if (substr($expectedanswer, -2) == '/i') {
+                    $expectedanswer = substr($expectedanswer, 0, -2);
                     $ignorecase = 'i';
                 }
             } else {
@@ -260,7 +260,7 @@ class lesson_page_type_shortanswer extends lesson_page {
                     $answerdata->answers[] = array(get_string("nooneansweredthisquestion", "lesson"), " ");
                 }
                 $i++;
-            } else if ($useranswer != null && ($answer->id == $useranswer->answerid || ($answer == end($answers) && empty($answerdata)))) {
+            } else if ($useranswer != null && ($answer->id == $useranswer->answerid || $answer == end($answers))) {
                  // get in here when what the user entered is not one of the answers
                 $data = '<input type="text" size="50" disabled="disabled" readonly="readonly" value="'.s($useranswer->useranswer).'">';
                 if (isset($pagestats[$this->properties->id][$useranswer->useranswer])) {

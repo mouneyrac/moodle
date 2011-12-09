@@ -640,8 +640,8 @@ abstract class repository {
         $fileitemid = clean_param($params['itemid'],    PARAM_INT);
         $filename   = clean_param($params['filename'],  PARAM_FILE);
         $filepath   = clean_param($params['filepath'],  PARAM_PATH);;
-        $filearea   = clean_param($params['filearea'],  PARAM_ALPHAEXT);
-        $component  = clean_param($params['component'], PARAM_ALPHAEXT);
+        $filearea   = clean_param($params['filearea'],  PARAM_AREA);
+        $component  = clean_param($params['component'], PARAM_COMPONENT);
 
         $context    = get_context_instance_by_id($contextid);
         // the file needs to copied to draft area
@@ -1310,14 +1310,14 @@ abstract class repository {
      */
     public function prepare_file($filename) {
         global $CFG;
-        if (!file_exists($CFG->dataroot.'/temp/download')) {
-            mkdir($CFG->dataroot.'/temp/download/', $CFG->directorypermissions, true);
+        if (!file_exists($CFG->tempdir.'/download')) {
+            mkdir($CFG->tempdir.'/download/', $CFG->directorypermissions, true);
         }
-        if (is_dir($CFG->dataroot.'/temp/download')) {
-            $dir = $CFG->dataroot.'/temp/download/';
+        if (is_dir($CFG->tempdir.'/download')) {
+            $dir = $CFG->tempdir.'/download/';
         }
         if (empty($filename)) {
-            $filename = uniqid('repo').'_'.time().'.tmp';
+            $filename = uniqid('repo', true).'_'.time().'.tmp';
         }
         if (file_exists($dir.$filename)) {
             $filename = uniqid('m').$filename;
@@ -1354,6 +1354,31 @@ abstract class repository {
         $c = new curl;
         $c->download(array(array('url'=>$url, 'file'=>$fp)));
         return array('path'=>$path, 'url'=>$url);
+    }
+
+    /**
+     * Return size of a file in bytes.
+     *
+     * @param string $source encoded and serialized data of file
+     * @return integer file size in bytes
+     */
+    public function get_file_size($source) {
+        $browser    = get_file_browser();
+        $params     = unserialize(base64_decode($source));
+        $contextid  = clean_param($params['contextid'], PARAM_INT);
+        $fileitemid = clean_param($params['itemid'], PARAM_INT);
+        $filename   = clean_param($params['filename'], PARAM_FILE);
+        $filepath   = clean_param($params['filepath'], PARAM_PATH);
+        $filearea   = clean_param($params['filearea'], PARAM_AREA);
+        $component  = clean_param($params['component'], PARAM_COMPONENT);
+        $context    = get_context_instance_by_id($contextid);
+        $file_info  = $browser->get_file_info($context, $component, $filearea, $fileitemid, $filepath, $filename);
+        if (!empty($file_info)) {
+            $filesize = $file_info->get_filesize();
+        } else {
+            $filesize = null;
+        }
+        return $filesize;
     }
 
     /**
@@ -1594,7 +1619,7 @@ abstract class repository {
                         $pass = true;
                     } else {
                         foreach ($extensions as $ext) {
-                            if (preg_match('#'.$ext.'$#', $value['title'])) {
+                            if (preg_match('#'.$ext.'$#i', $value['title'])) {
                                 $pass = true;
                             }
                         }
@@ -1773,8 +1798,8 @@ abstract class repository {
     }
 
     public function get_short_filename($str, $maxlength) {
-        if (strlen($str) >= $maxlength) {
-            return trim(substr($str, 0, $maxlength)).'...';
+        if (textlib::strlen($str) >= $maxlength) {
+            return trim(textlib::substr($str, 0, $maxlength)).'...';
         } else {
             return $str;
         }
@@ -1862,7 +1887,7 @@ final class repository_instance_form extends moodleform {
         $mform->addElement('hidden', 'new',   $this->plugin);
         $mform->setType('new', PARAM_FORMAT);
         $mform->addElement('hidden', 'plugin', $this->plugin);
-        $mform->setType('plugin', PARAM_SAFEDIR);
+        $mform->setType('plugin', PARAM_PLUGIN);
         $mform->addElement('hidden', 'typeid', $this->typeid);
         $mform->setType('typeid', PARAM_INT);
         $mform->addElement('hidden', 'contextid', $this->contextid);
@@ -1976,7 +2001,7 @@ final class repository_type_form extends moodleform {
         $mform->addElement('hidden', 'action', $this->action);
         $mform->setType('action', PARAM_TEXT);
         $mform->addElement('hidden', 'repos', $this->plugin);
-        $mform->setType('repos', PARAM_SAFEDIR);
+        $mform->setType('repos', PARAM_PLUGIN);
 
         // let the plugin add its specific fields
         $classname = 'repository_' . $this->plugin;

@@ -615,7 +615,8 @@ class mssql_native_moodle_database extends moodle_database {
             return $sql;
         }
         /// ok, we have verified sql statement with ? and correct number of params
-        $return = strtok($sql, '?');
+        $parts = explode('?', $sql);
+        $return = array_shift($parts);
         foreach ($params as $param) {
             if (is_bool($param)) {
                 $return .= (int)$param;
@@ -640,7 +641,7 @@ class mssql_native_moodle_database extends moodle_database {
                 $return .= "N'$param'";
             }
 
-            $return .= strtok('?');
+            $return .= array_shift($parts);
         }
         return $return;
     }
@@ -1226,17 +1227,45 @@ s only returning name of SQL substring function, it now requires all parameters.
         return true;
     }
 
-    public function get_session_lock($rowid) {
+    /**
+     * Obtain session lock
+     * @param int $rowid id of the row with session record
+     * @param int $timeout max allowed time to wait for the lock in seconds
+     * @return bool success
+     */
+    public function get_session_lock($rowid, $timeout) {
         if (!$this->session_lock_supported()) {
             return;
         }
-        parent::get_session_lock($rowid);
+        parent::get_session_lock($rowid, $timeout);
+
+        $timeoutmilli = $timeout * 1000;
 
         $fullname = $this->dbname.'-'.$this->prefix.'-session-'.$rowid;
-        $sql = "sp_getapplock '$fullname', 'Exclusive', 'Session',  120000";
+        // There is one bug in PHP/freetds (both reproducible with mssql_query()
+        // and its mssql_init()/mssql_bind()/mssql_execute() alternative) for
+        // stored procedures, causing scalar results of the execution
+        // to be cast to boolean (true/fals). Here there is one
+        // workaround that forces the return of one recordset resource.
+        // $sql = "sp_getapplock '$fullname', 'Exclusive', 'Session',  $timeoutmilli";
+        $sql = "BEGIN
+                    DECLARE @result INT
+                    EXECUTE @result = sp_getapplock @Resource='$fullname',
+                                                    @LockMode='Exclusive',
+                                                    @LockOwner='Session',
+                                                    @LockTimeout='$timeoutmilli'
+                    SELECT @result
+                END";
         $this->query_start($sql, null, SQL_QUERY_AUX);
         $result = mssql_query($sql, $this->mssql);
         $this->query_end($result);
+
+        if ($result) {
+            $row = mssql_fetch_row($result);
+            if ($row[0] < 0) {
+                throw new dml_sessionwait_exception();
+            }
+        }
 
         $this->free_result($result);
     }

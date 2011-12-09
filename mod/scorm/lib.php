@@ -28,6 +28,8 @@ define('SCORM_TYPE_LOCALSYNC', 'localsync');
 define('SCORM_TYPE_EXTERNAL', 'external');
 /** SCORM_TYPE_IMSREPOSITORY = imsrepository */
 define('SCORM_TYPE_IMSREPOSITORY', 'imsrepository');
+/** SCORM_TYPE_AICCURL = external AICC url */
+define('SCORM_TYPE_AICCURL', 'aiccurl');
 
 define('SCORM_TOC_SIDE', 0);
 define('SCORM_TOC_HIDDEN', 1);
@@ -103,13 +105,12 @@ function scorm_add_instance($scorm, $mform=null) {
 
     } else if ($record->scormtype === SCORM_TYPE_LOCALSYNC) {
         $record->reference = $scorm->packageurl;
-
     } else if ($record->scormtype === SCORM_TYPE_EXTERNAL) {
         $record->reference = $scorm->packageurl;
-
     } else if ($record->scormtype === SCORM_TYPE_IMSREPOSITORY) {
         $record->reference = $scorm->packageurl;
-
+    } else if ($record->scormtype === SCORM_TYPE_AICCURL) {
+        $record->reference = $scorm->packageurl;
     } else {
         return false;
     }
@@ -503,6 +504,13 @@ function scorm_cron () {
         $scormsupdate = $DB->get_records('scorm', array('updatefreq'=>UPDATE_EVERYDAY));
         foreach ($scormsupdate as $scormupdate) {
             scorm_parse($scormupdate, true);
+        }
+
+        //now clear out AICC session table with old session data
+        $cfg_scorm = get_config('scorm');
+        if (!empty($cfg_scorm->allowaicchacp)) {
+            $expiretime = time() - ($cfg_scorm->aicchacpkeepsessiondata*24*60*60);
+            $DB->delete_records_select('scorm_aicc_session', 'timemodified < ?', array($expiretime));
         }
     }
 
@@ -940,6 +948,7 @@ function scorm_supports($feature) {
         case FEATURE_GRADE_HAS_GRADE:         return true;
         case FEATURE_GRADE_OUTCOMES:          return true;
         case FEATURE_BACKUP_MOODLE2:          return true;
+        case FEATURE_SHOW_DESCRIPTION:        return true;
 
         default: return null;
     }
@@ -975,7 +984,7 @@ function scorm_extend_navigation($navigation, $course, $module, $cm) {
 function scorm_debug_log_filename($type, $scoid) {
     global $CFG, $USER;
 
-    $logpath = $CFG->dataroot.'/temp/scormlogs';
+    $logpath = $CFG->tempdir.'/scormlogs';
     $logfile = $logpath.'/'.$type.'debug_'.$USER->id.'_'.$scoid.'.log';
     return $logfile;
 }
@@ -993,7 +1002,7 @@ function scorm_debug_log_write($type, $text, $scoid) {
     if (!$debugenablelog || empty($text)) {
         return;
     }
-    if (make_upload_directory('temp/scormlogs/')) {
+    if (make_temp_directory('scormlogs/')) {
         $logfile = scorm_debug_log_filename($type, $scoid);
         @file_put_contents($logfile, date('Y/m/d H:i:s O')." DEBUG $text\r\n", FILE_APPEND);
     }

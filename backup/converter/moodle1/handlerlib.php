@@ -800,6 +800,7 @@ class moodle1_course_outline_handler extends moodle1_xml_handler {
                         'showavailability'          => 0,
                         'availability_info'         => array(),
                         'visibleold'                => 1,
+                        'showdescription'           => 0,
                     ),
                     'dropfields' => array(
                         'instance',
@@ -1221,11 +1222,14 @@ class moodle1_question_bank_handler extends moodle1_xml_handler {
         }
         unset($data['image']);
 
+        // replay the upgrade step 2011060301 - Rename field defaultgrade on table question to defaultmark
+        $data['defaultmark'] = $data['defaultgrade'];
+
         // write the common question data
         $this->xmlwriter->begin_tag('question', array('id' => $data['id']));
         foreach (array(
             'parent', 'name', 'questiontext', 'questiontextformat',
-            'generalfeedback', 'generalfeedbackformat', 'defaultgrade',
+            'generalfeedback', 'generalfeedbackformat', 'defaultmark',
             'penalty', 'qtype', 'length', 'stamp', 'version', 'hidden',
             'timecreated', 'timemodified', 'createdby', 'modifiedby'
         ) as $fieldname) {
@@ -1775,7 +1779,7 @@ abstract class moodle1_qtype_handler extends moodle1_plugin_handler {
      * @param int $oldquestiontextformat
      * @return array
      */
-    protected function get_default_numerical_options($oldquestiontextformat) {
+    protected function get_default_numerical_options($oldquestiontextformat, $units) {
         global $CFG;
 
         // replay the upgrade step 2009100100 - new table
@@ -1794,6 +1798,11 @@ abstract class moodle1_qtype_handler extends moodle1_plugin_handler {
             $options['instructionsformat'] = FORMAT_HTML;
         } else {
             $options['instructionsformat'] = $oldquestiontextformat;
+        }
+
+        // Set a good default, depending on whether there are any units defined.
+        if (empty($units)) {
+            $options['showunits'] = 3;
         }
 
         return $options;

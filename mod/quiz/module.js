@@ -34,6 +34,14 @@ M.mod_quiz.init_review_form = function(Y) {
     Y.on('submit', function(e) { e.halt(); }, '.questionflagsaveform');
 };
 
+M.mod_quiz.init_comment_popup = function(Y) {
+    // Add a close button to the window.
+    var closebutton = Y.Node.create('<input type="button" />');
+    closebutton.set('value', M.util.get_string('cancel', 'moodle'));
+    Y.one('#id_submitbutton').ancestor().append(closebutton);
+    Y.on('click', function() { window.close() }, closebutton);
+}
+
 // Code for updating the countdown timer that is used on timed quizzes.
 M.mod_quiz.timer = {
     // YUI object.
@@ -105,7 +113,7 @@ M.mod_quiz.timer = {
         var minutes = Math.floor(secondsleft/60);
         secondsleft -= minutes*60;
         var seconds = secondsleft;
-        Y.one('#quiz-time-left').setContent('' + hours + ':' +
+        Y.one('#quiz-time-left').setContent(hours + ':' +
                 M.mod_quiz.timer.two_digit(minutes) + ':' +
                 M.mod_quiz.timer.two_digit(seconds));
 
@@ -162,7 +170,7 @@ M.mod_quiz.nav.init = function(Y) {
 
     if (Y.one('a.endtestlink')) {
         Y.on('click', function(e) {
-            e.preventDefault(e);
+            e.preventDefault();
             Y.one('#followingpage').set('value', -1);
             Y.one('#responseform').submit();
         }, 'a.endtestlink');
@@ -214,6 +222,23 @@ M.mod_quiz.secure_window = {
             return;
         }
         e.halt();
+    },
+
+    /**
+     * Event handler for the quiz start attempt button.
+     */
+    start_attempt_action: function(e, args) {
+        if (args.startattemptwarning == '') {
+            openpopup(e, args);
+        } else {
+            M.util.show_confirm_dialog(e, {
+                message: args.startattemptwarning,
+                callback: function() {
+                    openpopup(e, args);
+                },
+                continuelabel: M.util.get_string('startattempt', 'quiz')
+            });
+        }
     },
 
     init_close_button: function(Y, url) {

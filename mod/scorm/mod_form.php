@@ -62,6 +62,10 @@ class mod_scorm_mod_form extends moodleform_mod {
             $options[SCORM_TYPE_IMSREPOSITORY] = get_string('typeimsrepository', 'scorm');
         }
 
+        if ($cfg_scorm->allowtypeexternalaicc) {
+            $options[SCORM_TYPE_AICCURL] = get_string('typeaiccurl', 'scorm');
+        }
+
         // Reference
         if (count($options) > 1) {
             $mform->addElement('select', 'scormtype', get_string('scormtype', 'scorm'), $options);
@@ -328,8 +332,8 @@ class mod_scorm_mod_form extends moodleform_mod {
                     return $errors;
                 }
                 $file = reset($files);
-                $filename = $CFG->dataroot.'/temp/scormimport/scrom_'.time();
-                make_upload_directory('temp/scormimport');
+                $filename = $CFG->tempdir.'/scormimport/scrom_'.time();
+                make_temp_directory('scormimport');
                 $file->copy_content_to($filename);
 
                 $packer = get_file_packer('application/zip');
@@ -360,19 +364,24 @@ class mod_scorm_mod_form extends moodleform_mod {
         } else if ($type === SCORM_TYPE_EXTERNAL) {
             $reference = $data['packageurl'];
             if (!preg_match('/(http:\/\/|https:\/\/|www).*\/imsmanifest.xml$/i', $reference)) {
-                $errors['packageurl'] = get_string('required'); // TODO: improve help
+                $errors['packageurl'] = get_string('invalidurl', 'scorm');
             }
 
         } else if ($type === 'packageurl') {
             $reference = $data['reference'];
             if (!preg_match('/(http:\/\/|https:\/\/|www).*(\.zip|\.pif)$/i', $reference)) {
-                $errors['packageurl'] = get_string('required'); // TODO: improve help
+                $errors['packageurl'] = get_string('invalidurl', 'scorm');
             }
 
         } else if ($type === SCORM_TYPE_IMSREPOSITORY) {
             $reference = $data['packageurl'];
             if (stripos($reference, '#') !== 0) {
-                $errors['packageurl'] = get_string('required');
+                $errors['packageurl'] = get_string('invalidurl', 'scorm');
+            }
+        } else if ($type === SCORM_TYPE_AICCURL) {
+            $reference = $data['packageurl'];
+            if (!preg_match('/(http:\/\/|https:\/\/|www).*/', $reference)) {
+                $errors['packageurl'] = get_string('invalidurl', 'scorm');
             }
         }
 

@@ -107,6 +107,14 @@ class mod_quiz_mod_form extends moodleform_mod {
         $mform->disabledIf('grademethod', 'attempts', 'eq', 1);
 
         //-------------------------------------------------------------------------------
+        // Grade settings
+        $this->standard_grading_coursemodule_elements();
+
+        $mform->removeElement('grade');
+        $mform->addElement('hidden', 'grade', $quizconfig->maximumgrade);
+        $mform->setType('grade', PARAM_NUMBER);
+
+        //-------------------------------------------------------------------------------
         $mform->addElement('header', 'layouthdr', get_string('layout', 'quiz'));
 
         // Shuffle questions.
@@ -274,23 +282,18 @@ class mod_quiz_mod_form extends moodleform_mod {
         $mform->disabledIf('delay2', 'attempts', 'eq', 2);
 
         // 'Secure' window.
-        $options = array(
-                    0 => get_string('none', 'quiz'),
-                    1 => get_string('popupwithjavascriptsupport', 'quiz'));
-        if (!empty($CFG->enablesafebrowserintegration)) {
-            $options[2] = get_string('requiresafeexambrowser', 'quiz');
-        }
-        $mform->addElement('select', 'popup', get_string('browsersecurity', 'quiz'), $options);
-        $mform->addHelpButton('popup', 'browsersecurity', 'quiz');
-        $mform->setAdvanced('popup', $quizconfig->popup_adv);
-        $mform->setDefault('popup', $quizconfig->popup);
+        $mform->addElement('select', 'browsersecurity', get_string('browsersecurity', 'quiz'),
+                quiz_access_manager::get_browser_security_choices());
+        $mform->addHelpButton('browsersecurity', 'browsersecurity', 'quiz');
+        $mform->setAdvanced('browsersecurity', $quizconfig->browsersecurity_adv);
+        $mform->setDefault('browsersecurity', $quizconfig->browsersecurity);
+
+        // Any other rule plugins.
+        quiz_access_manager::add_settings_form_fields($this, $mform);
 
         //-------------------------------------------------------------------------------
         $mform->addElement('header', 'overallfeedbackhdr', get_string('overallfeedback', 'quiz'));
         $mform->addHelpButton('overallfeedbackhdr', 'overallfeedback', 'quiz');
-
-        $mform->addElement('hidden', 'grade', $quizconfig->maximumgrade);
-        $mform->setType('grade', PARAM_RAW);
 
         if (isset($this->current->grade)) {
             $needwarning = $this->current->grade === 0;
@@ -443,6 +446,14 @@ class mod_quiz_mod_form extends moodleform_mod {
         if (isset($toform['password'])) {
             $toform['quizpassword'] = $toform['password'];
             unset($toform['password']);
+        }
+
+        // Load any settings belonging to the access rules.
+        if (!empty($toform['instance'])) {
+            $accesssettings = quiz_access_manager::load_settings($toform['instance']);
+            foreach ($accesssettings as $name => $value) {
+                $toform[$name] = $value;
+            }
         }
     }
 

@@ -245,6 +245,26 @@ function uninstall_plugin($type, $name) {
                 set_config('enrol_plugins_enabled', implode(',', $enabledenrols));
             }
         }
+
+    } else if ($type === 'block') {
+        if ($block = $DB->get_record('block', array('name'=>$name))) {
+            // Inform block it's about to be deleted
+            if (file_exists("$CFG->dirroot/blocks/$block->name/block_$block->name.php")) {
+                $blockobject = block_instance($block->name);
+                if ($blockobject) {
+                    $blockobject->before_delete();  //only if we can create instance, block might have been already removed
+                }
+            }
+
+            // First delete instances and related contexts
+            $instances = $DB->get_records('block_instances', array('blockname' => $block->name));
+            foreach($instances as $instance) {
+                blocks_delete_instance($instance);
+            }
+
+            // Delete block
+            $DB->delete_records('block', array('id'=>$block->id));
+        }
     }
 
     // perform clean-up task common for all the plugin/subplugin types
@@ -271,7 +291,11 @@ function uninstall_plugin($type, $name) {
 
     // delete the plugin tables
     $xmldbfilepath = $plugindirectory . '/db/install.xml';
-    drop_plugin_tables($pluginname, $xmldbfilepath, false);
+    drop_plugin_tables($component, $xmldbfilepath, false);
+    if ($type === 'mod' or $type === 'block') {
+        // non-frankenstyle table prefixes
+        drop_plugin_tables($name, $xmldbfilepath, false);
+    }
 
     // delete the capabilities that were defined by this module
     capabilities_cleanup($component);
@@ -3506,9 +3530,9 @@ class admin_setting_emoticons extends admin_setting {
             $emoticon                   = new stdClass();
             $emoticon->text             = clean_param(trim($form['text'.$i]), PARAM_NOTAGS);
             $emoticon->imagename        = clean_param(trim($form['imagename'.$i]), PARAM_PATH);
-            $emoticon->imagecomponent   = clean_param(trim($form['imagecomponent'.$i]), PARAM_SAFEDIR);
+            $emoticon->imagecomponent   = clean_param(trim($form['imagecomponent'.$i]), PARAM_COMPONENT);
             $emoticon->altidentifier    = clean_param(trim($form['altidentifier'.$i]), PARAM_STRINGID);
-            $emoticon->altcomponent     = clean_param(trim($form['altcomponent'.$i]), PARAM_SAFEDIR);
+            $emoticon->altcomponent     = clean_param(trim($form['altcomponent'.$i]), PARAM_COMPONENT);
 
             if (strpos($emoticon->text, ':/') !== false or strpos($emoticon->text, '//') !== false) {
                 // prevent from breaking http://url.addresses by accident
@@ -4172,7 +4196,7 @@ class admin_setting_configcheckbox_with_lock extends admin_setting_configcheckbo
             $checkboxparams['checked'] = 'checked';
         }
 
-        $lockcheckboxparams = array('type'=>'checkbox', 'id'=>$id.'_locked','name'=>$fullname.'[locked]', 'value'=>1, 'class'=>'form-checkbox');
+        $lockcheckboxparams = array('type'=>'checkbox', 'id'=>$id.'_locked','name'=>$fullname.'[locked]', 'value'=>1, 'class'=>'form-checkbox locked-checkbox');
         if (!empty($data['locked'])) { // convert to strings before comparison
             $lockcheckboxparams['checked'] = 'checked';
         }
@@ -7517,7 +7541,7 @@ class admin_setting_managewebservicetokens extends admin_setting {
         //TODO: in order to let the administrator delete obsolete token, split this request in multiple request or use LEFT JOIN
 
         //here retrieve token list (including linked users firstname/lastname and linked services name)
-        $sql = "SELECT t.id, t.token, u.id AS userid, u.firstname, u.lastname, s.name, t.validuntil, s.id AS serviceid
+        $sql = "SELECT t.id, t.token, u.id AS userid, u.firstname, u.lastname, s.name, t.iprestriction, t.validuntil, s.id AS serviceid
                   FROM {external_tokens} t, {user} u, {external_services} s
                  WHERE t.creatorid=? AND t.tokentype = ? AND s.id = t.externalserviceid AND t.userid = u.id";
         $tokens = $DB->get_records_sql($sql, array($USER->id, EXTERNAL_TOKEN_PERMANENT));

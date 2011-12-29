@@ -413,6 +413,15 @@ $functions = array(
         'capabilities'=> 'moodle/course:update,moodle/course:viewhiddencourses',
     ),
 
+    'core_course_create_categories' => array(
+        'classname'   => 'core_course_external',
+        'methodname'  => 'create_categories',
+        'classpath'   => 'course/externallib.php',
+        'description' => 'Create course categories',
+        'type'        => 'write',
+        'capabilities'=> 'moodle/category:manage',
+    ),
+
     // === message related functions ===
 
     'moodle_message_send_instantmessages' => array(

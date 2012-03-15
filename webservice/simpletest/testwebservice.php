@@ -86,14 +86,14 @@ class webservice_test extends UnitTestCase {
      */
     public function setUp() {
         // token to test
-        $this->testtoken = 'acabec9d20933913f14309785324f579';
+        $this->testtoken = 'f95fe8ce5f6a4f01dc24ccdf333bba22';
 
         // protocols to test
         $this->testrest = false; // TODO MDL-30210/MDL-22965 call REST in JSON mode
                                  // DO NOT CHANGE
                                  // The REST server cannot be tested till the issue ares fixed
         $this->testxmlrpc = false;
-        $this->testsoap = false;
+        $this->testsoap = true;
 
         // READ-ONLY DB tests
         $this->readonlytests = array(
@@ -121,7 +121,8 @@ class webservice_test extends UnitTestCase {
             'moodle_group_delete_groups' => false,
             'moodle_enrol_manual_enrol_users' => false,
             'moodle_message_send_messages' => false,
-            'moodle_notes_create_notes' => false
+            'moodle_notes_create_notes' => false,
+            'core_course_create_categories' => true
         );
 
         // performance testing: number of time the web service are run
@@ -236,6 +237,49 @@ class webservice_test extends UnitTestCase {
                 // error_log(print_r($this->timersoap));
             }
         }
+    }
+
+    /**
+     * Test core_course_create_categories web service function
+     *
+     * @param webservice_rest_client|webservice_soap_client|webservice_xmlrpc_client $client the protocol test client
+     */
+    private function core_course_create_categories($client) {
+        global $DB;
+        $categories = array();
+
+        //get a random category
+        $allcategories = get_course_category_tree();
+        varlog($allcategories);
+        $topcategoryid = $allcategories[0];
+
+        //category 1
+        $category1['name'] = 'test category 1 to delete';
+        $category1['parent'] =  $topcategoryid;
+        $category1['idnumber'] = 'idnumber for a category 1';
+        $category1['description'] ='Category test 1';
+        $categories[] = $category1;
+
+        //category 2
+        $category2['name'] = 'test category 2 to delete';
+        $category2['parent'] =  $topcategoryid;
+        $category2['idnumber'] = 'idnumber for a category 2';
+        $category2['description'] ='Category test 2';
+        $categories[] = $category2;
+
+         //delete previous categories (if some problem previously happened)
+        $DB->delete_records_list('course_categories', 'idnumber', array($category1['idnumber'], $category2['idnumber']));
+ 
+        $function = 'core_course_create_categories';
+
+        $params = array('categories' => $categories);
+        $returnedcategories = $client->call($function, $params);
+        $this->assertEqual(count($returnedcategories), count($categories));
+
+        varlog($returnedcategories);
+
+        //delete previous categories (if some problem previously happened)
+        $DB->delete_records_list('course_categories', 'idnumber', array($category1['idnumber'], $category2['idnumber']));
     }
 
     /**

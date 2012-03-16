@@ -829,6 +829,10 @@ function filter_get_all_local_settings($contextid) {
 function filter_get_active_in_context($context) {
     global $DB, $FILTERLIB_PRIVATE;
 
+    if (!isset($FILTERLIB_PRIVATE)) {
+        $FILTERLIB_PRIVATE = new stdClass();
+    }
+
     // Use cache (this is a within-request cache only) if available. See
     // function filter_preload_activities.
     if (isset($FILTERLIB_PRIVATE->active) &&
@@ -851,6 +855,7 @@ function filter_get_active_in_context($context) {
          ) active
          LEFT JOIN {filter_config} fc ON fc.filter = active.filter AND fc.contextid = $context->id
          ORDER BY active.sortorder";
+    //TODO: remove sql_cast_2signed() once we do not support upgrade from Moodle 2.2
     $rs = $DB->get_recordset_sql($sql);
 
     // Masssage the data into the specified format to return.
@@ -876,6 +881,10 @@ function filter_get_active_in_context($context) {
  */
 function filter_preload_activities(course_modinfo $modinfo) {
     global $DB, $FILTERLIB_PRIVATE;
+
+    if (!isset($FILTERLIB_PRIVATE)) {
+        $FILTERLIB_PRIVATE = new stdClass();
+    }
 
     // Don't repeat preload
     if (!isset($FILTERLIB_PRIVATE->preloaded)) {
@@ -1339,13 +1348,13 @@ function filter_remove_duplicates($linkarray) {
         if ($filterobject->casesensitive) {
             $exists = in_array($filterobject->phrase, $concepts);
         } else {
-            $exists = in_array(moodle_strtolower($filterobject->phrase), $lconcepts);
+            $exists = in_array(textlib::strtolower($filterobject->phrase), $lconcepts);
         }
 
         if (!$exists) {
             $cleanlinks[] = $filterobject;
             $concepts[] = $filterobject->phrase;
-            $lconcepts[] = moodle_strtolower($filterobject->phrase);
+            $lconcepts[] = textlib::strtolower($filterobject->phrase);
         }
     }
 

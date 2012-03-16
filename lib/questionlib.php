@@ -484,7 +484,7 @@ function question_delete_course_category($category, $newcategory, $feedback=true
 /**
  * Enter description here...
  *
- * @param string $questionids list of questionids
+ * @param array $questionids of question ids
  * @param object $newcontext the context to create the saved category in.
  * @param string $oldplace a textual description of the think being deleted,
  *      e.g. from get_context_name
@@ -571,7 +571,7 @@ function question_delete_activity($cm, $feedback=true) {
  * function also have to do other work, which is why you should not call this method
  * directly from outside the questionbank.
  *
- * @param string $questionids a comma-separated list of question ids.
+ * @param array $questionids of question ids.
  * @param integer $newcategoryid the id of the category to move to.
  */
 function question_move_questions_to_category($questionids, $newcategoryid) {
@@ -1306,7 +1306,7 @@ function question_has_capability_on($question, $cap, $cachecat = -1) {
     static $categories = array();
     static $cachedcat = array();
     if ($cachecat != -1 && array_search($cachecat, $cachedcat) === false) {
-        $questions += $DB->get_records('question', array('category' => $cachecat));
+        $questions += $DB->get_records('question', array('category' => $cachecat), '', 'id,category,createdby');
         $cachedcat[] = $cachecat;
     }
     if (!is_object($question)) {
@@ -1481,6 +1481,14 @@ function question_get_all_capabilities() {
     return $caps;
 }
 
+
+/**
+ * Tracks all the contexts related to the one where we are currently editing
+ * questions, and provides helper methods to check permissions.
+ *
+ * @copyright 2007 Jamie Pratt me@jamiep.org
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 class question_edit_contexts {
 
     public static $caps = array(
@@ -1507,28 +1515,27 @@ class question_edit_contexts {
     protected $allcontexts;
 
     /**
-     * @param current context
+     * Constructor
+     * @param context the current context.
      */
-    public function __construct($thiscontext) {
-        $pcontextids = get_parent_contexts($thiscontext);
-        $contexts = array($thiscontext);
-        foreach ($pcontextids as $pcontextid) {
-            $contexts[] = get_context_instance_by_id($pcontextid);
-        }
-        $this->allcontexts = $contexts;
+    public function __construct(context $thiscontext) {
+        $this->allcontexts = array_values($thiscontext->get_parent_contexts(true));
     }
+
     /**
      * @return array all parent contexts
      */
     public function all() {
         return $this->allcontexts;
     }
+
     /**
      * @return object lowest context which must be either the module or course context
      */
     public function lowest() {
         return $this->allcontexts[0];
     }
+
     /**
      * @param string $cap capability
      * @return array parent contexts having capability, zero based index
@@ -1542,6 +1549,7 @@ class question_edit_contexts {
         }
         return $contextswithcap;
     }
+
     /**
      * @param array $caps capabilities
      * @return array parent contexts having at least one of $caps, zero based index
@@ -1558,6 +1566,7 @@ class question_edit_contexts {
         }
         return $contextswithacap;
     }
+
     /**
      * @param string $tabname edit tab name
      * @return array parent contexts having at least one of $caps, zero based index
@@ -1565,6 +1574,7 @@ class question_edit_contexts {
     public function having_one_edit_tab_cap($tabname) {
         return $this->having_one_cap(self::$caps[$tabname]);
     }
+
     /**
      * Has at least one parent context got the cap $cap?
      *
@@ -1635,50 +1645,77 @@ class question_edit_contexts {
     }
 }
 
+
 /**
- * Rewrite question url, file_rewrite_pluginfile_urls always build url by
- * $file/$contextid/$component/$filearea/$itemid/$pathname_in_text, so we cannot add
- * extra questionid and attempted in url by it, so we create quiz_rewrite_question_urls
- * to build url here
+ * Helps call file_rewrite_pluginfile_urls with the right parameters.
  *
+ * @package  core_question
+ * @category files
  * @param string $text text being processed
  * @param string $file the php script used to serve files
- * @param int $contextid
+ * @param int $contextid context ID
  * @param string $component component
  * @param string $filearea filearea
  * @param array $ids other IDs will be used to check file permission
- * @param int $itemid
- * @param array $options
+ * @param int $itemid item ID
+ * @param array $options options
  * @return string
  */
 function question_rewrite_question_urls($text, $file, $contextid, $component,
         $filearea, array $ids, $itemid, array $options=null) {
-    global $CFG;
 
-    $options = (array)$options;
-    if (!isset($options['forcehttps'])) {
-        $options['forcehttps'] = false;
-    }
-
-    if (!$CFG->slasharguments) {
-        $file = $file . '?file=';
-    }
-
-    $baseurl = "$CFG->wwwroot/$file/$contextid/$component/$filearea/";
-
+    $idsstr = '';
     if (!empty($ids)) {
-        $baseurl .= (implode('/', $ids) . '/');
+        $idsstr .= implode('/', $ids);
     }
-
     if ($itemid !== null) {
-        $baseurl .= "$itemid/";
+        $idsstr .= '/' . $itemid;
+    }
+    return file_rewrite_pluginfile_urls($text, $file, $contextid, $component,
+            $filearea, $idsstr, $options);
+}
+
+/**
+ * Rewrite the PLUGINFILE urls in the questiontext, when viewing the question
+ * text outside and attempt (for example, in the question bank listing or in the
+ * quiz statistics report).
+ *
+ * @param string $questiontext the question text.
+ * @param int $contextid the context the text is being displayed in.
+ * @param string $component component
+ * @param array $ids other IDs will be used to check file permission
+ * @param array $options
+ * @return string $questiontext with URLs rewritten.
+ */
+function question_rewrite_questiontext_preview_urls($questiontext, $contextid,
+        $component, $questionid, $options=null) {
+
+    return file_rewrite_pluginfile_urls($questiontext, 'pluginfile.php', $contextid,
+            'question', 'questiontext_preview', "$component/$questionid", $options);
+}
+
+/**
+ * Send a file from the question text of a question.
+ * @param int $questionid the question id
+ * @param array $args the remaining file arguments (file path).
+ * @param bool $forcedownload whether the user must be forced to download the file.
+ */
+function question_send_questiontext_file($questionid, $args, $forcedownload) {
+    global $DB;
+
+    $question = $DB->get_record_sql('
+            SELECT q.id, qc.contextid
+              FROM {question} q
+              JOIN {question_categories} qc ON qc.id = q.category
+             WHERE q.id = :id', array('id' => $questionid), MUST_EXIST);
+
+    $fs = get_file_storage();
+    $fullpath = "/$question->contextid/question/questiontext/$question->id/" . implode('/', $args);
+    if (!$file = $fs->get_file_by_hash(sha1($fullpath)) or $file->is_directory()) {
+        send_file_not_found();
     }
 
-    if ($options['forcehttps']) {
-        $baseurl = str_replace('http://', 'https://', $baseurl);
-    }
-
-    return str_replace('@@PLUGINFILE@@/', $baseurl, $text);
+    send_stored_file($file, 0, 0, $forcedownload);
 }
 
 /**
@@ -1694,8 +1731,10 @@ function question_rewrite_question_urls($text, $file, $contextid, $component,
  *
  * Does not return, either calls send_file_not_found(); or serves the file.
  *
- * @param object $course course settings object
- * @param object $context context object
+ * @package  core_question
+ * @category files
+ * @param stdClass $course course settings object
+ * @param stdClass $context context object
  * @param string $component the name of the component we are serving files for.
  * @param string $filearea the name of the file area.
  * @param array $args the remaining bits of the file path.
@@ -1703,6 +1742,16 @@ function question_rewrite_question_urls($text, $file, $contextid, $component,
  */
 function question_pluginfile($course, $context, $component, $filearea, $args, $forcedownload) {
     global $DB, $CFG;
+
+    if ($filearea === 'questiontext_preview') {
+        $component = array_shift($args);
+        $questionid = array_shift($args);
+
+        component_callback($component, 'questiontext_preview_pluginfile', array(
+                $context, $questionid, $args, $forcedownload));
+
+        send_file_not_found();
+    }
 
     list($context, $course, $cm) = get_context_info_array($context->id);
     require_login($course, false, $cm);
@@ -1791,6 +1840,36 @@ function question_pluginfile($course, $context, $component, $filearea, $args, $f
 
         send_file_not_found();
     }
+}
+
+/**
+ * Serve questiontext files in the question text when they are displayed in this report.
+ *
+ * @package  core_files
+ * @category files
+ * @param stdClass $context the context
+ * @param int $questionid the question id
+ * @param array $args remaining file args
+ * @param bool $forcedownload
+ */
+function core_question_questiontext_preview_pluginfile($context, $questionid, $args, $forcedownload) {
+    global $DB;
+
+    // Verify that contextid matches the question.
+    $question = $DB->get_record_sql('
+            SELECT q.*, qc.contextid
+              FROM {question} q
+              JOIN {question_categories} qc ON qc.id = q.category
+             WHERE q.id = :id AND qc.contextid = :contextid',
+            array('id' => $questionid, 'contextid' => $context->id), MUST_EXIST);
+
+    // Check the capability.
+    list($context, $course, $cm) = get_context_info_array($context->id);
+    require_login($course, false, $cm);
+
+    question_require_capability_on($question, 'use');
+
+    question_send_questiontext_file($questionid, $args, $forcedownload);
 }
 
 /**

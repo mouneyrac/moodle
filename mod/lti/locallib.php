@@ -413,8 +413,6 @@ function lti_get_tool_table($tools, $id) {
  * @return Array of custom parameters
  */
 function lti_split_custom_parameters($customstr) {
-    $textlib = textlib_get_instance();
-
     $lines = preg_split("/[\n;]/", $customstr);
     $retval = array();
     foreach ($lines as $line) {
@@ -422,8 +420,8 @@ function lti_split_custom_parameters($customstr) {
         if ( $pos === false || $pos < 1 ) {
             continue;
         }
-        $key = trim($textlib->substr($line, 0, $pos));
-        $val = trim($textlib->substr($line, $pos+1, strlen($line)));
+        $key = trim(textlib::substr($line, 0, $pos));
+        $val = trim(textlib::substr($line, $pos+1, strlen($line)));
         $key = lti_map_keyname($key);
         $retval['custom_'.$key] = $val;
     }
@@ -438,10 +436,8 @@ function lti_split_custom_parameters($customstr) {
  * @return string       Processed name
  */
 function lti_map_keyname($key) {
-    $textlib = textlib_get_instance();
-
     $newkey = "";
-    $key = $textlib->strtolower(trim($key));
+    $key = textlib::strtolower(trim($key));
     foreach (str_split($key) as $ch) {
         if ( ($ch >= 'a' && $ch <= 'z') || ($ch >= '0' && $ch <= '9') ) {
             $newkey .= $ch;
@@ -1127,8 +1123,8 @@ function lti_get_launch_container($lti, $toolconfig) {
 }
 
 function lti_request_is_using_ssl() {
-    global $FULLME;
-    return (stripos($FULLME, 'https://') === 0);
+    global $CFG;
+    return (stripos($CFG->httpswwwroot, 'https://') === 0);
 }
 
 function lti_ensure_url_is_https($url) {

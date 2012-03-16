@@ -56,7 +56,7 @@ define('UU_PWRESET_ALL', 2);
  */
 class uu_progress_tracker {
     private $_row;
-    public $columns = array('status', 'line', 'id', 'username', 'firstname', 'lastname', 'email', 'password', 'auth', 'enrolments', 'deleted');
+    public $columns = array('status', 'line', 'id', 'username', 'firstname', 'lastname', 'email', 'password', 'auth', 'enrolments', 'suspended', 'deleted');
 
     /**
      * Print table header.
@@ -76,6 +76,7 @@ class uu_progress_tracker {
         echo '<th class="header c'.$ci++.'" scope="col">'.get_string('password').'</th>';
         echo '<th class="header c'.$ci++.'" scope="col">'.get_string('authentication').'</th>';
         echo '<th class="header c'.$ci++.'" scope="col">'.get_string('enrolments', 'enrol').'</th>';
+        echo '<th class="header c'.$ci++.'" scope="col">'.get_string('suspended', 'auth').'</th>';
         echo '<th class="header c'.$ci++.'" scope="col">'.get_string('delete').'</th>';
         echo '</tr>';
         $this->_row = null;
@@ -178,13 +179,11 @@ function uu_validate_user_upload_columns(csv_import_reader $cir, $stdfields, $pr
         print_error('csvfewcolumns', 'error', $returnurl);
     }
 
-    $textlib = textlib_get_instance(); // profile fields may contain unicode chars
-
     // test columns
     $processed = array();
     foreach ($columns as $key=>$unused) {
         $field = $columns[$key];
-        $lcfield = $textlib->strtolower($field);
+        $lcfield = textlib::strtolower($field);
         if (in_array($field, $stdfields) or in_array($lcfield, $stdfields)) {
             // standard fields are only lowercase
             $newfield = $lcfield;
@@ -280,8 +279,6 @@ function uu_process_template($template, $user) {
  * Internal callback function.
  */
 function uu_process_template_callback($username, $firstname, $lastname, $block) {
-    $textlib = textlib_get_instance();
-
     switch ($block[3]) {
         case 'u':
             $repl = $username;
@@ -298,18 +295,18 @@ function uu_process_template_callback($username, $firstname, $lastname, $block) 
 
     switch ($block[1]) {
         case '+':
-            $repl = $textlib->strtoupper($repl);
+            $repl = textlib::strtoupper($repl);
             break;
         case '-':
-            $repl = $textlib->strtolower($repl);
+            $repl = textlib::strtolower($repl);
             break;
         case '~':
-            $repl = $textlib->strtotitle($repl);
+            $repl = textlib::strtotitle($repl);
             break;
     }
 
     if (!empty($block[2])) {
-        $repl = $textlib->substr($repl, 0 , $block[2]);
+        $repl = textlib::substr($repl, 0 , $block[2]);
     }
 
     return $repl;

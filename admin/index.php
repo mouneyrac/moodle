@@ -190,6 +190,15 @@ if ($version > $CFG->version) {  // upgrade
     $PAGE->set_pagelayout('maintenance');
     $PAGE->set_popup_notification_allowed(false);
 
+    if (upgrade_stale_php_files_present()) {
+        $PAGE->set_title($stradministration);
+        $PAGE->set_cacheable(false);
+
+        $output = $PAGE->get_renderer('core', 'admin');
+        echo $output->upgrade_stale_php_files_page();
+        die();
+    }
+
     if (empty($confirmupgrade)) {
         $a->oldversion = "$CFG->release ($CFG->version)";
         $a->newversion = "$release ($version)";
@@ -297,8 +306,8 @@ if (during_initial_install()) {
         }
     }
 
-    // at this stage there can be only one admin - users may change username, so do not rely on that
-    $adminuser = get_complete_user_data('id', $CFG->siteadmins);
+    // at this stage there can be only one admin unless more were added by install - users may change username, so do not rely on that
+    $adminuser = get_complete_user_data('id', reset(explode(',', $CFG->siteadmins)));
 
     if ($adminuser->password === 'adminsetuppending') {
         // prevent installation hijacking

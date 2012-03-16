@@ -90,16 +90,8 @@ function resource_add_instance($data, $mform) {
     require_once("$CFG->libdir/resourcelib.php");
     $cmid = $data->coursemodule;
     $data->timemodified = time();
-    $displayoptions = array();
-    if ($data->display == RESOURCELIB_DISPLAY_POPUP) {
-        $displayoptions['popupwidth']  = $data->popupwidth;
-        $displayoptions['popupheight'] = $data->popupheight;
-    }
-    if (in_array($data->display, array(RESOURCELIB_DISPLAY_AUTO, RESOURCELIB_DISPLAY_EMBED, RESOURCELIB_DISPLAY_FRAME))) {
-        $displayoptions['printheading'] = (int)!empty($data->printheading);
-        $displayoptions['printintro']   = (int)!empty($data->printintro);
-    }
-    $data->displayoptions = serialize($displayoptions);
+
+    resource_set_display_options($data);
 
     $data->id = $DB->insert_record('resource', $data);
 
@@ -122,6 +114,21 @@ function resource_update_instance($data, $mform) {
     $data->id           = $data->instance;
     $data->revision++;
 
+    resource_set_display_options($data);
+
+    $DB->update_record('resource', $data);
+    resource_set_mainfile($data);
+    return true;
+}
+
+/**
+ * Updates display options based on form input.
+ *
+ * Shared code used by resource_add_instance and resource_update_instance.
+ *
+ * @param object $data Data object
+ */
+function resource_set_display_options($data) {
     $displayoptions = array();
     if ($data->display == RESOURCELIB_DISPLAY_POPUP) {
         $displayoptions['popupwidth']  = $data->popupwidth;
@@ -131,11 +138,13 @@ function resource_update_instance($data, $mform) {
         $displayoptions['printheading'] = (int)!empty($data->printheading);
         $displayoptions['printintro']   = (int)!empty($data->printintro);
     }
+    if (!empty($data->showsize)) {
+        $displayoptions['showsize'] = 1;
+    }
+    if (!empty($data->showtype)) {
+        $displayoptions['showtype'] = 1;
+    }
     $data->displayoptions = serialize($displayoptions);
-
-    $DB->update_record('resource', $data);
-    resource_set_mainfile($data);
-    return true;
 }
 
 /**
@@ -276,41 +285,36 @@ function resource_get_coursemodule_info($coursemodule) {
         $fullurl = "$CFG->wwwroot/mod/resource/view.php?id=$coursemodule->id&amp;redirect=1";
         $info->onclick = "window.open('$fullurl'); return false;";
 
-    } else if ($display == RESOURCELIB_DISPLAY_OPEN) {
-        $fullurl = "$CFG->wwwroot/mod/resource/view.php?id=$coursemodule->id&amp;redirect=1";
-        $info->onclick = "window.location.href ='$fullurl';return false;";
-
-    } else if ($display == RESOURCELIB_DISPLAY_DOWNLOAD) {
-        if (empty($mainfile)) {
-            return NULL;
-        }
-        // do not open any window because it would be left there after download
-        $path = '/'.$context->id.'/mod_resource/content/'.$resource->revision.$mainfile->get_filepath().$mainfile->get_filename();
-        $fullurl = addslashes_js(file_encode_url($CFG->wwwroot.'/pluginfile.php', $path, true));
-
-        // When completion information is enabled for download files, make
-        // the JavaScript version go to the view page with redirect set,
-        // instead of directly to the file, otherwise we can't make it tick
-        // the box for them
-        if (!$course = $DB->get_record('course', array('id'=>$coursemodule->course), 'id, enablecompletion')) {
-            return NULL;
-        }
-        $completion = new completion_info($course);
-        if ($completion->is_enabled($coursemodule) == COMPLETION_TRACKING_AUTOMATIC) {
-            $fullurl = "$CFG->wwwroot/mod/resource/view.php?id=$coursemodule->id&amp;redirect=1";
-        }
-        $info->onclick = "window.open('$fullurl'); return false;";
     }
+
+    // If any optional extra details are turned on, store in custom data
+    $info->customdata = resource_get_optional_details($resource, $coursemodule);
 
     return $info;
 }
 
+/**
+ * Called when viewing course page. Shows extra details after the link if
+ * enabled.
+ *
+ * @param cm_info $cm Course module information
+ */
+function resource_cm_info_view(cm_info $cm) {
+    $details = $cm->get_custom_data();
+    if ($details) {
+        $cm->set_after_link(' ' . html_writer::tag('span', $details,
+                array('class' => 'resourcelinkdetails')));
+    }
+}
 
 /**
  * Lists all browsable file areas
- * @param object $course
- * @param object $cm
- * @param object $context
+ *
+ * @package  mod_resource
+ * @category files
+ * @param stdClass $course course object
+ * @param stdClass $cm course module object
+ * @param stdClass $context context object
  * @return array
  */
 function resource_get_file_areas($course, $cm, $context) {
@@ -321,16 +325,19 @@ function resource_get_file_areas($course, $cm, $context) {
 
 /**
  * File browsing support for resource module content area.
- * @param object $browser
- * @param object $areas
- * @param object $course
- * @param object $cm
- * @param object $context
- * @param string $filearea
- * @param int $itemid
- * @param string $filepath
- * @param string $filename
- * @return object file_info instance or null if not found
+ *
+ * @package  mod_resource
+ * @category files
+ * @param stdClass $browser file browser instance
+ * @param stdClass $areas file areas
+ * @param stdClass $course course object
+ * @param stdClass $cm course module object
+ * @param stdClass $context context object
+ * @param string $filearea file area
+ * @param int $itemid item ID
+ * @param string $filepath file path
+ * @param string $filename file name
+ * @return file_info instance or null if not found
  */
 function resource_get_file_info($browser, $areas, $course, $cm, $context, $filearea, $itemid, $filepath, $filename) {
     global $CFG;
@@ -366,12 +373,15 @@ function resource_get_file_info($browser, $areas, $course, $cm, $context, $filea
 
 /**
  * Serves the resource files.
- * @param object $course
- * @param object $cm
- * @param object $context
- * @param string $filearea
- * @param array $args
- * @param bool $forcedownload
+ *
+ * @package  mod_resource
+ * @category files
+ * @param stdClass $course course object
+ * @param stdClass $cm course module object
+ * @param stdClass $context context object
+ * @param string $filearea file area
+ * @param array $args extra arguments
+ * @param bool $forcedownload whether or not force download
  * @return bool false if file not found, does not return if found - just send the file
  */
 function resource_pluginfile($course, $cm, $context, $filearea, $args, $forcedownload) {

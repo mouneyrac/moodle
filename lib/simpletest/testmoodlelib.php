@@ -296,6 +296,15 @@ class moodlelib_test extends UnitTestCase {
         $this->assertEqual(array('gecko', 'gecko19'), get_browser_version_classes());
     }
 
+    function test_get_device_type() {
+        // IE8 (common pattern ~1.5% of IE7/8 users have embedded IE6 agent))
+        $_SERVER['HTTP_USER_AGENT'] = 'Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.1; Trident/4.0; BT Openworld BB; Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1) ; Hotbar 10.2.197.0; .NET CLR 3.0.4506.2152; .NET CLR 3.5.30729; .NET CLR 2.0.50727)';
+        $this->assertEqual('default', get_device_type());
+        // Genuine IE6
+        $_SERVER['HTTP_USER_AGENT'] = 'Mozilla/4.0 (compatible; MSIE 6.0; AOL 9.0; Windows NT 5.1; SV1; FunWebProducts; .NET CLR 1.0.3705; Media Center PC 2.8)';
+        $this->assertEqual('legacy', get_device_type());
+    }
+
     function test_fix_utf8() {
         // make sure valid data including other types is not changed
         $this->assertidentical(null, fix_utf8(null));
@@ -1164,6 +1173,22 @@ class moodlelib_test extends UnitTestCase {
         unset_user_preference('_test_user_preferences_pref');
         $this->assertTrue(!isset($USER->preference['_test_user_preferences_pref']));
 
+        // Test 1333 char values (no need for unicode, there are already tests for that in DB tests)
+        $longvalue = str_repeat('a', 1333);
+        set_user_preference('_test_long_user_preference', $longvalue);
+        $this->assertEqual($longvalue, get_user_preferences('_test_long_user_preference'));
+        $this->assertEqual($longvalue,
+                $DB->get_field('user_preferences', 'value', array('userid' => $USER->id, 'name' => '_test_long_user_preference')));
+
+        // Test > 1333 char values, coding_exception expected
+        $longvalue = str_repeat('a', 1334);
+        try {
+            set_user_preference('_test_long_user_preference', $longvalue);
+            $this->assertFail('Exception expected - longer than 1333 chars not allowed as preference value');
+        } catch (Exception $e) {
+            $this->assertTrue($e instanceof coding_exception);
+        }
+
         //test invalid params
         try {
             set_user_preference('_test_user_preferences_pref', array());
@@ -1292,13 +1317,13 @@ class moodlelib_test extends UnitTestCase {
                 'time' => '1309514400',
                 'usertimezone' => 'America/Moncton',
                 'timezone' => '99', //dst offset and timezone offset.
-                'expectedoutput' => 'Friday, 1 July 2011, 07:00 AM'
+                'expectedoutput' => 'Friday, 1 July 2011, 7:00 AM'
             ),
             array(
                 'time' => '1309514400',
                 'usertimezone' => 'America/Moncton',
                 'timezone' => 'America/Moncton', //dst offset and timezone offset.
-                'expectedoutput' => 'Friday, 1 July 2011, 07:00 AM'
+                'expectedoutput' => 'Friday, 1 July 2011, 7:00 AM'
             ),
             array(
                 'time' => '1293876000 ',
@@ -1310,13 +1335,13 @@ class moodlelib_test extends UnitTestCase {
                 'time' => '1293876000 ',
                 'usertimezone' => 'America/Moncton',
                 'timezone' => '99', //no dst offset in jan, so just timezone offset.
-                'expectedoutput' => 'Saturday, 1 January 2011, 06:00 AM'
+                'expectedoutput' => 'Saturday, 1 January 2011, 6:00 AM'
             ),
             array(
                 'time' => '1293876000 ',
                 'usertimezone' => 'America/Moncton',
                 'timezone' => 'America/Moncton', //no dst offset in jan
-                'expectedoutput' => 'Saturday, 1 January 2011, 06:00 AM'
+                'expectedoutput' => 'Saturday, 1 January 2011, 6:00 AM'
             ),
             array(
                 'time' => '1293876000 ',
@@ -1328,7 +1353,7 @@ class moodlelib_test extends UnitTestCase {
                 'time' => '1293876000 ',
                 'usertimezone' => '-2',
                 'timezone' => '99', //take user timezone
-                'expectedoutput' => 'Saturday, 1 January 2011, 08:00 AM'
+                'expectedoutput' => 'Saturday, 1 January 2011, 8:00 AM'
             ),
             array(
                 'time' => '1293876000 ',
@@ -1340,19 +1365,19 @@ class moodlelib_test extends UnitTestCase {
                 'time' => '1293876000 ',
                 'usertimezone' => '-10',
                 'timezone' => '-2', //take this timezone
-                'expectedoutput' => 'Saturday, 1 January 2011, 08:00 AM'
+                'expectedoutput' => 'Saturday, 1 January 2011, 8:00 AM'
             ),
             array(
                 'time' => '1293876000 ',
                 'usertimezone' => '-10',
                 'timezone' => 'random/time', //this should show server time
-                'expectedoutput' => 'Saturday, 1 January 2011, 06:00 PM'
+                'expectedoutput' => 'Saturday, 1 January 2011, 6:00 PM'
             ),
             array(
                 'time' => '1293876000 ',
                 'usertimezone' => '14', //server time zone
                 'timezone' => '99', //this should show user time
-                'expectedoutput' => 'Saturday, 1 January 2011, 06:00 PM'
+                'expectedoutput' => 'Saturday, 1 January 2011, 6:00 PM'
             ),
         );
 
@@ -1375,15 +1400,13 @@ class moodlelib_test extends UnitTestCase {
         $systemdefaulttimezone = date_default_timezone_get();
         date_default_timezone_set('Australia/Perth');
 
-        //get instance of textlib for strtolower
-        $textlib = textlib_get_instance();
         foreach ($testvalues as $vals) {
             $USER->timezone = $vals['usertimezone'];
             $actualoutput = userdate($vals['time'], '%A, %d %B %Y, %I:%M %p', $vals['timezone']);
 
             //On different systems case of AM PM changes so compare case insenitive
-            $vals['expectedoutput'] = $textlib->strtolower($vals['expectedoutput']);
-            $actualoutput = $textlib->strtolower($actualoutput);
+            $vals['expectedoutput'] = textlib::strtolower($vals['expectedoutput']);
+            $actualoutput = textlib::strtolower($actualoutput);
 
             $this->assertEqual($vals['expectedoutput'], $actualoutput,
                 "Expected: {$vals['expectedoutput']} => Actual: {$actualoutput},
@@ -1549,8 +1572,6 @@ class moodlelib_test extends UnitTestCase {
         $systemdefaulttimezone = date_default_timezone_get();
         date_default_timezone_set('Australia/Perth');
 
-        //get instance of textlib for strtolower
-        $textlib = textlib_get_instance();
         //Test make_timestamp with all testvals and assert if anything wrong.
         foreach ($testvalues as $vals) {
             $USER->timezone = $vals['usertimezone'];
@@ -1566,8 +1587,8 @@ class moodlelib_test extends UnitTestCase {
                     );
 
             //On different systems case of AM PM changes so compare case insenitive
-            $vals['expectedoutput'] = $textlib->strtolower($vals['expectedoutput']);
-            $actualoutput = $textlib->strtolower($actualoutput);
+            $vals['expectedoutput'] = textlib::strtolower($vals['expectedoutput']);
+            $actualoutput = textlib::strtolower($actualoutput);
 
             $this->assertEqual($vals['expectedoutput'], $actualoutput,
                 "Expected: {$vals['expectedoutput']} => Actual: {$actualoutput},
@@ -1585,5 +1606,151 @@ class moodlelib_test extends UnitTestCase {
         //restore system default values.
         date_default_timezone_set($systemdefaulttimezone);
         setlocale(LC_TIME, $oldlocale);
+    }
+
+    /**
+     * Test get_string and most importantly the implementation of the lang_string
+     * object.
+     */
+    public function test_get_string() {
+        global $COURSE;
+
+        // Make sure we are using English
+        $originallang = $COURSE->lang;
+        $COURSE->lang = 'en';
+
+        $yes = get_string('yes');
+        $yesexpected = 'Yes';
+        $this->assertIsA($yes, 'string');
+        $this->assertEqual($yes, $yesexpected);
+
+        $yes = get_string('yes', 'moodle');
+        $this->assertIsA($yes, 'string');
+        $this->assertEqual($yes, $yesexpected);
+
+        $yes = get_string('yes', 'core');
+        $this->assertIsA($yes, 'string');
+        $this->assertEqual($yes, $yesexpected);
+
+        $yes = get_string('yes', '');
+        $this->assertIsA($yes, 'string');
+        $this->assertEqual($yes, $yesexpected);
+
+        $yes = get_string('yes', null);
+        $this->assertIsA($yes, 'string');
+        $this->assertEqual($yes, $yesexpected);
+
+        $yes = get_string('yes', null, 1);
+        $this->assertIsA($yes, 'string');
+        $this->assertEqual($yes, $yesexpected);
+
+        $days = 1;
+        $numdays = get_string('numdays', 'core', '1');
+        $numdaysexpected = $days.' days';
+        $this->assertIsA($numdays, 'string');
+        $this->assertEqual($numdays, $numdaysexpected);
+
+        $yes = get_string('yes', null, null, true);
+        $this->assertEqual(get_class($yes), 'lang_string');
+        $this->assertIsA($yes, 'lang_string');
+        $this->assertEqual((string)$yes, $yesexpected);
+
+        // Test using a lang_string object as the $a argument for a normal
+        // get_string call (returning string)
+        $test = new lang_string('yes', null, null, true);
+        $testexpected = get_string('numdays', 'core', get_string('yes'));
+        $testresult = get_string('numdays', null, $test);
+        $this->assertIsA($testresult, 'string');
+        $this->assertEqual($testresult, $testexpected);
+
+        // Test using a lang_string object as the $a argument for an object
+        // get_string call (returning lang_string)
+        $test = new lang_string('yes', null, null, true);
+        $testexpected = get_string('numdays', 'core', get_string('yes'));
+        $testresult = get_string('numdays', null, $test, true);
+        $this->assertEqual(get_class($testresult), 'lang_string');
+        $this->assertIsA($testresult, 'lang_string');
+        $this->assertEqual("$testresult", $testexpected);
+
+        // Make sure that object properties that can't be converted don't cause
+        // errors
+        // Level one: This is as deep as current language processing goes
+        $test = new stdClass;
+        $test->one = 'here';
+        $string = get_string('yes', null, $test, true);
+        $this->assertEqual($string, $yesexpected);
+
+        // Make sure that object properties that can't be converted don't cause
+        // errors.
+        // Level two: Language processing doesn't currently reach this deep.
+        // only immediate scalar properties are worked with.
+        $test = new stdClass;
+        $test->one = new stdClass;
+        $test->one->two = 'here';
+        $string = get_string('yes', null, $test, true);
+        $this->assertEqual($string, $yesexpected);
+
+        // Make sure that object properties that can't be converted don't cause
+        // errors.
+        // Level three: It should never ever go this deep, but we're making sure
+        // it doesn't cause any probs anyway.
+        $test = new stdClass;
+        $test->one = new stdClass;
+        $test->one->two = new stdClass;
+        $test->one->two->three = 'here';
+        $string = get_string('yes', null, $test, true);
+        $this->assertEqual($string, $yesexpected);
+
+        // Make sure that object properties that can't be converted don't cause
+        // errors and check lang_string properties.
+        // Level one: This is as deep as current language processing goes
+        $test = new stdClass;
+        $test->one = new lang_string('yes');
+        $string = get_string('yes', null, $test, true);
+        $this->assertEqual($string, $yesexpected);
+
+        // Make sure that object properties that can't be converted don't cause
+        // errors and check lang_string properties.
+        // Level two: Language processing doesn't currently reach this deep.
+        // only immediate scalar properties are worked with.
+        $test = new stdClass;
+        $test->one = new stdClass;
+        $test->one->two = new lang_string('yes');
+        $string = get_string('yes', null, $test, true);
+        $this->assertEqual($string, $yesexpected);
+
+        // Make sure that object properties that can't be converted don't cause
+        // errors and check lang_string properties.
+        // Level three: It should never ever go this deep, but we're making sure
+        // it doesn't cause any probs anyway.
+        $test = new stdClass;
+        $test->one = new stdClass;
+        $test->one->two = new stdClass;
+        $test->one->two->three = new lang_string('yes');
+        $string = get_string('yes', null, $test, true);
+        $this->assertEqual($string, $yesexpected);
+
+        // Make sure that array properties that can't be converted don't cause
+        // errors
+        $test = array();
+        $test['one'] = new stdClass;
+        $test['one']->two = 'here';
+        $string = get_string('yes', null, $test, true);
+        $this->assertEqual($string, $yesexpected);
+
+        // This is one of the limitations to the lang_string class. It can't be
+        // used as a key
+        $this->expectError('Illegal offset type', 'Array offsets now support objects we can consider making lazy loading the default!.');
+        $array = array(get_string('yes', null, null, true) => 'yes');
+
+        // Same thing but as above except using an object... this is allowed :P
+        $string = get_string('yes', null, null, true);
+        $object = new stdClass;
+        $object->$string = 'Yes';
+        $this->assertEqual($string, $yesexpected);
+        $this->assertEqual($object->$string, $yesexpected);
+
+        // Reset the language
+        $COURSE->lang = $originallang;
     }
 }

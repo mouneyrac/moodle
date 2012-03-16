@@ -140,12 +140,14 @@ function feedback_update_instance($feedback) {
  * There are two situations in general where the files will be sent.
  * 1) filearea = item, 2) filearea = template
  *
- * @param object $course
- * @param object $cm
- * @param object $context
- * @param string $filearea
- * @param array $args
- * @param bool $forcedownload
+ * @package  mod_feedback
+ * @category files
+ * @param stdClass $course course object
+ * @param stdClass $cm course module object
+ * @param stdClass $context context object
+ * @param string $filearea file area
+ * @param array $args extra arguments
+ * @param bool $forcedownload whether or not force download
  * @return bool false if file not found, does not return if found - justsend the file
  */
 function feedback_pluginfile($course, $cm, $context, $filearea, $args, $forcedownload) {
@@ -709,7 +711,7 @@ function feedback_set_events($feedback) {
 
     // the open-event
     if ($feedback->timeopen > 0) {
-        $event = null;
+        $event = new stdClass();
         $event->name         = get_string('start', 'feedback').' '.$feedback->name;
         $event->description  = format_module_intro('feedback', $feedback, $feedback->coursemodule);
         $event->courseid     = $feedback->course;
@@ -731,7 +733,7 @@ function feedback_set_events($feedback) {
 
     // the close-event
     if ($feedback->timeclose > 0) {
-        $event = null;
+        $event = new stdClass();
         $event->name         = get_string('stop', 'feedback').' '.$feedback->name;
         $event->description  = format_module_intro('feedback', $feedback, $feedback->coursemodule);
         $event->courseid     = $feedback->course;
@@ -958,7 +960,7 @@ function feedback_get_complete_users($cm,
     }
 
     $ufields = user_picture::fields('u');
-    $sql = 'SELECT DISTINCT '.$ufields.'
+    $sql = 'SELECT DISTINCT '.$ufields.', c.timemodified as completed_timemodified
             FROM {user} u, {feedback_completed} c '.$fromgroup.'
             WHERE '.$where.' anonymous_response = :anon
                 AND u.id = c.userid

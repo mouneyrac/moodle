@@ -20,7 +20,7 @@
  * PostgreSQL specific SQL code generator.
  *
  * @package    core
- * @subpackage ddl
+ * @subpackage ddl_generator
  * @copyright  1999 onwards Martin Dougiamas     http://dougiamas.com
  *             2001-3001 Eloy Lafuente (stronk7) http://contiento.com
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -40,7 +40,6 @@ class postgres_sql_generator extends sql_generator {
 
     public $number_type = 'NUMERIC';    // Proper type for NUMBER(x) in this DB
 
-    public $unsigned_allowed = false;    // To define in the generator must handle unsigned information
     public $default_for_char = '';      // To define the default to set for NOT NULLs CHARs without default (null=do nothing)
 
     public $sequence_extra_code = false; //Does the generator need to add extra code to generate the sequence fields

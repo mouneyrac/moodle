@@ -1,5 +1,4 @@
 <?php
-
 // This file is part of Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
@@ -18,7 +17,7 @@
 /**
  * Allows to choose a form from the list of available templates
  *
- * @package    core
+ * @package    core_grades
  * @subpackage grading
  * @copyright  2011 David Mudrak <david@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -144,8 +143,7 @@ if ($searchdata = $searchform->get_data()) {
 }
 
 // construct the SQL to find all matching templates
-$sql = "SELECT DISTINCT gd.id, gd.areaid, gd.name, gd.description, gd.descriptionformat, gd.timecreated,
-                        gd.usercreated, gd.timemodified, gd.usermodified
+$sql = "SELECT DISTINCT gd.id, gd.areaid, gd.name, gd.usercreated
           FROM {grading_definitions} gd
           JOIN {grading_areas} ga ON (gd.areaid = ga.id)
           JOIN {context} cx ON (ga.contextid = cx.id)";

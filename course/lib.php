@@ -49,6 +49,11 @@ define('MOD_CLASS_RESOURCE', 1);
 function make_log_url($module, $url) {
     switch ($module) {
         case 'course':
+            if (strpos($url, 'report/') === 0) {
+                // there is only one report type, course reports are deprecated
+                $url = "/$url";
+                break;
+            }
         case 'file':
         case 'login':
         case 'lib':
@@ -145,6 +150,7 @@ function build_mnet_logs_array($hostid, $course, $user=0, $date=0, $order="l.tim
     $groupid = 0;
 
     $joins = array();
+    $where = '';
 
     $qry = "SELECT l.*, u.firstname, u.lastname, u.picture
               FROM {mnet_log} l
@@ -383,8 +389,7 @@ function print_log($course, $user=0, $date=0, $order="l.time ASC", $page=0, $per
 
         // If $log->url has been trimmed short by the db size restriction
         // code in add_to_log, keep a note so we don't add a link to a broken url
-        $tl=textlib_get_instance();
-        $brokenurl=($tl->strlen($log->url)==100 && $tl->substr($log->url,97)=='...');
+        $brokenurl=(textlib::strlen($log->url)==100 && textlib::substr($log->url,97)=='...');
 
         $row = array();
         if ($course->id == SITEID) {
@@ -812,7 +817,7 @@ function print_log_ods($course, $user, $date, $order='l.time DESC', $modname,
 
         $coursecontext = get_context_instance(CONTEXT_COURSE, $course->id);
 
-        $myxls->write_string($row, 0, format_string($courses[$log->course], true, array('context' => $context)));
+        $myxls->write_string($row, 0, format_string($courses[$log->course], true, array('context' => $coursecontext)));
         $myxls->write_date($row, 1, $log->time);
         $myxls->write_string($row, 2, $log->ip);
         $fullname = fullname($log, has_capability('moodle/site:viewfullnames', $coursecontext));
@@ -1069,6 +1074,7 @@ function get_array_of_activities($courseid) {
                    if (empty($rawmods[$seq])) {
                        continue;
                    }
+                   $mod[$seq] = new stdClass();
                    $mod[$seq]->id               = $rawmods[$seq]->instance;
                    $mod[$seq]->cm               = $rawmods[$seq]->id;
                    $mod[$seq]->mod              = $rawmods[$seq]->modname;
@@ -1335,6 +1341,18 @@ function course_set_display($courseid, $display) {
 }
 
 /**
+ * Set highlighted section. Only one section can be highlighted at the time.
+ *
+ * @param int $courseid course id
+ * @param int $marker highlight section with this number, 0 means remove higlightin
+ * @return void
+ */
+function course_set_marker($courseid, $marker) {
+    global $DB;
+    $DB->set_field("course", "marker", $marker, array('id' => $courseid));
+}
+
+/**
  * For a given course section, marks it visible or hidden,
  * and does the same for every activity in that section
  */
@@ -1427,8 +1445,6 @@ function print_section($course, $section, $mods, $modnamesused, $absolute=false,
         $modulenames      = array();
         $initialised = true;
     }
-
-    $tl = textlib_get_instance();
 
     $modinfo = get_fast_modinfo($course);
     $completioninfo = new completion_info($course);
@@ -1554,8 +1570,8 @@ function print_section($course, $section, $mods, $modnamesused, $absolute=false,
             // Avoid unnecessary duplication: if e.g. a forum name already
             // includes the word forum (or Forum, etc) then it is unhelpful
             // to include that in the accessible description that is added.
-            if (false !== strpos($tl->strtolower($instancename),
-                    $tl->strtolower($altname))) {
+            if (false !== strpos(textlib::strtolower($instancename),
+                    textlib::strtolower($altname))) {
                 $altname = '';
             }
             // File type after name, for alphabetic lists (screen reader).
@@ -1606,8 +1622,8 @@ function print_section($course, $section, $mods, $modnamesused, $absolute=false,
 
                     // If specified, display extra content after link
                     if ($content) {
-                        $contentpart = '<div class="contentafterlink' .
-                                trim($textclasses) . '">' . $content . '</div>';
+                        $contentpart = '<div class="' . trim('contentafterlink' . $textclasses) .
+                                '">' . $content . '</div>';
                     }
                 } else {
                     // No link, so display only content
@@ -1853,6 +1869,8 @@ function print_section_add_menus($course, $section, $modnames, $vertical=false, 
             $archetype = plugin_supports('mod', $modname, FEATURE_MOD_ARCHETYPE, MOD_ARCHETYPE_OTHER);
             if ($archetype == MOD_ARCHETYPE_RESOURCE) {
                 $resources[$urlbase.$modname] = $modnamestr;
+            } else if ($archetype === MOD_ARCHETYPE_SYSTEM) {
+                // System modules cannot be added by user, do not add to dropdown
             } else {
                 // all other archetypes are considered activity
                 $activities[$urlbase.$modname] = $modnamestr;
@@ -2120,6 +2138,7 @@ function print_whole_category_list($category=NULL, $displaylist=NULL, $parentsli
         }
 
     } else {
+        $category = new stdClass();
         $category->id = "0";
     }
 
@@ -2493,7 +2512,7 @@ function print_course($course, $highlightterms = '') {
     echo html_writer::end_tag('div'); // End of info div
 
     echo html_writer::start_tag('div', array('class'=>'summary'));
-    $options = NULL;
+    $options = new stdClass();
     $options->noclean = true;
     $options->para = false;
     $options->overflowdiv = true;
@@ -2640,7 +2659,7 @@ function print_remote_course($course, $width="100%") {
         . format_string($course->cat_name) . ' : '
         . format_string($course->shortname). '</div>';
     echo '</div><div class="summary">';
-    $options = NULL;
+    $options = new stdClass();
     $options->noclean = true;
     $options->para = false;
     $options->overflowdiv = true;
@@ -2862,9 +2881,10 @@ function delete_mod_from_section($mod, $section) {
 /**
  * Moves a section up or down by 1. CANNOT BE USED DIRECTLY BY AJAX!
  *
- * @param object $course
- * @param int $section
+ * @param object $course course object
+ * @param int $section Section number (not id!!!)
  * @param int $move (-1 or 1)
+ * @return boolean true if section moved successfully
  */
 function move_section($course, $section, $move) {
 /// Moves a whole course section up and down within the course
@@ -2890,6 +2910,13 @@ function move_section($course, $section, $move) {
 
     $DB->set_field("course_sections", "section", $sectiondest, array("id"=>$sectionrecord->id));
     $DB->set_field("course_sections", "section", $section, array("id"=>$sectiondestrecord->id));
+
+    // Update highlighting if the move affects highlighted section
+    if ($course->marker == $section) {
+        course_set_marker($course->id, $sectiondest);
+    } elseif ($course->marker == $sectiondest) {
+        course_set_marker($course->id, $section);
+    }
 
     // if the focus is on the section that is being moved, then move the focus along
     if (course_get_display($course->id) == $section) {
@@ -3062,13 +3089,13 @@ function moveto_module($mod, $section, $beforemod=NULL) {
  * @global core_renderer $OUTPUT
  * @staticvar type $str
  * @param stdClass $mod The module to produce editing buttons for
- * @param bool $absolute If true an absolute link is produced (default true)
+ * @param bool $absolute_ignored ignored - all links are absolute
  * @param bool $moveselect If true a move seleciton process is used (default true)
  * @param int $indent The current indenting
  * @param int $section The section to link back to
  * @return string XHTML for the editing buttons
  */
-function make_editing_buttons(stdClass $mod, $absolute = true, $moveselect = true, $indent=-1, $section=-1) {
+function make_editing_buttons(stdClass $mod, $absolute_ignored = true, $moveselect = true, $indent=-1, $section=-1) {
     global $CFG, $OUTPUT;
 
     static $str;
@@ -3076,10 +3103,15 @@ function make_editing_buttons(stdClass $mod, $absolute = true, $moveselect = tru
     $coursecontext = get_context_instance(CONTEXT_COURSE, $mod->course);
     $modcontext = get_context_instance(CONTEXT_MODULE, $mod->id);
 
-    // no permission to edit
-    if (!has_capability('moodle/course:manageactivities', $modcontext)) {
+    $editcaps = array('moodle/course:manageactivities', 'moodle/course:activityvisibility', 'moodle/role:assign');
+    $dupecaps = array('moodle/backup:backuptargetimport', 'moodle/restore:restoretargetimport');
+
+    // no permission to edit anything
+    if (!has_any_capability($editcaps, $modcontext) and !has_all_capabilities($dupecaps, $coursecontext)) {
         return false;
     }
+
+    $hasmanageactivities = has_capability('moodle/course:manageactivities', $modcontext);
 
     if (!isset($str)) {
         $str = new stdClass;
@@ -3094,18 +3126,15 @@ function make_editing_buttons(stdClass $mod, $absolute = true, $moveselect = tru
         $str->duplicate      = get_string("duplicate");
         $str->hide           = get_string("hide");
         $str->show           = get_string("show");
-        $str->clicktochange  = get_string("clicktochange");
-        $str->forcedmode     = get_string("forcedmode");
-        $str->groupsnone     = get_string("groupsnone");
-        $str->groupsseparate = get_string("groupsseparate");
-        $str->groupsvisible  = get_string("groupsvisible");
+        $str->groupsnone     = get_string('clicktochangeinbrackets', 'moodle', get_string("groupsnone"));
+        $str->groupsseparate = get_string('clicktochangeinbrackets', 'moodle', get_string("groupsseparate"));
+        $str->groupsvisible  = get_string('clicktochangeinbrackets', 'moodle', get_string("groupsvisible"));
+        $str->forcedgroupsnone     = get_string('forcedmodeinbrackets', 'moodle', get_string("groupsnone"));
+        $str->forcedgroupsseparate = get_string('forcedmodeinbrackets', 'moodle', get_string("groupsseparate"));
+        $str->forcedgroupsvisible  = get_string('forcedmodeinbrackets', 'moodle', get_string("groupsvisible"));
     }
 
-    if ($absolute) {
-        $baseurl = new moodle_url('/course/mod.php', array('sesskey' => sesskey()));
-    } else {
-        $baseurl = new moodle_url('mod.php', array('sesskey' => sesskey()));
-    }
+    $baseurl = new moodle_url('/course/mod.php', array('sesskey' => sesskey()));
 
     if ($section >= 0) {
         $baseurl->param('sr', $section);
@@ -3113,7 +3142,7 @@ function make_editing_buttons(stdClass $mod, $absolute = true, $moveselect = tru
     $actions = array();
 
     // leftright
-    if (has_capability('moodle/course:update', $coursecontext)) {
+    if ($hasmanageactivities) {
         if (right_to_left()) {   // Exchange arrows on RTL
             $rightarrow = 't/left';
             $leftarrow  = 't/right';
@@ -3141,7 +3170,7 @@ function make_editing_buttons(stdClass $mod, $absolute = true, $moveselect = tru
     }
 
     // move
-    if (has_capability('moodle/course:update', $coursecontext)) {
+    if ($hasmanageactivities) {
         if ($moveselect) {
             $actions[] = new action_link(
                 new moodle_url($baseurl, array('copy' => $mod->id)),
@@ -3166,15 +3195,16 @@ function make_editing_buttons(stdClass $mod, $absolute = true, $moveselect = tru
     }
 
     // Update
-    $actions[] = new action_link(
-        new moodle_url($baseurl, array('update' => $mod->id)),
-        new pix_icon('t/edit', $str->update, 'moodle', array('class' => 'iconsmall')),
-        null,
-        array('class' => 'editing_update', 'title' => $str->update)
-    );
+    if ($hasmanageactivities) {
+        $actions[] = new action_link(
+            new moodle_url($baseurl, array('update' => $mod->id)),
+            new pix_icon('t/edit', $str->update, 'moodle', array('class' => 'iconsmall')),
+            null,
+            array('class' => 'editing_update', 'title' => $str->update)
+        );
+    }
 
     // Duplicate (require both target import caps to be able to duplicate, see modduplicate.php)
-    $dupecaps = array('moodle/backup:backuptargetimport', 'moodle/restore:restoretargetimport');
     if (has_all_capabilities($dupecaps, $coursecontext)) {
         $actions[] = new action_link(
             new moodle_url($baseurl, array('duplicate' => $mod->id)),
@@ -3185,12 +3215,14 @@ function make_editing_buttons(stdClass $mod, $absolute = true, $moveselect = tru
     }
 
     // Delete
-    $actions[] = new action_link(
-        new moodle_url($baseurl, array('delete' => $mod->id)),
-        new pix_icon('t/delete', $str->delete, 'moodle', array('class' => 'iconsmall')),
-        null,
-        array('class' => 'editing_delete', 'title' => $str->delete)
-    );
+    if ($hasmanageactivities) {
+        $actions[] = new action_link(
+            new moodle_url($baseurl, array('delete' => $mod->id)),
+            new pix_icon('t/delete', $str->delete, 'moodle', array('class' => 'iconsmall')),
+            null,
+            array('class' => 'editing_delete', 'title' => $str->delete)
+        );
+    }
 
     // hideshow
     if (has_capability('moodle/course:activityvisibility', $modcontext)) {
@@ -3212,20 +3244,23 @@ function make_editing_buttons(stdClass $mod, $absolute = true, $moveselect = tru
     }
 
     // groupmode
-    if ($mod->groupmode !== false) {
+    if ($hasmanageactivities and $mod->groupmode !== false) {
         if ($mod->groupmode == SEPARATEGROUPS) {
             $groupmode = 0;
             $grouptitle = $str->groupsseparate;
+            $forcedgrouptitle = $str->forcedgroupsseparate;
             $groupclass = 'editing_groupsseparate';
             $groupimage = 't/groups';
         } else if ($mod->groupmode == VISIBLEGROUPS) {
             $groupmode = 1;
             $grouptitle = $str->groupsvisible;
+            $forcedgrouptitle = $str->forcedgroupsvisible;
             $groupclass = 'editing_groupsvisible';
             $groupimage = 't/groupv';
         } else {
             $groupmode = 2;
             $grouptitle = $str->groupsnone;
+            $forcedgrouptitle = $str->forcedgroupsnone;
             $groupclass = 'editing_groupsnone';
             $groupimage = 't/groupn';
         }
@@ -3234,15 +3269,15 @@ function make_editing_buttons(stdClass $mod, $absolute = true, $moveselect = tru
                 new moodle_url($baseurl, array('id' => $mod->id, 'groupmode' => $groupmode)),
                 new pix_icon($groupimage, $grouptitle, 'moodle', array('class' => 'iconsmall')),
                 null,
-                array('class' => $groupclass, 'title' => $grouptitle.' ('.$str->clicktochange.')')
+                array('class' => $groupclass, 'title' => $grouptitle)
             );
         } else {
-            $actions[] = new pix_icon($groupimage, $grouptitle, 'moodle', array('title' => $grouptitle.' ('.$str->forcedmode.')', 'class' => 'iconsmall'));
+            $actions[] = new pix_icon($groupimage, $forcedgrouptitle, 'moodle', array('title' => $forcedgrouptitle, 'class' => 'iconsmall'));
         }
     }
 
     // Assign
-    if (has_capability('moodle/course:managegroups', $modcontext)){
+    if (has_capability('moodle/role:assign', $modcontext)){
         $actions[] = new action_link(
             new moodle_url('/'.$CFG->admin.'/roles/assign.php', array('contextid' => $modcontext->id)),
             new pix_icon('i/roles', $str->assign, 'moodle', array('class' => 'iconsmall')),

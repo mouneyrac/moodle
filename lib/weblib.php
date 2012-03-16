@@ -474,7 +474,13 @@ class moodle_url {
             $params = $this->params;
         }
         foreach ($params as $key => $val) {
-           $arr[] = rawurlencode($key)."=".rawurlencode($val);
+            if (is_array($val)) {
+                foreach ($val as $index => $value) {
+                    $arr[] = rawurlencode($key.'['.$index.']')."=".rawurlencode($value);
+                }
+            } else {
+                $arr[] = rawurlencode($key)."=".rawurlencode($val);
+            }
         }
         if ($escaped) {
             return implode('&amp;', $arr);
@@ -717,6 +723,28 @@ class moodle_url {
         $urlbase = "$CFG->wwwroot/file.php";
         return self::make_file_url($urlbase, '/'.$courseid.'/'.$filepath, $forcedownload);
     }
+
+    /**
+     * Returns URL a relative path from $CFG->wwwroot
+     *
+     * Can be used for passing around urls with the wwwroot stripped
+     *
+     * @param boolean $escaped Use &amp; as params separator instead of plain &
+     * @param array $overrideparams params to add to the output url, these override existing ones with the same name.
+     * @return string Resulting URL
+     * @throws coding_exception if called on a non-local url
+     */
+    public function out_as_local_url($escaped = true, array $overrideparams = null) {
+        global $CFG;
+
+        $url = $this->out($escaped, $overrideparams);
+
+        if (strpos($url, $CFG->wwwroot) !== 0) {
+            throw new coding_exception('out_as_local_url called on a non-local URL');
+        }
+
+        return str_replace($CFG->wwwroot, '', $url);
+    }
 }
 
 /**
@@ -754,20 +782,17 @@ function data_submitted() {
  */
 function break_up_long_words($string, $maxsize=20, $cutchar=' ') {
 
-/// Loading the textlib singleton instance. We are going to need it.
-    $textlib = textlib_get_instance();
-
 /// First of all, save all the tags inside the text to skip them
     $tags = array();
     filter_save_tags($string,$tags);
 
 /// Process the string adding the cut when necessary
     $output = '';
-    $length = $textlib->strlen($string);
+    $length = textlib::strlen($string);
     $wordlength = 0;
 
     for ($i=0; $i<$length; $i++) {
-        $char = $textlib->substr($string, $i, 1);
+        $char = textlib::substr($string, $i, 1);
         if ($char == ' ' or $char == "\t" or $char == "\n" or $char == "\r" or $char == "<" or $char == ">") {
             $wordlength = 0;
         } else {
@@ -1179,11 +1204,9 @@ function reset_text_filters_cache() {
  * need filter processing e.g. activity titles, post subjects,
  * glossary concepts.
  *
- * @global object
- * @global object
- * @global object
  * @staticvar bool $strcache
- * @param string $string The string to be filtered.
+ * @param string $string The string to be filtered. Should be plain text, expect
+ * possibly for multilang tags.
  * @param boolean $striplinks To strip any link in the result text.
                               Moodle 1.8 default changed from false to true! MDL-8713
  * @param array $options options array/object or courseid
@@ -1241,7 +1264,7 @@ function format_string($string, $striplinks = true, $options = NULL) {
 
     // If the site requires it, strip ALL tags from this string
     if (!empty($CFG->formatstringstriptags)) {
-        $string = strip_tags($string);
+        $string = str_replace(array('<', '>'), array('&lt;', '&gt;'), strip_tags($string));
 
     } else {
         // Otherwise strip just links if that is required (default)
@@ -1676,7 +1699,7 @@ function highlightfast($needle, $haystack) {
         return $haystack;
     }
 
-    $parts = explode(moodle_strtolower($needle), moodle_strtolower($haystack));
+    $parts = explode(textlib::strtolower($needle), textlib::strtolower($haystack));
 
     if (count($parts) === 1) {
         return $haystack;
@@ -2701,7 +2724,7 @@ function debugging($message = '', $level = DEBUG_NORMAL, $backtrace = null) {
     global $CFG, $USER, $UNITTEST;
 
     $forcedebug = false;
-    if (!empty($CFG->debugusers)) {
+    if (!empty($CFG->debugusers) && $USER) {
         $debugusers = explode(',', $CFG->debugusers);
         $forcedebug = in_array($USER->id, $debugusers);
     }

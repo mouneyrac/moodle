@@ -356,7 +356,7 @@ function cron_run() {
         require_once($CFG->dirroot . '/blog/lib.php');
         mtrace("Fetching external blog entries...", '');
         $sql = "timefetched < ? OR timefetched = 0";
-        $externalblogs = $DB->get_records_select('blog_external', $sql, array(mktime() - $CFG->externalblogcrontime));
+        $externalblogs = $DB->get_records_select('blog_external', $sql, array(time() - $CFG->externalblogcrontime));
 
         foreach ($externalblogs as $eb) {
             blog_sync_external_entries($eb);
@@ -380,6 +380,10 @@ function cron_run() {
     $registrationmanager->cron();
     mtrace(get_string('siteupdatesend', 'hub'));
 
+    // If enabled, fetch information about available updates and eventually notify site admins
+    require_once($CFG->libdir.'/pluginlib.php');
+    $updateschecker = available_update_checker::instance();
+    $updateschecker->cron();
 
     //cleanup old session linked tokens
     //deletes the session linked tokens that are over a day old.
@@ -646,7 +650,8 @@ function notify_login_failures() {
 
     // Now, select all the login error logged records belonging to the ips and infos
     // since lastnotifyfailure, that we have stored in the cache_flags table
-    $sql = "SELECT l.*, u.firstname, u.lastname
+    $sql = "SELECT * FROM (
+        SELECT l.*, u.firstname, u.lastname
               FROM {log} l
               JOIN {cache_flags} cf ON l.ip = cf.name
          LEFT JOIN {user} u         ON l.userid = u.id
@@ -660,8 +665,8 @@ function notify_login_failures() {
          LEFT JOIN {user} u         ON l.userid = u.id
              WHERE l.module = 'login' AND l.action = 'error'
                    AND l.time > ?
-                   AND cf.flagtype = 'login_failure_by_info'
-          ORDER BY time DESC";
+                   AND cf.flagtype = 'login_failure_by_info') t
+        ORDER BY t.time DESC";
     $params = array($CFG->lastnotifyfailure, $CFG->lastnotifyfailure);
 
     // Init some variables

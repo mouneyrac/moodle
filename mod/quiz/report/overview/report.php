@@ -128,7 +128,7 @@ class quiz_overview_report extends quiz_attempt_report {
         // Load the required questions.
         $questions = quiz_report_get_significant_questions($quiz);
 
-        $table = new quiz_report_overview_table($quiz, $this->context, $qmsubselect,
+        $table = new quiz_overview_table($quiz, $this->context, $qmsubselect,
                 $qmfilter, $attemptsmode, $groupstudents, $students, $detailedmarks,
                 $questions, $includecheckboxes, $reporturl, $displayoptions);
         $filename = quiz_report_download_filename(get_string('overviewfilename', 'quiz_overview'),
@@ -374,6 +374,7 @@ class quiz_overview_report extends quiz_attempt_report {
      */
     protected function regrade_attempt($attempt, $dryrun = false, $slots = null) {
         global $DB;
+        set_time_limit(30);
 
         $transaction = $DB->start_delegated_transaction();
 
@@ -406,6 +407,11 @@ class quiz_overview_report extends quiz_attempt_report {
         }
 
         $transaction->allow_commit();
+
+        // Really, PHP should not need this hint, but without this, we just run out of memory.
+        $quba = null;
+        $transaction = null;
+        gc_collect_cycles();
     }
 
     /**
@@ -445,7 +451,6 @@ class quiz_overview_report extends quiz_attempt_report {
         $this->clear_regrade_table($quiz, $groupstudents);
 
         foreach ($attempts as $attempt) {
-            set_time_limit(30);
             $this->regrade_attempt($attempt, $dryrun);
         }
 
@@ -494,7 +499,6 @@ class quiz_overview_report extends quiz_attempt_report {
         $this->clear_regrade_table($quiz, $groupstudents);
 
         foreach ($attempts as $attempt) {
-            set_time_limit(30);
             $this->regrade_attempt($attempt, false, $attemptquestions[$attempt->uniqueid]);
         }
 

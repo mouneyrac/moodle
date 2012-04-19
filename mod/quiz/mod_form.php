@@ -42,13 +42,13 @@ class mod_quiz_mod_form extends moodleform_mod {
 
     public function __construct($current, $section, $cm, $course) {
         self::$reviewfields = array(
-            'attempt' => get_string('theattempt', 'quiz'),
-            'correctness' => get_string('whethercorrect', 'question'),
-            'marks' => get_string('marks', 'question'),
-            'specificfeedback' => get_string('specificfeedback', 'question'),
-            'generalfeedback' => get_string('generalfeedback', 'question'),
-            'rightanswer' => get_string('rightanswer', 'question'),
-            'overallfeedback' => get_string('overallfeedback', 'quiz'),
+            'attempt'          => array('theattempt', 'quiz'),
+            'correctness'      => array('whethercorrect', 'question'),
+            'marks'            => array('marks', 'quiz'),
+            'specificfeedback' => array('specificfeedback', 'question'),
+            'generalfeedback'  => array('generalfeedback', 'question'),
+            'rightanswer'      => array('rightanswer', 'question'),
+            'overallfeedback'  => array('reviewoverallfeedback', 'quiz'),
         );
         parent::__construct($current, $section, $cm, $course);
     }
@@ -154,6 +154,13 @@ class mod_quiz_mod_form extends moodleform_mod {
         $mform->addHelpButton('questionsperpagegrp', 'newpage', 'quiz');
         $mform->setAdvanced('questionsperpagegrp', $quizconfig->questionsperpage_adv);
 
+        // Navigation method
+        $mform->addElement('select', 'navmethod', get_string('navmethod', 'quiz'),
+                quiz_get_navigation_options());
+        $mform->addHelpButton('navmethod', 'navmethod', 'quiz');
+        $mform->setAdvanced('navmethod', $quizconfig->navmethod_adv);
+        $mform->setDefault('navmethod', $quizconfig->navmethod);
+
         //-------------------------------------------------------------------------------
         $mform->addElement('header', 'interactionhdr', get_string('questionbehaviour', 'quiz'));
 
@@ -190,7 +197,7 @@ class mod_quiz_mod_form extends moodleform_mod {
 
         // Review options.
         $this->add_review_options_group($mform, $quizconfig, 'during',
-                mod_quiz_display_options::DURING);
+                mod_quiz_display_options::DURING, true);
         $this->add_review_options_group($mform, $quizconfig, 'immediately',
                 mod_quiz_display_options::IMMEDIATELY_AFTER);
         $this->add_review_options_group($mform, $quizconfig, 'open',
@@ -310,10 +317,10 @@ class mod_quiz_mod_form extends moodleform_mod {
 
         $repeatarray = array();
         $repeatedoptions = array();
-        $repeatarray[] = MoodleQuickForm::createElement('editor', 'feedbacktext',
+        $repeatarray[] = $mform->createElement('editor', 'feedbacktext',
                 get_string('feedback', 'quiz'), null, array('maxfiles' => EDITOR_UNLIMITED_FILES,
                         'noclean' => true, 'context' => $this->context));
-        $repeatarray[] = MoodleQuickForm::createElement('text', 'feedbackboundaries',
+        $repeatarray[] = $mform->createElement('text', 'feedbackboundaries',
                 get_string('gradeboundary', 'quiz'), array('size' => 10));
         $repeatedoptions['feedbacktext']['type'] = PARAM_RAW;
         $repeatedoptions['feedbackboundaries']['type'] = PARAM_RAW;
@@ -331,12 +338,12 @@ class mod_quiz_mod_form extends moodleform_mod {
                 get_string('addmoreoverallfeedbacks', 'quiz'), true);
 
         // Put some extra elements in before the button
-        $mform->insertElementBefore(MoodleQuickForm::createElement('editor',
+        $mform->insertElementBefore($mform->createElement('editor',
                 "feedbacktext[$nextel]", get_string('feedback', 'quiz'), null,
                 array('maxfiles' => EDITOR_UNLIMITED_FILES, 'noclean' => true,
                       'context' => $this->context)),
                 'boundary_add_fields');
-        $mform->insertElementBefore(MoodleQuickForm::createElement('static',
+        $mform->insertElementBefore($mform->createElement('static',
                 'gradeboundarystatic2', get_string('gradeboundary', 'quiz'), '0%'),
                 'boundary_add_fields');
 
@@ -355,9 +362,19 @@ class mod_quiz_mod_form extends moodleform_mod {
         $this->add_action_buttons();
     }
 
-    protected function add_review_options_group($mform, $quizconfig, $whenname, $when) {
+    protected function add_review_options_group($mform, $quizconfig, $whenname,
+            $when, $withhelp = false) {
+        global $OUTPUT;
+
         $group = array();
-        foreach (self::$reviewfields as $field => $label) {
+        foreach (self::$reviewfields as $field => $string) {
+            list($identifier, $component) = $string;
+
+            $label = get_string($identifier, $component);
+            if ($withhelp) {
+                $label .= ' ' . $OUTPUT->help_icon($identifier, $component);
+            }
+
             $group[] = $mform->createElement('checkbox', $field . $whenname, '', $label);
         }
         $mform->addGroup($group, $whenname . 'optionsgrp',

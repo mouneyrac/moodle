@@ -1069,6 +1069,21 @@ class restore_section_structure_step extends restore_structure_step {
  * the course record (never inserting)
  */
 class restore_course_structure_step extends restore_structure_step {
+    /**
+     * @var bool this gets set to true by {@link process_course()} if we are
+     * restoring an old coures that used the legacy 'module security' feature.
+     * If so, we have to do more work in {@link after_execute()}.
+     */
+    protected $legacyrestrictmodules = false;
+
+    /**
+     * @var array Used when {@link $legacyrestrictmodules} is true. This is an
+     * array with array keys the module names ('forum', 'quiz', etc.). These are
+     * the modules that are allowed according to the data in the backup file.
+     * In {@link after_execute()} we then have to prevent adding of all the other
+     * types of activity.
+     */
+    protected $legacyallowedmodules = array();
 
     protected function define_structure() {
 
@@ -1131,8 +1146,9 @@ class restore_course_structure_step extends restore_structure_step {
             $data->hiddensections = 0;
         }
 
-        // Only restrict modules if original course was and target site too for new courses
-        $data->restrictmodules = $data->restrictmodules && !empty($CFG->restrictmodulesfor) && $CFG->restrictmodulesfor == 'all';
+        // Set legacyrestrictmodules to true if the course was resticting modules. If so
+        // then we will need to process restricted modules after execution.
+        $this->legacyrestrictmodules = !empty($data->restrictmodules);
 
         $data->startdate= $this->apply_date_offset($data->startdate);
         if ($data->defaultgroupingid) {
@@ -1187,31 +1203,44 @@ class restore_course_structure_step extends restore_structure_step {
     }
 
     public function process_allowed_module($data) {
-        global $CFG, $DB;
-
         $data = (object)$data;
 
-        // only if enabled by admin setting
-        if (!empty($CFG->restrictmodulesfor) && $CFG->restrictmodulesfor == 'all') {
-            $available = get_plugin_list('mod');
-            $mname = $data->modulename;
-            if (array_key_exists($mname, $available)) {
-                if ($module = $DB->get_record('modules', array('name' => $mname, 'visible' => 1))) {
-                    $rec = new stdclass();
-                    $rec->course = $this->get_courseid();
-                    $rec->module = $module->id;
-                    if (!$DB->record_exists('course_allowed_modules', (array)$rec)) {
-                        $DB->insert_record('course_allowed_modules', $rec);
-                    }
-                }
-            }
+        // Backwards compatiblity support for the data that used to be in the
+        // course_allowed_modules table.
+        if ($this->legacyrestrictmodules) {
+            $this->legacyallowedmodules[$data->modulename] = 1;
         }
     }
 
     protected function after_execute() {
+        global $DB;
+
         // Add course related files, without itemid to match
         $this->add_related_files('course', 'summary', null);
         $this->add_related_files('course', 'legacy', null);
+
+        // Deal with legacy allowed modules.
+        if ($this->legacyrestrictmodules) {
+            $context = context_course::instance($this->get_courseid());
+
+            list($roleids) = get_roles_with_cap_in_context($context, 'moodle/course:manageactivities');
+            list($managerroleids) = get_roles_with_cap_in_context($context, 'moodle/site:config');
+            foreach ($managerroleids as $roleid) {
+                unset($roleids[$roleid]);
+            }
+
+            foreach (get_plugin_list('mod') as $modname => $notused) {
+                if (isset($this->legacyallowedmodules[$modname])) {
+                    // Module is allowed, no worries.
+                    continue;
+                }
+
+                $capability = 'mod/' . $modname . ':addinstance';
+                foreach ($roleids as $roleid) {
+                    assign_capability($capability, CAP_PREVENT, $roleid, $context);
+                }
+            }
+        }
     }
 }
 
@@ -1564,6 +1593,76 @@ class restore_comments_structure_step extends restore_structure_step {
                 }
             }
         }
+    }
+}
+
+/**
+ * This structure steps restores the calendar events
+ */
+class restore_calendarevents_structure_step extends restore_structure_step {
+
+    protected function define_structure() {
+
+        $paths = array();
+
+        $paths[] = new restore_path_element('calendarevents', '/events/event');
+
+        return $paths;
+    }
+
+    public function process_calendarevents($data) {
+        global $DB;
+
+        $data = (object)$data;
+        $oldid = $data->id;
+        $restorefiles = true; // We'll restore the files
+        // Find the userid and the groupid associated with the event. Return if not found.
+        $data->userid = $this->get_mappingid('user', $data->userid);
+        if ($data->userid === false) {
+            return;
+        }
+        if (!empty($data->groupid)) {
+            $data->groupid = $this->get_mappingid('group', $data->groupid);
+            if ($data->groupid === false) {
+                return;
+            }
+        }
+
+        $params = array(
+                'name'           => $data->name,
+                'description'    => $data->description,
+                'format'         => $data->format,
+                'courseid'       => $this->get_courseid(),
+                'groupid'        => $data->groupid,
+                'userid'         => $data->userid,
+                'repeatid'       => $data->repeatid,
+                'modulename'     => $data->modulename,
+                'eventtype'      => $data->eventtype,
+                'timestart'      => $this->apply_date_offset($data->timestart),
+                'timeduration'   => $data->timeduration,
+                'visible'        => $data->visible,
+                'uuid'           => $data->uuid,
+                'sequence'       => $data->sequence,
+                'timemodified'    => $this->apply_date_offset($data->timemodified));
+        if ($this->name == 'activity_calendar') {
+            $params['instance'] = $this->task->get_activityid();
+        } else {
+            $params['instance'] = 0;
+        }
+        $sql = 'SELECT id FROM {event} WHERE name = ? AND courseid = ? AND
+                repeatid = ? AND modulename = ? AND timestart = ? AND timeduration =?
+                AND ' . $DB->sql_compare_text('description', 255) . ' = ' . $DB->sql_compare_text('?', 255);
+        $arg = array ($params['name'], $params['courseid'], $params['repeatid'], $params['modulename'], $params['timestart'], $params['timeduration'], $params['description']);
+        $result = $DB->record_exists_sql($sql, $arg);
+        if (empty($result)) {
+            $newitemid = $DB->insert_record('event', $params);
+            $this->set_mapping('event_description', $oldid, $newitemid, $restorefiles);
+        }
+
+    }
+    protected function after_execute() {
+        // Add related files
+        $this->add_related_files('calendar', 'event_description', 'event_description');
     }
 }
 
@@ -2220,7 +2319,11 @@ class restore_block_instance_structure_step extends restore_structure_step {
         // If there is already one block of that type in the parent context
         // and the block is not multiple, stop processing
         // Use blockslib loader / method executor
-        if (!block_method_result($data->blockname, 'instance_allow_multiple')) {
+        if (!$bi = block_instance($data->blockname)) {
+            return false;
+        }
+
+        if (!$bi->instance_allow_multiple()) {
             if ($DB->record_exists_sql("SELECT bi.id
                                           FROM {block_instances} bi
                                           JOIN {block} b ON b.name = bi.blockname

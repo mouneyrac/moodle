@@ -906,7 +906,7 @@ class question_type {
      * Imports question using information from extra_question_fields function
      * If some of you fields contains id's you'll need to reimplement this
      */
-    public function import_from_xml($data, $question, $format, $extra=null) {
+    public function import_from_xml($data, $question, qformat_xml $format, $extra=null) {
         $question_type = $data['@']['type'];
         if ($question_type != $this->name()) {
             return false;
@@ -959,7 +959,7 @@ class question_type {
      * Export question using information from extra_question_fields function
      * If some of you fields contains id's you'll need to reimplement this
      */
-    public function export_to_xml($question, $format, $extra=null) {
+    public function export_to_xml($question, qformat_xml $format, $extra=null) {
         $extraquestionfields = $this->extra_question_fields();
         if (!is_array($extraquestionfields)) {
             return false;
@@ -978,21 +978,15 @@ class question_type {
             array_shift($extraanswersfields);
         }
         foreach ($question->options->answers as $answer) {
-            // TODO this should be re-factored to use $format->write_answer().
-            $percent = 100 * $answer->fraction;
-            $expout .= "    <answer fraction=\"$percent\" {$format->format($answer->answerformat)}>\n";
-            $expout .= $format->writetext($answer->answer, 3, false);
-            $expout .= "      <feedback {$format->format($answer->feedbackformat)}>\n";
-            $expout .= $format->writetext($answer->feedback, 4, false);
-            $expout .= "      </feedback>\n";
+            $extra = '';
             if (is_array($extraanswersfields)) {
                 foreach ($extraanswersfields as $field) {
                     $exportedvalue = $format->xml_escape($answer->$field);
-                    $expout .= "      <{$field}>{$exportedvalue}</{$field}>\n";
+                    $extra .= "      <{$field}>{$exportedvalue}</{$field}>\n";
                 }
             }
 
-            $expout .= "    </answer>\n";
+            $expout .= $format->write_answer($answer, $extra);
         }
         return $expout;
     }

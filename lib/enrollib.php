@@ -204,11 +204,8 @@ function enrol_check_plugins($user) {
         return;
     }
 
-    if (is_siteadmin()) {
-        // no sync for admin user, please use admin accounts only for admin tasks like the unix root user!
-        // if plugin fails on sync admins need to be able to log in and fix the settings
-        return;
-    }
+    // originally there was a broken admin test, but accidentally it was non-functional in 2.2,
+    // which proved it was actually not necessary.
 
     static $inprogress = array();  // To prevent this function being called more than once in an invocation
 
@@ -264,8 +261,8 @@ function enrol_sharing_course($user1, $user2) {
 function enrol_get_shared_courses($user1, $user2, $preloadcontexts = false, $checkexistsonly = false) {
     global $DB, $CFG;
 
-    $user1 = !empty($user1->id) ? $user1->id : $user1;
-    $user2 = !empty($user2->id) ? $user2->id : $user2;
+    $user1 = isset($user1->id) ? $user1->id : $user1;
+    $user2 = isset($user2->id) ? $user2->id : $user2;
 
     if (empty($user1) or empty($user2)) {
         return false;
@@ -476,8 +473,10 @@ function enrol_add_course_navigation(navigation_node $coursenode, $course) {
     $usersnode->trim_if_empty();
 
     if ($course->id != SITEID) {
-        // Unenrol link
-        if (is_enrolled($coursecontext)) {
+        if (isguestuser() or !isloggedin()) {
+            // guest account can not be enrolled - no links for them
+        } else if (is_enrolled($coursecontext)) {
+            // unenrol link if possible
             foreach ($instances as $instance) {
                 if (!isset($plugins[$instance->enrol])) {
                     continue;
@@ -491,6 +490,7 @@ function enrol_add_course_navigation(navigation_node $coursenode, $course) {
                 }
             }
         } else {
+            // enrol link if possible
             if (is_viewing($coursecontext)) {
                 // better not show any enrol link, this is intended for managers and inspectors
             } else {
@@ -1730,9 +1730,10 @@ abstract class enrol_plugin {
      * Returns true if the plugin has one or more bulk operations that can be performed on
      * user enrolments.
      *
+     * @param course_enrolment_manager $manager
      * @return bool
      */
-    public function has_bulk_operations() {
+    public function has_bulk_operations(course_enrolment_manager $manager) {
        return false;
     }
 
@@ -1740,9 +1741,10 @@ abstract class enrol_plugin {
      * Return an array of enrol_bulk_enrolment_operation objects that define
      * the bulk actions that can be performed on user enrolments by the plugin.
      *
+     * @param course_enrolment_manager $manager
      * @return array
      */
-    public function get_bulk_operations() {
+    public function get_bulk_operations(course_enrolment_manager $manager) {
         return array();
     }
 }

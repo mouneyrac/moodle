@@ -52,8 +52,8 @@ class backup_filename_setting extends backup_generic_setting {
         parent::__construct($name, $vtype, $value, $visibility, $status);
     }
 
-    public function set_ui($label, $value, array $options = null) {
-        parent::make_ui(self::UI_HTML_TEXTFIELD, $label, null, $options);
+    public function set_ui_filename($label, $value, array $options = null) {
+        $this->make_ui(self::UI_HTML_TEXTFIELD, $label, null, $options);
         $this->set_value($value);
     }
 }
@@ -100,6 +100,13 @@ class backup_logs_setting extends backup_anonymize_setting {}
  * exactly in the same way than @backup_anonymize_setting so we extend from it
  */
 class backup_comments_setting extends backup_anonymize_setting {}
+
+/**
+ * root setting to control if backup will include
+ * calender events or no (any level), depends of @backup_users_setting
+ * exactly in the same way than @backup_anonymize_setting so we extend from it
+ */
+class backup_calendarevents_setting extends backup_anonymize_setting {}
 
 /**
  * root setting to control if backup will include

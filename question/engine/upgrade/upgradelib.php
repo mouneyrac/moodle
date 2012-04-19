@@ -357,7 +357,8 @@ class question_engine_attempt_upgrader {
                 return 'qbehaviour_manualgraded_converter';
             }
         }
-        if ($question->qtype == 'essay') {
+        $qtype = question_bank::get_qtype($question->qtype, false);
+        if ($qtype->is_manual_graded()) {
             return 'qbehaviour_manualgraded_converter';
         } else if ($question->qtype == 'description') {
             return 'qbehaviour_informationitem_converter';
@@ -452,8 +453,8 @@ class question_engine_attempt_upgrader {
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class question_engine_upgrade_question_loader {
-    private $cache = array();
-    private $datasetcache = array();
+    protected $cache = array();
+    protected $datasetcache = array();
 
     public function __construct($logger) {
         $this->logger = $logger;

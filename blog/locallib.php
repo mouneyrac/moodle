@@ -292,9 +292,16 @@ class blog_entry {
 
         $contentcell->text .= $OUTPUT->container_start('commands');
 
-        if (blog_user_can_edit_entry($this) && empty($this->uniquehash)) {
-            $contentcell->text .= html_writer::link(new moodle_url('/blog/edit.php', array('action' => 'edit', 'entryid' => $this->id)), $stredit) . ' | ';
-            $contentcell->text .= html_writer::link(new moodle_url('/blog/edit.php', array('action' => 'delete', 'entryid' => $this->id)), $strdelete) . ' | ';
+        if (blog_user_can_edit_entry($this)) {
+            if (empty($this->uniquehash)) {
+                //External blog entries should not be edited
+                $contentcell->text .= html_writer::link(new moodle_url('/blog/edit.php',
+                                                        array('action' => 'edit', 'entryid' => $this->id)),
+                                                        $stredit) . ' | ';
+            }
+            $contentcell->text .= html_writer::link(new moodle_url('/blog/edit.php',
+                                                    array('action' => 'delete', 'entryid' => $this->id)),
+                                                    $strdelete) . ' | ';
         }
 
         $contentcell->text .= html_writer::link(new moodle_url('/blog/index.php', array('entryid' => $this->id)), get_string('permalink', 'blog'));
@@ -1132,13 +1139,13 @@ class blog_filter_entry extends blog_filter {
 }
 
 /**
- * This filter restricts the results to a time interval in seconds up to mktime()
+ * This filter restricts the results to a time interval in seconds up to time()
  */
 class blog_filter_since extends blog_filter {
     public function __construct($interval) {
         $this->conditions[] = 'p.lastmodified >= ? AND p.lastmodified <= ?';
-        $this->params[] = mktime() - $interval;
-        $this->params[] = mktime();
+        $this->params[] = time() - $interval;
+        $this->params[] = time();
     }
 }
 

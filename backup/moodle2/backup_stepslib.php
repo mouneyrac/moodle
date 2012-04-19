@@ -403,7 +403,7 @@ class backup_course_structure_step extends backup_structure_step {
             'visible', 'hiddensections', 'groupmode', 'groupmodeforce',
             'defaultgroupingid', 'lang', 'theme',
             'timecreated', 'timemodified',
-            'requested', 'restrictmodules',
+            'requested',
             'enablecompletion', 'completionstartonenrol', 'completionnotify'));
 
         $category = new backup_nested_element('category', array('id'), array(
@@ -413,10 +413,6 @@ class backup_course_structure_step extends backup_structure_step {
 
         $tag = new backup_nested_element('tag', array('id'), array(
             'name', 'rawname'));
-
-        $allowedmodules = new backup_nested_element('allowed_modules');
-
-        $module = new backup_nested_element('module', array(), array('modulename'));
 
         // attach format plugin structure to $course element, only one allowed
         $this->add_plugin_structure('format', $course, false);
@@ -444,9 +440,6 @@ class backup_course_structure_step extends backup_structure_step {
         $course->add_child($tags);
         $tags->add_child($tag);
 
-        $course->add_child($allowedmodules);
-        $allowedmodules->add_child($module);
-
         // Set the sources
 
         $courserec = $DB->get_record('course', array('id' => $this->task->get_courseid()));
@@ -465,11 +458,6 @@ class backup_course_structure_step extends backup_structure_step {
                                  AND ti.itemid = ?', array(
                                      backup_helper::is_sqlparam('course'),
                                      backup::VAR_PARENTID));
-
-        $module->set_source_sql('SELECT m.name AS modulename
-                                   FROM {modules} m
-                                   JOIN {course_allowed_modules} cam ON m.id = cam.module
-                                  WHERE course = ?', array(backup::VAR_COURSEID));
 
         // Some annotations
 
@@ -771,6 +759,48 @@ class backup_comments_structure_step extends backup_structure_step {
 
         // Return the root element (comments)
         return $comments;
+    }
+}
+
+/**
+ * structure step in charge of constructing the calender.xml file for all the events found
+ * in a given context
+ */
+class backup_calendarevents_structure_step extends backup_structure_step {
+
+    protected function define_structure() {
+
+        // Define each element separated
+
+        $events = new backup_nested_element('events');
+
+        $event = new backup_nested_element('event', array('id'), array(
+                'name', 'description', 'format', 'courseid', 'groupid', 'userid',
+                'repeatid', 'modulename', 'instance', 'eventtype', 'timestart',
+                'timeduration', 'visible', 'uuid', 'sequence', 'timemodified'));
+
+        // Build the tree
+        $events->add_child($event);
+
+        // Define sources
+        if ($this->name == 'course_calendar') {
+            $calendar_items_sql ="SELECT * FROM {event}
+                        WHERE courseid = :courseid
+                        AND (eventtype = 'course' OR eventtype = 'group')";
+            $calendar_items_params = array('courseid'=>backup::VAR_COURSEID);
+            $event->set_source_sql($calendar_items_sql, $calendar_items_params);
+        } else {
+            $event->set_source_table('event', array('courseid' => backup::VAR_COURSEID, 'instance' => backup::VAR_ACTIVITYID, 'modulename' => backup::VAR_MODNAME));
+        }
+
+        // Define id annotations
+
+        $event->annotate_ids('user', 'userid');
+        $event->annotate_ids('group', 'groupid');
+        $event->annotate_files('calendar', 'event_description', 'id');
+
+        // Return the root element (events)
+        return $events;
     }
 }
 

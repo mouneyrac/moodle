@@ -296,6 +296,13 @@ class oci_native_moodle_database extends moodle_database {
         return $info;
     }
 
+    /**
+     * Returns if the RDBMS server fulfills the required version
+     *
+     * @param string $version version to check against
+     * @return bool returns if the version is fulfilled (true) or no (false)
+     * @todo Delete this unused and protected method. MDL-32392
+     */
     protected function is_min_version($version) {
         $server = $this->get_server_info();
         $server = $server['version'];
@@ -419,10 +426,12 @@ class oci_native_moodle_database extends moodle_database {
         oci_free_statement($stmt);
         $records = array_map('strtolower', $records['TABLE_NAME']);
         foreach ($records as $tablename) {
-            if (strpos($tablename, $this->prefix) !== 0) {
-                continue;
+            if ($this->prefix !== '') {
+                if (strpos($tablename, $this->prefix) !== 0) {
+                    continue;
+                }
+                $tablename = substr($tablename, strlen($this->prefix));
             }
-            $tablename = substr($tablename, strlen($this->prefix));
             $this->tables[$tablename] = $tablename;
         }
 
@@ -491,9 +500,13 @@ class oci_native_moodle_database extends moodle_database {
 
         // We give precedence to CHAR_LENGTH for VARCHAR2 columns over WIDTH because the former is always
         // BYTE based and, for cross-db operations, we want CHAR based results. See MDL-29415
-        $sql = "SELECT CNAME, COLTYPE, nvl(CHAR_LENGTH, WIDTH) AS WIDTH, SCALE, PRECISION, NULLS, DEFAULTVAL
+        // Instead of guessing sequence based exclusively on name, check tables against user_triggers to
+        // ensure the table has a 'before each row' trigger to assume 'id' is auto_increment. MDL-32365
+        $sql = "SELECT CNAME, COLTYPE, nvl(CHAR_LENGTH, WIDTH) AS WIDTH, SCALE, PRECISION, NULLS, DEFAULTVAL,
+                  DECODE(NVL(TRIGGER_NAME, '0'), '0', '0', '1') HASTRIGGER
                   FROM COL c
              LEFT JOIN USER_TAB_COLUMNS u ON (u.TABLE_NAME = c.TNAME AND u.COLUMN_NAME = c.CNAME AND u.DATA_TYPE = 'VARCHAR2')
+             LEFT JOIN USER_TRIGGERS t ON (t.TABLE_NAME = c.TNAME AND TRIGGER_TYPE = 'BEFORE EACH ROW' AND c.CNAME = 'ID')
                  WHERE TNAME = UPPER('{" . $table . "}')
               ORDER BY COLNO";
 
@@ -515,6 +528,7 @@ class oci_native_moodle_database extends moodle_database {
 
             $info = new stdClass();
             $info->name = strtolower($rawcolumn->CNAME);
+            $info->auto_increment = ((int)$rawcolumn->HASTRIGGER) ? true : false;
             $matches = null;
 
             if ($rawcolumn->COLTYPE === 'VARCHAR2'
@@ -523,7 +537,6 @@ class oci_native_moodle_database extends moodle_database {
              or $rawcolumn->COLTYPE === 'NVARCHAR'
              or $rawcolumn->COLTYPE === 'CHAR'
              or $rawcolumn->COLTYPE === 'NCHAR') {
-                //TODO add some basic enum support here
                 $info->type          = $rawcolumn->COLTYPE;
                 $info->meta_type     = 'C';
                 $info->max_length    = $rawcolumn->WIDTH;
@@ -549,7 +562,6 @@ class oci_native_moodle_database extends moodle_database {
                 $info->primary_key   = false;
                 $info->binary        = false;
                 $info->unsigned      = null;
-                $info->auto_increment= false;
                 $info->unique        = null;
 
             } else if ($rawcolumn->COLTYPE === 'NUMBER') {
@@ -562,13 +574,11 @@ class oci_native_moodle_database extends moodle_database {
                         $info->primary_key   = true;
                         $info->meta_type     = 'R';
                         $info->unique        = true;
-                        $info->auto_increment= true;
                         $info->has_default   = false;
                     } else {
                         $info->primary_key   = false;
                         $info->meta_type     = 'I';
                         $info->unique        = null;
-                        $info->auto_increment= false;
                     }
                     $info->scale = null;
 
@@ -577,7 +587,6 @@ class oci_native_moodle_database extends moodle_database {
                     $info->meta_type     = 'N';
                     $info->primary_key   = false;
                     $info->unsigned      = null;
-                    $info->auto_increment= false;
                     $info->unique        = null;
                     $info->scale         = $rawcolumn->SCALE;
                 }
@@ -595,7 +604,6 @@ class oci_native_moodle_database extends moodle_database {
                 $info->primary_key   = false;
                 $info->meta_type     = 'N';
                 $info->unique        = null;
-                $info->auto_increment= false;
                 $info->not_null      = ($rawcolumn->NULLS === 'NOT NULL');
                 $info->has_default   = !is_null($rawcolumn->DEFAULTVAL);
                 if ($info->has_default) {
@@ -631,7 +639,6 @@ class oci_native_moodle_database extends moodle_database {
                 $info->primary_key   = false;
                 $info->binary        = false;
                 $info->unsigned      = null;
-                $info->auto_increment= false;
                 $info->unique        = null;
 
             } else if ($rawcolumn->COLTYPE === 'BLOB') {
@@ -660,7 +667,6 @@ class oci_native_moodle_database extends moodle_database {
                 $info->primary_key   = false;
                 $info->binary        = true;
                 $info->unsigned      = null;
-                $info->auto_increment= false;
                 $info->unique        = null;
 
             } else {
@@ -683,6 +689,8 @@ class oci_native_moodle_database extends moodle_database {
      * @return mixed the normalised value
      */
     protected function normalise_value($column, $value) {
+        $this->detect_objects($value);
+
         if (is_bool($value)) { // Always, convert boolean to int
             $value = (int)$value;
 
@@ -1542,7 +1550,7 @@ class oci_native_moodle_database extends moodle_database {
      */
     public function sql_like($fieldname, $param, $casesensitive = true, $accentsensitive = true, $notlike = false, $escapechar = '\\') {
         if (strpos($param, '%') !== false) {
-            debugging('Potential SQL injection detected, sql_ilike() expects bound parameters (? or :named)');
+            debugging('Potential SQL injection detected, sql_like() expects bound parameters (? or :named)');
         }
 
         $LIKE = $notlike ? 'NOT LIKE' : 'LIKE';

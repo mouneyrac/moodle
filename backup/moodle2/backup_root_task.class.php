@@ -67,7 +67,7 @@ class backup_root_task extends backup_task {
         require_once($CFG->dirroot . '/backup/util/helper/convert_helper.class.php');
         // Define filename setting
         $filename = new backup_filename_setting('filename', base_setting::IS_FILENAME, 'backup.mbz');
-        $filename->set_ui(get_string('filename', 'backup'), 'backup.mbz', array('size'=>50));
+        $filename->set_ui_filename(get_string('filename', 'backup'), 'backup.mbz', array('size'=>50));
         $this->add_setting($filename);
 
         //Sample custom settings
@@ -118,6 +118,12 @@ class backup_root_task extends backup_task {
         $comments->set_ui(new backup_setting_ui_checkbox($comments, get_string('rootsettingcomments', 'backup')));
         $this->add_setting($comments);
         $users->add_dependency($comments);
+
+        // Define calendar events (dependent of users)
+        $events = new backup_calendarevents_setting('calendarevents', base_setting::IS_BOOLEAN, true);
+        $events->set_ui(new backup_setting_ui_checkbox($events, get_string('rootsettingcalendarevents', 'backup')));
+        $this->add_setting($events);
+        $users->add_dependency($events);
 
         // Define completion (dependent of users)
         $completion = new backup_userscompletion_setting('userscompletion', base_setting::IS_BOOLEAN, true);

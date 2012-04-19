@@ -45,8 +45,6 @@ class quiz_grading_report extends quiz_default_report {
 
     protected $viewoptions = array();
     protected $questions;
-    protected $currentgroup;
-    protected $users;
     protected $cm;
     protected $quiz;
     protected $context;
@@ -126,11 +124,28 @@ class quiz_grading_report extends quiz_default_report {
                     $this->currentgroup, '', false);
         }
 
+        $questionsinquiz = quiz_questions_in_quiz($quiz->questions);
+        $counts = null;
+        if ($slot && $questionsinquiz) {
+            // Make sure there is something to do.
+            $statecounts = $this->get_question_state_summary(array($slot));
+            foreach ($statecounts as $record) {
+                if ($record->questionid == $questionid) {
+                    $counts = $record;
+                    break;
+                }
+            }
+            // If not, redirect back to the list.
+            if (!$counts || $counts->$grade == 0) {
+                redirect($this->list_questions_url(), get_string('alldoneredirecting', 'quiz_grading'));
+            }
+        }
+
         // Start output.
         $this->print_header_and_tabs($cm, $course, $quiz, 'grading');
 
         // What sort of page to display?
-        if (!quiz_questions_in_quiz($quiz->questions)) {
+        if (!$questionsinquiz) {
             echo quiz_no_questions_message($quiz, $cm, $this->context);
 
         } else if (!$slot) {
@@ -138,7 +153,7 @@ class quiz_grading_report extends quiz_default_report {
 
         } else {
             $this->display_grading_interface($slot, $questionid, $grade,
-                    $pagesize, $page, $shownames, $showidnumbers, $order);
+                    $pagesize, $page, $shownames, $showidnumbers, $order, $counts);
         }
         return true;
     }
@@ -151,11 +166,19 @@ class quiz_grading_report extends quiz_default_report {
                 quiza.timefinish <> 0";
         $params = array('mangrquizid' => $this->cm->instance);
 
-        if ($this->currentgroup) {
-            list($usql, $uparam) = $DB->get_in_or_equal(array_keys($this->users),
-                    SQL_PARAMS_NAMED, 'mangru');
-            $where .= ' AND quiza.userid ' . $usql;
-            $params += $uparam;
+        $currentgroup = groups_get_activity_group($this->cm, true);
+        if ($currentgroup) {
+            $users = get_users_by_capability($this->context,
+                    array('mod/quiz:reviewmyattempts', 'mod/quiz:attempt'), 'u.id, u.id', '', '', '',
+                    $currentgroup, '', false);
+            if (empty($users)) {
+                $where .= ' AND quiza.userid = 0';
+            } else {
+                list($usql, $uparam) = $DB->get_in_or_equal(array_keys($users),
+                        SQL_PARAMS_NAMED, 'mangru');
+                $where .= ' AND quiza.userid ' . $usql;
+                $params += $uparam;
+            }
         }
 
         return new qubaid_join('{quiz_attempts} quiza', 'quiza.uniqueid', $where, $params);
@@ -291,7 +314,7 @@ class quiz_grading_report extends quiz_default_report {
         }
 
         if (empty($data)) {
-            echo $OUTPUT->heading(get_string('noquestionsfound', 'quiz_grading'));
+            echo $OUTPUT->heading(get_string('nothingfound', 'quiz_grading'));
             return;
         }
 
@@ -313,24 +336,8 @@ class quiz_grading_report extends quiz_default_report {
     }
 
     protected function display_grading_interface($slot, $questionid, $grade,
-            $pagesize, $page, $shownames, $showidnumbers, $order) {
+            $pagesize, $page, $shownames, $showidnumbers, $order, $counts) {
         global $OUTPUT;
-
-        // Make sure there is something to do.
-        $statecounts = $this->get_question_state_summary(array($slot));
-
-        $counts = null;
-        foreach ($statecounts as $record) {
-            if ($record->questionid == $questionid) {
-                $counts = $record;
-                break;
-            }
-        }
-
-        // If not, redirect back to the list.
-        if (!$counts || $counts->$grade == 0) {
-            redirect($this->list_questions_url(), get_string('alldoneredirecting', 'quiz_grading'));
-        }
 
         if ($pagesize * $page >= $counts->$grade) {
             $page = 0;

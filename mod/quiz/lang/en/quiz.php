@@ -127,7 +127,7 @@ $string['cannotsavenumberofquestion'] = 'Could not save number of questions per 
 $string['cannotsavequestion'] = 'Cannot save question list';
 $string['cannotsetgrade'] = 'Could not set a new maximum grade for the quiz';
 $string['cannotsetsumgrades'] = 'Failed to set sumgrades';
-$string['cannotstartgradesmismatch'] = 'Cannot start an attempt at this quiz. The quiz is supposed to be graded, but there are no questions in the quiz that are worth any marks.';
+$string['cannotstartgradesmismatch'] = 'Cannot start an attempt at this quiz. The quiz is set to be graded out of {$a->grade}, but none of the questions in the quiz have a grade. This can be fixed on the \'Edit quiz\' page.';
 $string['cannotstartmissingquestion'] = 'Cannot start an attempt at this quiz. The quiz definition includes a question that does not exist.';
 $string['cannotstartnoquestions'] = 'Cannot start an attempt at this quiz. The quiz has not been set up yet. No questions have been added.';
 $string['cannotwrite'] = 'Cannot write to export file ({$a})';
@@ -163,6 +163,7 @@ $string['configgrademethod'] = 'When multiple attempts are allowed, which method
 $string['configintro'] = 'The values you set here define the default values that are used in the settings form when you create a new quiz. You can also configure which quiz settings are considered advanced.';
 $string['configmaximumgrade'] = 'The default grade that the quiz grade is scaled to be out of.';
 $string['confignewpageevery'] = 'When adding questions to the quiz page breaks will automatically be inserted according to the setting you choose here.';
+$string['confignavmethod'] = 'In Free navigation, questions may be answered in any order using navigation. In Sequential, questions must be answered in strict sequence.';
 $string['configpenaltyscheme'] = 'Penalty subtracted for each wrong response in adaptive mode.';
 $string['configpopup'] = 'Force the attempt to open in a popup window, and use JavaScript tricks to try to restrict copy and paste, etc. during quiz attempts.';
 $string['configrequirepassword'] = 'Students must enter this password before they can attempt the quiz.';
@@ -412,6 +413,10 @@ $string['multichoice'] = 'Multiple choice';
 $string['multipleanswers'] = 'Choose at least one answer.';
 $string['multiplier'] = 'Multiplier';
 $string['name'] = 'Name';
+$string['navmethod'] = 'Navigation method';
+$string['navmethod_free'] = 'Free';
+$string['navmethod_help'] = 'When sequential navigation is enabled a student must progress through the quiz in order and may not return to previous pages nor skip ahead.';
+$string['navmethod_seq'] = 'Sequential';
 $string['navnojswarning'] = 'Warning: these links will not save your answers. Use the next button at the bottom of the page.';
 $string['neverallononepage'] = 'Never, all questions on one page';
 $string['newattemptfail'] = 'Error: Could not start a new attempt at the quiz';
@@ -540,6 +545,7 @@ $string['questiontext'] = 'Question text';
 $string['questiontextisempty'] = '[Empty question text]';
 $string['questiontype'] = 'Question type {$a}';
 $string['questiontypesetupoptions'] = 'Setup options for question types:';
+$string['quiz:addinstance'] = 'Add a new quiz';
 $string['quiz:attempt'] = 'Attempt quizzes';
 $string['quizavailable'] = 'The quiz is available until: {$a}';
 $string['quizclose'] = 'Close the quiz';
@@ -625,6 +631,7 @@ $string['requiresubnet_help'] = 'Quiz access may be restricted to particular sub
 $string['response'] = 'Response';
 $string['responses'] = 'Responses';
 $string['results'] = 'Results';
+$string['returnattempt'] = 'Return to attempt';
 $string['reuseifpossible'] = 'reuse previously removed';
 $string['reverttodefaults'] = 'Revert to quiz defaults';
 $string['review'] = 'Review';
@@ -635,6 +642,8 @@ $string['reviewbefore'] = 'Allow review while quiz is open';
 $string['reviewclosed'] = 'After the quiz is closed';
 $string['reviewduring'] = 'During the attempt';
 $string['reviewimmediately'] = 'Immediately after the attempt';
+$string['marks'] = 'Marks';
+$string['marks_help'] = 'The numerical marks for each question, and the overall attempt score.';
 $string['reviewnever'] = 'Never allow review';
 $string['reviewofattempt'] = 'Review of attempt {$a}';
 $string['reviewofpreview'] = 'Review of preview';
@@ -643,7 +652,15 @@ $string['reviewoptions'] = 'Students may review';
 $string['reviewoptionsheading'] = 'Review options';
 $string['reviewoptionsheading_help'] = 'These options control what information students can see when they review a quiz attempt or look at the quiz reports.
 
-"Immediately after the attempt" means within two minutes of the attempt being finished. "Later, while the quiz is still open" means after this, and before the quiz close date. "After the quiz is closed" means after the quiz close date has passed. If the quiz does not have a close date, this state is never reached.';
+**During the attempt** settings are are only relevant for some behaviours, like \'interactive with multiple tries\', which may display feedback during the attempt.
+
+**Immediately after the attempt** settings apply for the first two minutes after \'Submit all and finish\' is clicked.
+
+**Later, while the quiz is still open** settings apply after this, and before the quiz close date.
+
+**After the quiz is closed** settings apply after the quiz close date has passed. If the quiz does not have a close date, this state is never reached.';
+$string['reviewoverallfeedback'] = 'Overall feedback';
+$string['reviewoverallfeedback_help'] = 'The feedback given at the end of the attempt, depending on the student\'s total mark.';
 $string['reviewresponse'] = 'Review response';
 $string['reviewresponsetoq'] = 'Review response (question {$a})';
 $string['reviewthisattempt'] = 'Review your responses to this attempt';
@@ -727,6 +744,7 @@ $string['summaryofattempt'] = 'Summary of attempt';
 $string['summaryofattempts'] = 'Summary of your previous attempts';
 $string['temporaryblocked'] = 'You are temporarily not allowed to re-attempt the quiz.<br /> You will be able to take another attempt on:';
 $string['theattempt'] = 'The attempt';
+$string['theattempt_help'] = 'Whether the student can review the attempt at all.';
 $string['time'] = 'Time';
 $string['timecompleted'] = 'Completed';
 $string['timedelay'] = 'You are not allowed to do the quiz since you have not passed the time delay before attempting another quiz';
@@ -743,7 +761,7 @@ $string['tofile'] = 'to file';
 $string['tolerance'] = 'Tolerance';
 $string['toomanyrandom'] = 'The number of random questions required is more than are still available in the category!';
 $string['top'] = 'Top';
-$string['totalpointsx'] = 'Total of grades: {$a}';
+$string['totalmarksx'] = 'Total of marks: {$a}';
 $string['totalquestionsinrandomqcategory'] = 'Total of {$a} questions in category.';
 $string['true'] = 'True';
 $string['truefalse'] = 'True/false';

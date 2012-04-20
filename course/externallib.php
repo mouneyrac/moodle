@@ -640,21 +640,22 @@ class moodle_course_external extends external_api {
     public static function duplicate_course_parameters() {
         return new external_function_parameters(
             array(
-                  'courseid' => new external_value(PARAM_INT, 'course to duplicate id'),
-                  'fullname' => new external_value(PARAM_TEXT, 'duplicated course full name'),
-                  'shortname' => new external_value(PARAM_TEXT, 'duplicated course short name'),
-                  'categoryid' => new external_value(PARAM_INT, 'duplicated course category parent'),
-                  'visible' => new external_value(PARAM_INT, 'duplicated course visible, default to yes', VALUE_DEFAULT, 1),
-                  'options' => new external_multiple_structure(
+                'courseid' => new external_value(PARAM_INT, 'course to duplicate id'),
+                'fullname' => new external_value(PARAM_TEXT, 'duplicated course full name'),
+                'shortname' => new external_value(PARAM_TEXT, 'duplicated course short name'),
+                'categoryid' => new external_value(PARAM_INT, 'duplicated course category parent'),
+                'visible' => new external_value(PARAM_INT, 'duplicated course visible, default to yes', VALUE_DEFAULT, 1),
+                'options' => new external_multiple_structure(
                     new external_single_structure(
                         array(
                             'name'        => new external_value(PARAM_ALPHA, 'The backup option name:
-                                                                "activities" (int) Include course activites (default to 1 that is equal to yes),
-                                                                "blocks" (int) Include course blocks (default to 1 that is equal to yes),
-                                                                "filters" (int) Include course filters  (default to 1 that is equal to yes),'),
+                                                 "activities" (int) Include course activites (default to 1 that is equal to yes),
+                                                 "blocks" (int) Include course blocks (default to 1 that is equal to yes),
+                                                 "filters" (int) Include course filters  (default to 1 that is equal to yes),'),
                             'value'      => new external_value(PARAM_INT, 'the value for the option 1 (yes) or 0 (no)')
                         )
-                    ), VALUE_DEFAULT, array()),
+                    ), VALUE_DEFAULT, array()
+                ),
             )
         );
     }
@@ -674,7 +675,7 @@ class moodle_course_external extends external_api {
         require_once($CFG->dirroot . '/backup/util/includes/backup_includes.php');
         require_once($CFG->dirroot . '/backup/util/includes/restore_includes.php');
 
-        //Parameter validation
+        // Parameter validation.
         $params = self::validate_parameters(
                 self::duplicate_course_parameters(),
                 array(
@@ -687,24 +688,24 @@ class moodle_course_external extends external_api {
                 )
         );
 
-        //Context validation
+        // Context validation.
 
         if (! ($course = $DB->get_record('course', array('id'=>$params['courseid'])))) {
             throw new moodle_exception(
                         get_string('invalidcourseid', 'error', $params['courseid']));
         }
 
-        // Category where duplicated course is going to be created
+        // Category where duplicated course is going to be created.
         $categorycontext = get_context_instance(CONTEXT_COURSECAT, $params['categoryid']);
         self::validate_context($categorycontext);
 
-        // Course to be duplicated
+        // Course to be duplicated.
         $coursecontext = get_context_instance(CONTEXT_COURSE, $course->id);
         self::validate_context($coursecontext);
 
-        //Capability checking
+        // Capability checking.
 
-        // The backup controller check for this currently, this may be redundant
+        // The backup controller check for this currently, this may be redundant.
         require_capability('moodle/course:create', $categorycontext);
         require_capability('moodle/restore:restorecourse', $categorycontext);
         require_capability('moodle/restore:restoretargetimport', $categorycontext);
@@ -712,7 +713,7 @@ class moodle_course_external extends external_api {
         require_capability('moodle/backup:backupcourse', $coursecontext);
         require_capability('moodle/backup:backuptargetimport', $coursecontext);
 
-        // Check if the shortname is used
+        // Check if the shortname is used.
         if ($foundcourses = $DB->get_records('course', array('shortname'=>$shortname))) {
             foreach ($foundcourses as $foundcourse) {
                 $foundcoursenames[] = $foundcourse->fullname;
@@ -744,7 +745,7 @@ class moodle_course_external extends external_api {
             }
         }
 
-        // backup the course
+        // Backup the course.
         $bc = new backup_controller(backup::TYPE_1COURSE, $course->id, backup::FORMAT_MOODLE,
         backup::INTERACTIVE_NO, backup::MODE_IMPORT, $USER->id);
 
@@ -758,9 +759,9 @@ class moodle_course_external extends external_api {
         $bc->execute_plan();
         $bc->destroy();
 
-        // restore the backup immediately
+        // Restore the backup immediately.
 
-        // Create new course
+        // Create new course.
         $newcourseid = restore_dbops::create_new_course($params['fullname'], $params['shortname'], $params['categoryid']);
 
         $rc = new restore_controller($backupid, $newcourseid,
@@ -784,9 +785,9 @@ class moodle_course_external extends external_api {
                 }
 
                 if (array_key_exists('warnings', $precheckresults)) {
-                   foreach ($precheckresults['warnings'] as $warning) {
-                       $errorinfo .= $warning;
-                   }
+                    foreach ($precheckresults['warnings'] as $warning) {
+                        $errorinfo .= $warning;
+                    }
                 }
 
                 throw new moodle_exception(
@@ -802,7 +803,7 @@ class moodle_course_external extends external_api {
         $course->shortname = $params['shortname'];
         $course->visible = $params['visible'];
 
-        // Set shortname and fullname back
+        // Set shortname and fullname back.
         $DB->update_record('course', $course);
 
         if (empty($CFG->keeptempdirectoriesonbackup)) {

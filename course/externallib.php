@@ -627,16 +627,15 @@ class core_course_external extends external_api {
         // Context validation.
 
         if (! ($course = $DB->get_record('course', array('id'=>$params['courseid'])))) {
-            throw new moodle_exception(
-                        get_string('invalidcourseid', 'error', $params['courseid']));
+            throw new moodle_exception('invalidcourseid', 'error', '', $params['courseid']);
         }
 
         // Category where duplicated course is going to be created.
-        $categorycontext = get_context_instance(CONTEXT_COURSECAT, $params['categoryid']);
+        $categorycontext = context_coursecat::instance($params['categoryid']);
         self::validate_context($categorycontext);
 
         // Course to be duplicated.
-        $coursecontext = get_context_instance(CONTEXT_COURSE, $course->id);
+        $coursecontext = context_course::instance($course->id);
         self::validate_context($coursecontext);
 
         // Capability checking.
@@ -656,9 +655,7 @@ class core_course_external extends external_api {
             }
 
             $foundcoursenamestring = implode(',', $foundcoursenames);
-            throw new moodle_exception(
-                        get_string('shortnametaken', '', $foundcoursenamestring));
-
+            throw new moodle_exception('shortnametaken', '', '', $foundcoursenamestring);
         }
 
         $backupsettings = array();
@@ -726,8 +723,7 @@ class core_course_external extends external_api {
                     }
                 }
 
-                throw new moodle_exception(
-                        get_string('backupprecheckerrors', 'webservice', $errorinfo));
+                throw new moodle_exception('backupprecheckerrors', 'webservice', '', $errorinfo);
             }
         }
 

@@ -255,7 +255,7 @@ class core_course_external extends external_api {
      * @since Moodle 2.2
      */
     public static function get_categories_parameters() {
-    return new external_function_parameters(
+        return new external_function_parameters(
             array(
                 'criteria' => new external_multiple_structure(
                     new external_single_structure(
@@ -351,7 +351,7 @@ class core_course_external extends external_api {
             if (!empty($wheres)) {
                 $wheres = implode(" AND ", $wheres);
 
-                $categories = $DB->get_records_select('course_categories', $wheres, $conditions 'path');
+                $categories = $DB->get_records_select('course_categories', $wheres, $conditions);
 
                 // Retrieve its sub subcategories (all levels).
                 if ($categories and !empty($params['addsubcategories'])) {
@@ -360,10 +360,10 @@ class core_course_external extends external_api {
                     foreach ($categories as $category) {
                         $sqllike = $DB->sql_like('path', ':path');
                         $sqlparams = array('path' => $category->path.'/%'); // It will NOT include the specified category.
-                        $subcategories = $DB->get_records_select('course_categories', $sqllike, $sqlparams, 'path');
-                        $newcategories = array_merge($newcategories, $subcategories);   // Both arrays have integer as keys.
+                        $subcategories = $DB->get_records_select('course_categories', $sqllike, $sqlparams);
+                        $newcategories = $newcategories + $subcategories;   // Both arrays have integer as keys.
                     }
-                    $categories = array_merge($categories, $newcategories);
+                    $categories = $categories + $newcategories;
                 }
             }
 
@@ -377,6 +377,10 @@ class core_course_external extends external_api {
 
         // The returned categories.
         $categoriesinfo = array();
+
+        // We need to sort the categories by path. 
+        // The parent cats need to be checked by the algo first.
+        usort($categories, "compare_categories_by_path");
 
         foreach ($categories as $category) {
 
@@ -453,7 +457,36 @@ class core_course_external extends external_api {
             }
         }
 
+        // Sorting the resulting array so it looks a bit better for the client developer.
+        usort($categoriesinfo, "compare_categories_by_sortorder");
+
         return $categoriesinfo;
+    }
+
+    /**
+     * Sort categories array by path
+     * private function: only used by get_categories
+     * 
+     * @param array $category1
+     * @param array $category2
+     * @return int result of strcmp 
+     * @since Moodle 2.3
+     */
+    private function compare_categories_by_path($category1, $category2) {
+        return strcmp($category1->path, $category2->path);
+    }
+
+    /**
+     * Sort categories array by sortorder
+     * private function: only used by get_categories
+     * 
+     * @param array $category1
+     * @param array $category2
+     * @return int result of strcmp 
+     * @since Moodle 2.3
+     */
+    private function compare_categories_by_sortorder($category1, $category2) {
+        return strcmp($category1['sortorder'], $category2['sortorder']);
     }
 
     /**

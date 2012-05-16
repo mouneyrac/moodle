@@ -63,14 +63,15 @@ class moodle_zend_soap_server extends Zend_Soap_Server {
         $details = null;
         if ($fault instanceof Exception) {
             //add the debuginfo to the exception message if debuginfo must be returned
-            $actor = $fault->errorcode;
+            $actor = $fault->module . '/' . $fault->errorcode;
             if (debugging() and isset($fault->debuginfo)) {
                 $details = $fault->debuginfo;
             }
         }
 
         return new SoapFault($soapfault->faultcode,
-                $soapfault->getMessage() . ' | ERRORCODE: ' . $fault->errorcode,
+                $soapfault->getMessage() . ' | ERRORCODE: '
+                . $fault->module . '/' . $fault->errorcode,
                 $actor, $details);
     }
 

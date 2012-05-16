@@ -61,10 +61,10 @@ class moodle_zend_xmlrpc_server extends Zend_XmlRpc_Server {
             //add the debuginfo to the exception message if debuginfo must be returned
             if (debugging() and isset($fault->debuginfo)) {
                 $fault = new Exception($fault->getMessage() . ' | DEBUG INFO: ' . $fault->debuginfo
-                        . ' | ERRORCODE: ' . $fault->errorcode, $code);
+                        . ' | ERRORCODE: ' . $fault->module . '/' . $fault->errorcode, $code);
             } else {
                 $fault = new Exception($fault->getMessage()
-                        . ' | ERRORCODE: ' . $fault->errorcode, $code);
+                        . ' | ERRORCODE: ' . $fault->module . '/' . $fault->errorcode, $code);
             }
         }
 

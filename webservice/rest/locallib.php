@@ -140,7 +140,7 @@ class webservice_rest_server extends webservice_base_server {
         if ($this->restformat == 'json') {
             $errorobject = new stdClass;
             $errorobject->exception = get_class($ex);
-            $errorobject->errorcode = $ex->errorcode;
+            $errorobject->errorcode = $ex->module . '/' . $ex->errorcode;
             $errorobject->message = $ex->getMessage();
             if (debugging() and isset($ex->debuginfo)) {
                 $errorobject->debuginfo = $ex->debuginfo;
@@ -149,7 +149,8 @@ class webservice_rest_server extends webservice_base_server {
         } else {
             $error = '<?xml version="1.0" encoding="UTF-8" ?>'."\n";
             $error .= '<EXCEPTION class="'.get_class($ex).'">'."\n";
-            $error .= '<ERRORCODE>' . htmlspecialchars($ex->errorcode, ENT_COMPAT, 'UTF-8')
+            $error .= '<ERRORCODE>' . htmlspecialchars($ex->module, ENT_COMPAT, 'UTF-8') . '/'
+                    . htmlspecialchars($ex->errorcode, ENT_COMPAT, 'UTF-8')
                     . '</ERRORCODE>' . "\n";
             $error .= '<MESSAGE>'.htmlspecialchars($ex->getMessage(), ENT_COMPAT, 'UTF-8').'</MESSAGE>'."\n";
             if (debugging() and isset($ex->debuginfo)) {

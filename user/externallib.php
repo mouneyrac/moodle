@@ -381,16 +381,23 @@ class core_user_external extends external_api {
                     new external_single_structure(
                         array(
                             'key'        => new external_value(PARAM_ALPHA, 'the user column to search, expected keys (value format) are:
-                                                                                "id" (int) the user id,
-                                                                                "fullname" (string) the user full name (ATTENTION: searching by fullname can be extremely slow!),
-                                                                                "idnumber" (string) the user idnumber,
-                                                                                "username" (string) the user username,
-                                                                                "email" (string) the user email (ATTENTION: searching by email can be extremely slow!),
-                                                                                "auth" (plugin) the user auth plugin'),
+                                                    "id" (int) the user id,
+                                                    "fullname" (string) the user full name (ATTENTION: searching by fullname can be extremely slow!),
+                                                    "idnumber" (string) the user idnumber,
+                                                    "username" (string) the user username,
+                                                    "email" (string) the user email (ATTENTION: searching by email can be extremely slow!),
+                                                    "auth" (plugin) the user auth plugin'),
                             'value'      => new external_value(PARAM_RAW, 'the value to match')
                         )
                     ), VALUE_DEFAULT, array()
-                , 'the key/value pairs to be considered in user search. If several are specified, they will be AND\'ed together'),
+                , 'the key/value pairs to be considered in user search. The function can work in three different ways:
+                   1. Specify several times a key (id => \'21\', id => \'34\', ...) ...
+                   This will return a user per key, which is useful for getting several different users at the same time.
+                   2. Specifiy different keys only once (fullname => \'user1\', auth => \'manual\', ...) ...
+                   This is useful for restricting search results. Note that you can not have twice the same key,
+                   an exception is thrown if the function can not differentiate 1) or 2).
+                   3. Without criteria, which is useful for returning all the users to which you have access to details.
+                    '),
                 'limitfrom'             => new external_value(PARAM_INT, 'return a subset of users, starting at this point', VALUE_DEFAULT, 0),
                 'limitnum'              => new external_value(PARAM_INT, 'return a subset comprising this many records in total', VALUE_DEFAULT, 30),
             )

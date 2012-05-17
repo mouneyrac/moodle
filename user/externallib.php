@@ -39,6 +39,7 @@ class core_user_external extends external_api {
 
     /**
      * Returns description of method parameters
+     *
      * @return external_function_parameters
      * @since Moodle 2.3
      */
@@ -60,6 +61,7 @@ class core_user_external extends external_api {
 
     /**
      * Return users that have the capabilities for each course specified
+     *
      * @param array $coursecapabilities array of course ids and associated capability name {courseid, {capabilities}}
      * @return array An array of arrays describing users for each associated courseid and capability
      * @since  Moodle 2.3
@@ -82,23 +84,16 @@ class core_user_external extends external_api {
         $warnings = array();
         foreach ($params['coursecapabilities'] as $course) {
             $courseid = $course['courseid'];
-            try {
-                // Ensure the current user is allowed to run this function.
-                $context = get_context_instance(CONTEXT_SYSTEM);
-                self::validate_context($context);
-                require_capability('moodle/role:review', $context);
-            } catch (Exception $e) {
-                $warning['element'] = 'course';
-                $warning['elementid'] = $courseid;
-                $warning['message'] = 'No access rights in course context';
-                $warning['warningcode'] = 1;
-                $warnings[] = $warning;
-                continue;
-            }
+            
+            // Ensure the current user is allowed to run this function.
+            $context = get_context_instance(CONTEXT_SYSTEM);
+            self::validate_context($context);
+            require_capability('moodle/role:review', $context);
+
             $coursecontext = get_context_instance(CONTEXT_COURSE, $courseid);
             if ($coursecontext) {
                 foreach ($course['capabilities'] as $capability) {
-                        $options = array (  "0" => array('name' => 'withcapability', 'value' => $capability));
+                        $options = array (array('name' => 'withcapability', 'value' => $capability));
                         $courseusers = core_enrol_external::get_enrolled_users($courseid, $options);
                         $users['courseid'] = $courseid;
                         $users['capability'] = $capability;
@@ -106,10 +101,16 @@ class core_user_external extends external_api {
                         foreach ($courseusers as $courseuser) {
                             $user[] = array (
                                 'userid' => $courseuser['id'],
+                                'fullname' => fullname($courseuser['id']),
+                                //TODO miss capability check to know if the user can see the firstname
                                 'firstname' => $courseuser['firstname'],
+                                //TODO miss capability check to know if the user can see the lastname
                                 'lastname' => $courseuser['lastname'],
+                                //TODO miss capability check to know if the user can see the username
                                 'username' => $courseuser['username'],
+                                //TODO miss capability check to know if the user can see the idnumber
                                 'idnumber' => $courseuser['idnumber'],
+                                 //TODO miss capability check to know if the user can see the email
                                 'email' => $courseuser['email']
                             );
                         }
@@ -119,20 +120,17 @@ class core_user_external extends external_api {
                         $userlist[] = $users;
                 }
             } else {
-                $warning['element'] = 'course';
-                $warning['elementid'] = $courseid;
-                $warning['message'] = 'No course found';
-                $warning['warningcode'] = 3;
-                $warnings[] = $warning;
+                throw new moodle_exception('cannotfindcourse', 'error', '', null,
+                        'The course id ' . $courseid . ' doesn\'t exist.');
             }
         }
         $result['userlist'] = $userlist;
-        $result['warnings'] = $warnings;
         return $result;
     }
 
     /**
      * Returns description of method result value
+     *
      * @return external_single_structure
      * @since Moodle 2.3
      */
@@ -142,22 +140,21 @@ class core_user_external extends external_api {
                         new external_single_structure(
                 array (
                     'courseid' => new external_value(PARAM_INT, 'Course ID number in the Moodle course table'),
-                    'capability' => new external_value(PARAM_CAPABILITY, 'Capability name', VALUE_DEFAULT),
+                    'capability' => new external_value(PARAM_CAPABILITY, 'Capability name'),
                     'users' => new external_multiple_structure(
                         new external_single_structure(
                             array (
                                 'userid' => new external_value(PARAM_INT, 'ID number of the user in the Moodle user table'),
-                                'firstname' => new external_value(PARAM_NOTAGS, 'The first name(s) of the user'),
-                                'lastname' => new external_value(PARAM_NOTAGS, 'The family name of the user'),
-                                'username' => new external_value(PARAM_RAW, 'User name of the user'),
-                                'idnumber' => new external_value(PARAM_RAW, 'ID number of the user'),
-                                'email' => new external_value(PARAM_EMAIL, 'email')
+                                'fullname' => new external_value(PARAM_NOTAGS, 'The fullname of the user'),
+                                'firstname' => new external_value(PARAM_NOTAGS, 'The first name(s) of the user', VALUE_OPTIONAL),
+                                'lastname' => new external_value(PARAM_NOTAGS, 'The family name of the user', VALUE_OPTIONAL),
+                                'username' => new external_value(PARAM_RAW, 'User name of the user', VALUE_OPTIONAL),
+                                'idnumber' => new external_value(PARAM_RAW, 'ID number of the user', VALUE_OPTIONAL),
+                                'email' => new external_value(PARAM_EMAIL, 'email', VALUE_OPTIONAL)
                             )
                         ), 'List of users'),
                     ))
-                ),
-                'warnings' => external_warnings::warnings()
-                )
+                ))
             );
     }
 

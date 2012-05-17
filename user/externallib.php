@@ -39,6 +39,130 @@ class core_user_external extends external_api {
 
     /**
      * Returns description of method parameters
+     * @return external_function_parameters
+     * @since Moodle 2.3
+     */
+    public static function get_users_with_capability_parameters() {
+        return new external_function_parameters(
+            array (
+                'coursecapabilities' => new external_multiple_structure(
+                    new external_single_structure(
+                        array (
+                            'courseid' => new external_value(PARAM_INT, 'Course ID number in the Moodle course table'),
+                            'capabilities' => new external_multiple_structure(
+                                new external_value(PARAM_CAPABILITY, 'Capability name, such as mod/forum:viewdiscussion')),
+                        )
+                    )
+                , 'course id and associated capability name')
+            )
+        );
+    }
+
+    /**
+     * Return users that have the capabilities for each course specified
+     * @param array $coursecapabilities array of course ids and associated capability name {courseid, {capabilities}}
+     * @return array An array of arrays describing users for each associated courseid and capability
+     * @since  Moodle 2.3
+     */
+    public static function get_users_with_capability($coursecapabilities) {
+        global $DB;
+        global $CFG;
+        require_once($CFG->dirroot . '/enrol/externallib.php');
+
+        if (empty($coursecapabilities)) {
+            throw new invalid_parameter_exception('Parameter can not be empty');
+        }
+        $params = self::validate_parameters(self::get_users_with_capability_parameters(),
+            array ('coursecapabilities' => $coursecapabilities));
+        $result = array();
+        $userlist = array();
+        $user = array();
+        $users = array();
+        $warning = array();
+        $warnings = array();
+        foreach ($params['coursecapabilities'] as $course) {
+            $courseid = $course['courseid'];
+            try {
+                // Ensure the current user is allowed to run this function.
+                $context = get_context_instance(CONTEXT_SYSTEM);
+                self::validate_context($context);
+                require_capability('moodle/role:review', $context);
+            } catch (Exception $e) {
+                $warning['element'] = 'course';
+                $warning['elementid'] = $courseid;
+                $warning['message'] = 'No access rights in course context';
+                $warning['warningcode'] = 1;
+                $warnings[] = $warning;
+                continue;
+            }
+            $coursecontext = get_context_instance(CONTEXT_COURSE, $courseid);
+            if ($coursecontext) {
+                foreach ($course['capabilities'] as $capability) {
+                        $options = array (  "0" => array('name' => 'withcapability', 'value' => $capability));
+                        $courseusers = core_enrol_external::get_enrolled_users($courseid, $options);
+                        $users['courseid'] = $courseid;
+                        $users['capability'] = $capability;
+                    if (!empty ($courseusers)) {
+                        foreach ($courseusers as $courseuser) {
+                            $user[] = array (
+                                'userid' => $courseuser['id'],
+                                'firstname' => $courseuser['firstname'],
+                                'lastname' => $courseuser['lastname'],
+                                'username' => $courseuser['username'],
+                                'idnumber' => $courseuser['idnumber'],
+                                'email' => $courseuser['email']
+                            );
+                        }
+                    }
+                        $users['users'] = $user;
+                        $user = array ();
+                        $userlist[] = $users;
+                }
+            } else {
+                $warning['element'] = 'course';
+                $warning['elementid'] = $courseid;
+                $warning['message'] = 'No course found';
+                $warning['warningcode'] = 3;
+                $warnings[] = $warning;
+            }
+        }
+        $result['userlist'] = $userlist;
+        $result['warnings'] = $warnings;
+        return $result;
+    }
+
+    /**
+     * Returns description of method result value
+     * @return external_single_structure
+     * @since Moodle 2.3
+     */
+    public static function get_users_with_capability_returns() {
+        return  new external_function_parameters( array(
+             'userlist'   => new external_multiple_structure(
+                        new external_single_structure(
+                array (
+                    'courseid' => new external_value(PARAM_INT, 'Course ID number in the Moodle course table'),
+                    'capability' => new external_value(PARAM_CAPABILITY, 'Capability name', VALUE_DEFAULT),
+                    'users' => new external_multiple_structure(
+                        new external_single_structure(
+                            array (
+                                'userid' => new external_value(PARAM_INT, 'ID number of the user in the Moodle user table'),
+                                'firstname' => new external_value(PARAM_NOTAGS, 'The first name(s) of the user'),
+                                'lastname' => new external_value(PARAM_NOTAGS, 'The family name of the user'),
+                                'username' => new external_value(PARAM_RAW, 'User name of the user'),
+                                'idnumber' => new external_value(PARAM_RAW, 'ID number of the user'),
+                                'email' => new external_value(PARAM_EMAIL, 'email')
+                            )
+                        ), 'List of users'),
+                    ))
+                ),
+                'warnings' => external_warnings::warnings()
+                )
+            );
+    }
+
+    /**
+     * Returns description of method parameters
      *
      * @return external_function_parameters
      * @since Moodle 2.2

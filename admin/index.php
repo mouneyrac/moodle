@@ -399,6 +399,9 @@ $availableupdates = $updateschecker->get_update_info('core',
     array('minmaturity' => $CFG->updateminmaturity, 'notifybuilds' => $CFG->updatenotifybuilds));
 $availableupdatesfetch = $updateschecker->get_last_timefetched();
 
+//check if the site is registered on Moodle.org
+$registered = $DB->count_records('registration_hubs', array('huburl' => HUB_MOODLEORGHUBURL, 'confirmed' => 1));
+
 admin_externalpage_setup('adminnotifications');
 
 if ($fetchupdates) {
@@ -409,4 +412,5 @@ if ($fetchupdates) {
 
 $output = $PAGE->get_renderer('core', 'admin');
 echo $output->admin_notifications_page($maturity, $insecuredataroot, $errorsdisplayed,
-        $cronoverdue, $dbproblems, $maintenancemode, $availableupdates, $availableupdatesfetch);
+        $cronoverdue, $dbproblems, $maintenancemode, $availableupdates, $availableupdatesfetch,
+        $registered);

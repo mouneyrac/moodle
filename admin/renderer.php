@@ -226,7 +226,8 @@ class core_admin_renderer extends plugin_renderer_base {
      * @return string HTML to output.
      */
     public function admin_notifications_page($maturity, $insecuredataroot, $errorsdisplayed,
-            $cronoverdue, $dbproblems, $maintenancemode, $availableupdates, $availableupdatesfetch) {
+            $cronoverdue, $dbproblems, $maintenancemode, $availableupdates, $availableupdatesfetch,
+            $registered) {
         $output = '';
 
         $output .= $this->header();
@@ -237,6 +238,7 @@ class core_admin_renderer extends plugin_renderer_base {
         $output .= $this->cron_overdue_warning($cronoverdue);
         $output .= $this->db_problems($dbproblems);
         $output .= $this->maintenance_mode_warning($maintenancemode);
+        $output .= $this->registration_warning($registered);
 
         //////////////////////////////////////////////////////////////////////////////////////////////////
         ////  IT IS ILLEGAL AND A VIOLATION OF THE GPL TO HIDE, REMOVE OR MODIFY THIS COPYRIGHT NOTICE ///
@@ -480,6 +482,27 @@ class core_admin_renderer extends plugin_renderer_base {
         $updateinfo .= $this->box_end();
 
         return $updateinfo;
+    }
+
+    /**
+     * Display a warning about not being registered on Moodle.org if necesary.
+     *
+     * @param boolean $registered true if the site is registered on Moodle.org
+     * @return string HTML to output.
+     */
+    protected function registration_warning($registered) {
+
+        if (!$registered) {
+
+            $registerbutton = $this->single_button(new moodle_url('registration/register.php',
+                    array('huburl' =>  HUB_MOODLEORGHUBURL, 'hubname' => 'Moodle.org')),
+                    get_string('register', 'admin'));
+
+            return $this->warning( get_string('registrationwarning', 'admin')
+                    . '&nbsp;' . $this->help_icon('registration', 'admin') . $registerbutton );
+        }
+
+        return '';
     }
 
     /**

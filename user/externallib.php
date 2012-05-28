@@ -121,17 +121,23 @@ class core_user_external extends external_api {
         foreach ($params['users'] as $user) {
             // Make sure that the username doesn't already exist
             if ($DB->record_exists('user', array('username'=>$user['username'], 'mnethostid'=>$CFG->mnet_localhost_id))) {
-                throw new invalid_parameter_exception('Username already exists: '.$user['username']);
+                $exception = new invalid_parameter_exception('Username already exists: '.$user['username']);
+                $DB->rollback_delegated_transaction($transaction, $exception);
+                throw $exception;
             }
 
             // Make sure auth is valid
             if (empty($availableauths[$user['auth']])) {
-                throw new invalid_parameter_exception('Invalid authentication type: '.$user['auth']);
+                $exception = new invalid_parameter_exception('Invalid authentication type: '.$user['auth']);
+                $DB->rollback_delegated_transaction($transaction, $exception);
+                throw $exception;
             }
 
             // Make sure lang is valid
             if (empty($availablelangs[$user['lang']])) {
-                throw new invalid_parameter_exception('Invalid language code: '.$user['lang']);
+                $exception = new invalid_parameter_exception('Invalid language code: '.$user['lang']);
+                $DB->rollback_delegated_transaction($transaction, $exception);
+                throw $exception;
             }
 
             // Make sure lang is valid
@@ -139,7 +145,9 @@ class core_user_external extends external_api {
                                                                                      // so no default value.
                                                                                      // We need to test if the client sent it
                                                                                      // => !empty($user['theme'])
-                throw new invalid_parameter_exception('Invalid theme: '.$user['theme']);
+                $exception = new invalid_parameter_exception('Invalid theme: '.$user['theme']);
+                $DB->rollback_delegated_transaction($transaction, $exception);
+                throw $exception;
             }
 
             $user['confirmed'] = true;
@@ -148,9 +156,13 @@ class core_user_external extends external_api {
             // Start of user info validation.
             // Lets make sure we validate current user info as handled by current GUI. see user/editadvanced_form.php function validation()
             if (!validate_email($user['email'])) {
-                throw new invalid_parameter_exception('Email address is invalid: '.$user['email']);
+                $exception = new invalid_parameter_exception('Email address is invalid: '.$user['email']);
+                $DB->rollback_delegated_transaction($transaction, $exception);
+                throw $exception;
             } else if ($DB->record_exists('user', array('email'=>$user['email'], 'mnethostid'=>$user['mnethostid']))) {
-                throw new invalid_parameter_exception('Email address already exists: '.$user['email']);
+                $exception = new invalid_parameter_exception('Email address already exists: '.$user['email']);
+                $DB->rollback_delegated_transaction($transaction, $exception);
+                throw $exception;
             }
             // End of user info validation.
 
@@ -238,10 +250,14 @@ class core_user_external extends external_api {
             $user = $DB->get_record('user', array('id'=>$userid, 'deleted'=>0), '*', MUST_EXIST);
             // must not allow deleting of admins or self!!!
             if (is_siteadmin($user)) {
-                throw new moodle_exception('useradminodelete', 'error');
+                $exception = new moodle_exception('useradminodelete', 'error');
+                $DB->rollback_delegated_transaction($transaction, $exception);
+                throw $exception;
             }
             if ($USER->id == $user->id) {
-                throw new moodle_exception('usernotdeletederror', 'error');
+                $exception = new moodle_exception('usernotdeletederror', 'error');
+                $DB->rollback_delegated_transaction($transaction, $exception);
+                throw $exception;
             }
             user_delete_user($user);
         }

@@ -518,20 +518,26 @@ class core_course_external extends external_api {
                 $exceptionparam = new stdClass();
                 $exceptionparam->message = $e->getMessage();
                 $exceptionparam->catid = $course['categoryid'];
-                throw new moodle_exception('errorcatcontextnotvalid', 'webservice', '', $exceptionparam);
+                $exception = new moodle_exception('errorcatcontextnotvalid', 'webservice', '', $exceptionparam);
+                $DB->rollback_delegated_transaction($transaction, $exception);
+                throw $exception;
             }
             require_capability('moodle/course:create', $context);
 
             // Make sure lang is valid
             if (key_exists('lang', $course) and empty($availablelangs[$course['lang']])) {
-                throw new moodle_exception('errorinvalidparam', 'webservice', '', 'lang');
+                $exception = new moodle_exception('errorinvalidparam', 'webservice', '', 'lang');
+                $DB->rollback_delegated_transaction($transaction, $exception);
+                throw $exception;
             }
 
             // Make sure theme is valid
             if (key_exists('forcetheme', $course)) {
                 if (!empty($CFG->allowcoursethemes)) {
                     if (empty($availablethemes[$course['forcetheme']])) {
-                        throw new moodle_exception('errorinvalidparam', 'webservice', '', 'forcetheme');
+                        $exception = new moodle_exception('errorinvalidparam', 'webservice', '', 'forcetheme');
+                        $DB->rollback_delegated_transaction($transaction, $exception);
+                        throw $exception;
                     } else {
                         $course['theme'] = $course['forcetheme'];
                     }
@@ -626,8 +632,10 @@ class core_course_external extends external_api {
 
             // Check if the current user has enought permissions.
             if (!can_delete_course($courseid)) {
-                throw new moodle_exception('cannotdeletecategorycourse', 'error',
+                $exception = new moodle_exception('cannotdeletecategorycourse', 'error',
                     '', format_string($course->fullname)." (id: $courseid)");
+                $DB->rollback_delegated_transaction($transaction, $exception);
+                throw $exception;
             }
 
             delete_course($course, false);
@@ -1223,7 +1231,9 @@ class core_course_external extends external_api {
         foreach ($params['categories'] as $category) {
             if ($category['parent']) {
                 if (!$DB->record_exists('course_categories', array('id' => $category['parent']))) {
-                    throw new moodle_exception('unknowcategory');
+                    $exception = new moodle_exception('unknowcategory');
+                    $DB->rollback_delegated_transaction($transaction, $exception);
+                    throw $exception;
                 }
                 $context = context_coursecat::instance($category['parent']);
             } else {
@@ -1235,17 +1245,23 @@ class core_course_external extends external_api {
             // Check id number.
             if (!empty($category['idnumber'])) { // Same as in course/editcategory_form.php .
                 if (textlib::strlen($category['idnumber'])>100) {
-                    throw new moodle_exception('idnumbertoolong');
+                    $exception = new moodle_exception('idnumbertoolong');
+                    $DB->rollback_delegated_transaction($transaction, $exception);
+                    throw $exception;
                 }
                 if ($existing = $DB->get_record('course_categories', array('idnumber' => $category['idnumber']))) {
                     if ($existing->id) {
-                        throw new moodle_exception('idnumbertaken');
+                        $exception = new moodle_exception('idnumbertaken');
+                        $DB->rollback_delegated_transaction($transaction, $exception);
+                        throw $exception;
                     }
                 }
             }
             // Check name.
             if (textlib::strlen($category['name'])>255) {
-                throw new moodle_exception('categorytoolong');
+                $exception = new moodle_exception('categorytoolong');
+                $DB->rollback_delegated_transaction($transaction, $exception);
+                throw $exception;
             }
 
             $newcategory = new stdClass();
@@ -1335,7 +1351,9 @@ class core_course_external extends external_api {
 
         foreach ($params['categories'] as $cat) {
             if (!$category = $DB->get_record('course_categories', array('id' => $cat['id']))) {
-                throw new moodle_exception('unknowcategory');
+                $exception = new moodle_exception('unknowcategory');
+                $DB->rollback_delegated_transaction($transaction, $exception);
+                throw $exception;
             }
 
             $categorycontext = context_coursecat::instance($cat['id']);
@@ -1344,13 +1362,17 @@ class core_course_external extends external_api {
 
             if (!empty($cat['name'])) {
                 if (textlib::strlen($cat['name'])>255) {
-                     throw new moodle_exception('categorytoolong');
+                    $exception = moodle_exception('categorytoolong');
+                    $DB->rollback_delegated_transaction($transaction, $exception);
+                    throw $exception;
                 }
                 $category->name = $cat['name'];
             }
             if (!empty($cat['idnumber'])) {
                 if (textlib::strlen($cat['idnumber'])>100) {
-                    throw new moodle_exception('idnumbertoolong');
+                    $exception = new moodle_exception('idnumbertoolong');
+                    $DB->rollback_delegated_transaction($transaction, $exception);
+                    throw $exception;
                 }
                 $category->idnumber = $cat['idnumber'];
             }
@@ -1364,7 +1386,9 @@ class core_course_external extends external_api {
             if (!empty($cat['parent']) && ($category->parent != $cat['parent'])) {
                 // First check if parent exists.
                 if (!$parent_cat = $DB->get_record('course_categories', array('id' => $cat['parent']))) {
-                    throw new moodle_exception('unknowcategory');
+                    $exception = new moodle_exception('unknowcategory');
+                    $DB->rollback_delegated_transaction($transaction, $exception);
+                    throw $exception;
                 }
                 // Then check if we have capability.
                 self::validate_context(get_category_or_system_context((int)$cat['parent']));
@@ -1431,7 +1455,9 @@ class core_course_external extends external_api {
 
         foreach ($params['categories'] as $category) {
             if (!$deletecat = $DB->get_record('course_categories', array('id' => $category['id']))) {
-                throw new moodle_exception('unknowcategory');
+                $exception = new moodle_exception('unknowcategory');
+                $DB->rollback_delegated_transaction($transaction, $exception);
+                throw $exception;
             }
             $context = context_coursecat::instance($deletecat->id);
             require_capability('moodle/category:manage', $context);
@@ -1447,7 +1473,9 @@ class core_course_external extends external_api {
                 // We must move to an existing category.
                 if (!empty($category['newparent'])) {
                     if (!$DB->record_exists('course_categories', array('id' => $category['newparent']))) {
-                        throw new moodle_exception('unknowcategory');
+                        $exception = new moodle_exception('unknowcategory');
+                        $DB->rollback_delegated_transaction($transaction, $exception);
+                        throw $exception;
                     }
                     $newparent = $category['newparent'];
                 } else {
@@ -1456,7 +1484,9 @@ class core_course_external extends external_api {
 
                 // This operation is not allowed. We must move contents to an existing category.
                 if ($newparent == 0) {
-                    throw new moodle_exception('movecatcontentstoroot');
+                    $exception = new moodle_exception('movecatcontentstoroot');
+                    $DB->rollback_delegated_transaction($transaction, $exception);
+                    throw $exception;
                 }
 
                 $parentcontext = get_category_or_system_context($newparent);

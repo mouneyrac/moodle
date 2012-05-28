@@ -88,7 +88,9 @@ class enrol_manual_external extends external_api {
         //retrieve the manual enrolment plugin
         $enrol = enrol_get_plugin('manual');
         if (empty($enrol)) {
-            throw new moodle_exception('manualpluginnotinstalled', 'enrol_manual');
+            $exception = new moodle_exception('manualpluginnotinstalled', 'enrol_manual');
+                $DB->rollback_delegated_transaction($transaction, $exception);
+                throw $exception;
         }
 
         foreach ($params['enrolments'] as $enrolment) {
@@ -106,7 +108,9 @@ class enrol_manual_external extends external_api {
                 $errorparams->roleid = $enrolment['roleid'];
                 $errorparams->courseid = $enrolment['courseid'];
                 $errorparams->userid = $enrolment['userid'];
-                throw new moodle_exception('wsusercannotassign', 'enrol_manual', '', $errorparams);
+                $exception = new moodle_exception('wsusercannotassign', 'enrol_manual', '', $errorparams);
+                $DB->rollback_delegated_transaction($transaction, $exception);
+                throw $exception;
             }
 
             //check manual enrolment plugin instance is enabled/exist
@@ -118,9 +122,11 @@ class enrol_manual_external extends external_api {
               }
             }
             if (empty($instance)) {
-              $errorparams = new stdClass();
-              $errorparams->courseid = $enrolment['courseid'];
-              throw new moodle_exception('wsnoinstance', 'enrol_manual', $errorparams);
+                $errorparams = new stdClass();
+                $errorparams->courseid = $enrolment['courseid'];
+                $exception = new moodle_exception('wsnoinstance', 'enrol_manual', $errorparams);
+                $DB->rollback_delegated_transaction($transaction, $exception);
+                throw $exception;
             }
 
             //check that the plugin accept enrolment (it should always the case, it's hard coded in the plugin)
@@ -129,7 +135,9 @@ class enrol_manual_external extends external_api {
                 $errorparams->roleid = $enrolment['roleid'];
                 $errorparams->courseid = $enrolment['courseid'];
                 $errorparams->userid = $enrolment['userid'];
-                throw new moodle_exception('wscannotenrol', 'enrol_manual', '', $errorparams);
+                $exception = new moodle_exception('wscannotenrol', 'enrol_manual', '', $errorparams);
+                $DB->rollback_delegated_transaction($transaction, $exception);
+                throw $exception;
             }
 
             //finally proceed the enrolment

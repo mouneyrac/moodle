@@ -81,10 +81,14 @@ class core_group_external extends external_api {
             $group = (object)$group;
 
             if (trim($group->name) == '') {
-                throw new invalid_parameter_exception('Invalid group name');
+                $exception = new invalid_parameter_exception('Invalid group name');
+                $DB->rollback_delegated_transaction($transaction, $exception);
+                throw $exception;
             }
             if ($DB->get_record('groups', array('courseid'=>$group->courseid, 'name'=>$group->name))) {
-                throw new invalid_parameter_exception('Group with the same name already exists in the course');
+                $exception = new invalid_parameter_exception('Group with the same name already exists in the course');
+                $DB->rollback_delegated_transaction($transaction, $exception);
+                throw $exception;
             }
 
             // now security checks
@@ -95,7 +99,9 @@ class core_group_external extends external_api {
                 $exceptionparam = new stdClass();
                 $exceptionparam->message = $e->getMessage();
                 $exceptionparam->courseid = $group->courseid;
-                throw new moodle_exception('errorcoursecontextnotvalid' , 'webservice', '', $exceptionparam);
+                $exception = new moodle_exception('errorcoursecontextnotvalid' , 'webservice', '', $exceptionparam);
+                $DB->rollback_delegated_transaction($transaction, $exception);
+                throw $exception;
             }
             require_capability('moodle/course:managegroups', $context);
 
@@ -307,7 +313,9 @@ class core_group_external extends external_api {
                 $exceptionparam = new stdClass();
                 $exceptionparam->message = $e->getMessage();
                 $exceptionparam->courseid = $group->courseid;
-                throw new moodle_exception('errorcoursecontextnotvalid' , 'webservice', '', $exceptionparam);
+                $exception = new moodle_exception('errorcoursecontextnotvalid' , 'webservice', '', $exceptionparam);
+                $DB->rollback_delegated_transaction($transaction, $exception);
+                throw $exception;
             }
             require_capability('moodle/course:managegroups', $context);
 
@@ -445,14 +453,18 @@ class core_group_external extends external_api {
                 $exceptionparam = new stdClass();
                 $exceptionparam->message = $e->getMessage();
                 $exceptionparam->courseid = $group->courseid;
-                throw new moodle_exception('errorcoursecontextnotvalid' , 'webservice', '', $exceptionparam);
+                $exception = new moodle_exception('errorcoursecontextnotvalid' , 'webservice', '', $exceptionparam);
+                $DB->rollback_delegated_transaction($transaction, $exception);
+                throw $exception;
             }
             require_capability('moodle/course:managegroups', $context);
 
             // now make sure user is enrolled in course - this is mandatory requirement,
             // unfortunately this is slow
             if (!is_enrolled($context, $userid)) {
-                throw new invalid_parameter_exception('Only enrolled users may be members of groups');
+                $exception = new invalid_parameter_exception('Only enrolled users may be members of groups');
+                $DB->rollback_delegated_transaction($transaction, $exception);
+                throw $exception;
             }
 
             groups_add_member($group, $user);
@@ -523,7 +535,9 @@ class core_group_external extends external_api {
                 $exceptionparam = new stdClass();
                 $exceptionparam->message = $e->getMessage();
                 $exceptionparam->courseid = $group->courseid;
-                throw new moodle_exception('errorcoursecontextnotvalid' , 'webservice', '', $exceptionparam);
+                $exception = new moodle_exception('errorcoursecontextnotvalid' , 'webservice', '', $exceptionparam);
+                $DB->rollback_delegated_transaction($transaction, $exception);
+                throw $exception;
             }
             require_capability('moodle/course:managegroups', $context);
 
@@ -586,10 +600,14 @@ class core_group_external extends external_api {
             $grouping = (object)$grouping;
 
             if (trim($grouping->name) == '') {
-                throw new invalid_parameter_exception('Invalid grouping name');
+                $exception = new invalid_parameter_exception('Invalid grouping name');
+                $DB->rollback_delegated_transaction($transaction, $exception);
+                throw $exception;
             }
             if ($DB->count_records('groupings', array('courseid'=>$grouping->courseid, 'name'=>$grouping->name))) {
-                throw new invalid_parameter_exception('Grouping with the same name already exists in the course');
+                $exception = new invalid_parameter_exception('Grouping with the same name already exists in the course');
+                $DB->rollback_delegated_transaction($transaction, $exception);
+                throw $exception;
             }
 
             // Now security checks            .
@@ -600,7 +618,9 @@ class core_group_external extends external_api {
                 $exceptionparam = new stdClass();
                 $exceptionparam->message = $e->getMessage();
                 $exceptionparam->courseid = $grouping->courseid;
-                throw new moodle_exception('errorcoursecontextnotvalid' , 'webservice', '', $exceptionparam);
+                $exception = new moodle_exception('errorcoursecontextnotvalid' , 'webservice', '', $exceptionparam);
+                $DB->rollback_delegated_transaction($transaction, $exception);
+                throw $exception;
             }
             require_capability('moodle/course:managegroups', $context);
 
@@ -677,17 +697,23 @@ class core_group_external extends external_api {
             $grouping = (object)$grouping;
 
             if (trim($grouping->name) == '') {
-                throw new invalid_parameter_exception('Invalid grouping name');
+                $exception = new invalid_parameter_exception('Invalid grouping name');
+                $DB->rollback_delegated_transaction($transaction, $exception);
+                throw $exception;
             }
 
             if (! $currentgrouping = $DB->get_record('groupings', array('id'=>$grouping->id))) {
-                throw new invalid_parameter_exception("Grouping $grouping->id does not exist in the course");
+                $exception = new invalid_parameter_exception("Grouping $grouping->id does not exist in the course");
+                $DB->rollback_delegated_transaction($transaction, $exception);
+                throw $exception;
             }
 
             // Check if the new modified grouping name already exists in the course.
             if ($grouping->name != $currentgrouping->name and
                     $DB->count_records('groupings', array('courseid'=>$currentgrouping->courseid, 'name'=>$grouping->name))) {
-                throw new invalid_parameter_exception('A different grouping with the same name already exists in the course');
+                $exception = new invalid_parameter_exception('A different grouping with the same name already exists in the course');
+                $DB->rollback_delegated_transaction($transaction, $exception);
+                throw $exception;
             }
 
             $grouping->courseid = $currentgrouping->courseid;
@@ -700,7 +726,9 @@ class core_group_external extends external_api {
                 $exceptionparam = new stdClass();
                 $exceptionparam->message = $e->getMessage();
                 $exceptionparam->courseid = $grouping->courseid;
-                throw new moodle_exception('errorcoursecontextnotvalid' , 'webservice', '', $exceptionparam);
+                $exception = new moodle_exception('errorcoursecontextnotvalid' , 'webservice', '', $exceptionparam);
+                $DB->rollback_delegated_transaction($transaction, $exception);
+                throw $exception;
             }
             require_capability('moodle/course:managegroups', $context);
 
@@ -925,7 +953,9 @@ class core_group_external extends external_api {
                 $exceptionparam = new stdClass();
                 $exceptionparam->message = $e->getMessage();
                 $exceptionparam->courseid = $grouping->courseid;
-                throw new moodle_exception('errorcoursecontextnotvalid' , 'webservice', '', $exceptionparam);
+                $exception = new moodle_exception('errorcoursecontextnotvalid' , 'webservice', '', $exceptionparam);
+                $DB->rollback_delegated_transaction($transaction, $exception);
+                throw $exception;
             }
             require_capability('moodle/course:managegroups', $context);
 
@@ -1001,7 +1031,9 @@ class core_group_external extends external_api {
                 $exceptionparam = new stdClass();
                 $exceptionparam->message = $e->getMessage();
                 $exceptionparam->courseid = $group->courseid;
-                throw new moodle_exception('errorcoursecontextnotvalid' , 'webservice', '', $exceptionparam);
+                $exception = new moodle_exception('errorcoursecontextnotvalid' , 'webservice', '', $exceptionparam);
+                $DB->rollback_delegated_transaction($transaction, $exception);
+                throw $exception;
             }
             require_capability('moodle/course:managegroups', $context);
 
@@ -1077,7 +1109,9 @@ class core_group_external extends external_api {
                 $exceptionparam = new stdClass();
                 $exceptionparam->message = $e->getMessage();
                 $exceptionparam->courseid = $group->courseid;
-                throw new moodle_exception('errorcoursecontextnotvalid' , 'webservice', '', $exceptionparam);
+                $exception = new moodle_exception('errorcoursecontextnotvalid' , 'webservice', '', $exceptionparam);
+                $DB->rollback_delegated_transaction($transaction, $exception);
+                throw $exception;
             }
             require_capability('moodle/course:managegroups', $context);
 

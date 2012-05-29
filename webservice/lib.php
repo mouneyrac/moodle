@@ -805,6 +805,13 @@ abstract class webservice_server implements webservice_server_interface {
      * @param integer $authmethod authentication method one of WEBSERVICE_AUTHMETHOD_*
      */
     public function __construct($authmethod) {
+        // Need to define WEBSERVICE.
+        // Used by $DB->dispose() to not log an error when an external function
+        // throws an exception.
+        if (!defined('WEBSERVICE')) {
+            define('WEBSERVICE', true);
+        }
+
         $this->authmethod = $authmethod;
     }
 

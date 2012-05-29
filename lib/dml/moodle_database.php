@@ -323,7 +323,8 @@ abstract class moodle_database {
             $lowesttransaction = end($this->transactions);
             $backtrace = $lowesttransaction->get_backtrace();
 
-            if (defined('PHPUNIT_TEST') and PHPUNIT_TEST) {
+            if ((defined('PHPUNIT_TEST') and PHPUNIT_TEST) ||
+                (defined('WEBSERVICE') and WEBSERVICE)) {
                 //no need to log sudden exits in our PHPunit test cases
             } else {
                 error_log('Potential coding error - active database transaction detected when disposing database:'."\n".format_backtrace($backtrace, true));

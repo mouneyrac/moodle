@@ -299,6 +299,51 @@ abstract class advanced_testcase extends PHPUnit_Framework_TestCase {
     }
 
     /**
+     * Assign a capability to $USER
+     * The function creates a student $USER if $USER->id is empty
+     *
+     * @param string $capability capability name
+     * @param int $contextid
+     * @param int $roleid
+     * @return int the role id - mainly returned for creation, so calling function can reuse it
+     */
+    public static function assignUserCapability($capability, $contextid, $roleid = null) {
+        global $USER;
+
+        // Create a new student $USER if $USER doesn't exist
+        if (empty($USER->id)) {
+            $user  = self::getDataGenerator()->create_user();
+            self::setUser($user);
+        }
+
+        if (empty($roleid)) {
+            $roleid = create_role('Dummy role', 'dummyrole', 'dummy role description');
+        }
+
+        assign_capability($capability, CAP_ALLOW, $roleid, $contextid);
+
+        role_assign($roleid, $USER->id, $contextid);
+
+        return $roleid;
+    }
+
+    /**
+     * Unassign a capability to $USER
+     *
+     * @param string $capability capability name
+     * @param int $contextid
+     * @param int $roleid
+     */
+    public static function unassignUserCapability($capability, $contextid, $roleid) {
+        global $USER;
+
+        unassign_capability($capability, $roleid, $contextid);
+
+        // Reload the $USER capabilities
+        self::setUser($USER);
+    }
+
+    /**
      * Get data generator
      * @static
      * @return phpunit_data_generator

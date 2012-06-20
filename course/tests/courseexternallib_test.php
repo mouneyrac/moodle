@@ -163,6 +163,8 @@ class courseexternallib_testcase extends advanced_testcase {
         $category1  = self::getDataGenerator()->create_category($category1data);
         $category2  = self::getDataGenerator()->create_category(
                 array('parent' => $category1->id));
+        $category6  = self::getDataGenerator()->create_category(
+                array('parent' => $category1->id, 'visible' => 0));
         $category3  = self::getDataGenerator()->create_category();
         $category4  = self::getDataGenerator()->create_category(
                 array('parent' => $category3->id));
@@ -173,8 +175,10 @@ class courseexternallib_testcase extends advanced_testcase {
         $context = context_system::instance();
         $roleid = $this->assignUserCapability('moodle/category:manage', $context->id);
 
+        // Retrieve category1 + sub-categories except not visible ones
         $categories = core_course_external::get_categories(array(
-            array('key' => 'id', 'value' => $category1->id)), 1);
+            array('key' => 'id', 'value' => $category1->id),
+            array('key' => 'visible', 'value' => 1)), 1);
 
         //TODO: get_categories does not support multiple same key (it should either throw an exception
         //      either support it but not being silent.)

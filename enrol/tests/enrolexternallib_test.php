@@ -48,12 +48,40 @@ class core_enrol_external_testcase extends advanced_testcase {
      * Test get_enrolled_users
      */
     public function test_get_enrolled_users() {
-        global $USER;
+        global $USER, $CFG;
 
         $this->resetAfterTest(true);
 
         $course = self::getDataGenerator()->create_course();
-        $user1 = self::getDataGenerator()->create_user();
+        $user1 = array(
+            'username' => 'usernametest1',
+            'idnumber' => 'idnumbertest1',
+            'firstname' => 'First Name User Test 1',
+            'lastname' => 'Last Name User Test 1',
+            'email' => 'usertest1@email.com',
+            'address' => '2 Test Street Perth 6000 WA',
+            'phone1' => '01010101010',
+            'phone2' => '02020203',
+            'icq' => 'testuser1',
+            'skype' => 'testuser1',
+            'yahoo' => 'testuser1',
+            'aim' => 'testuser1',
+            'msn' => 'testuser1',
+            'department' => 'Department of user 1',
+            'institution' => 'Institution of user 1',
+            'description' => 'This is a description for user 1',
+            'descriptionformat' => FORMAT_MOODLE,
+            'city' => 'Perth',
+            'url' => 'http://moodle.org',
+            'country' => 'au'
+            );
+        $user1 = self::getDataGenerator()->create_user($user1);
+        if (!empty($CFG->usetags)) {
+            require_once($CFG->dirroot . '/user/editlib.php');
+            require_once($CFG->dirroot . '/tag/lib.php');
+            $user1->interests = array('Cinema', 'Tennis', 'Dance', 'Guitar', 'Cooking');
+            useredit_update_interests($user1, $user1->interests);
+        }
         $user2 = self::getDataGenerator()->create_user();
 
         // Set the required capabilities by the external function.
@@ -80,6 +108,42 @@ class core_enrol_external_testcase extends advanced_testcase {
 
         // Check we retrieve the good total number of enrolled users.
         $this->assertEquals(3, count($enrolledusers));
+
+        // Do the same call as admin to receive all possible fields.
+        $this->setAdminUser();
+        $USER->email = "admin@fakeemail.com";
+
+        // Call the external function.
+        $enrolledusers = core_enrol_external::get_enrolled_users($course->id);
+
+        foreach($enrolledusers as $enrolleduser) {
+            if ($enrolleduser['username'] == $user1->username) {
+                $this->assertEquals($user1->idnumber, $enrolleduser['idnumber']);
+                $this->assertEquals($user1->firstname, $enrolleduser['firstname']);
+                $this->assertEquals($user1->lastname, $enrolleduser['lastname']);
+                $this->assertEquals($user1->email, $enrolleduser['email']);
+                $this->assertEquals($user1->address, $enrolleduser['address']);
+                $this->assertEquals($user1->phone1, $enrolleduser['phone1']);
+                $this->assertEquals($user1->phone2, $enrolleduser['phone2']);
+                $this->assertEquals($user1->icq, $enrolleduser['icq']);
+                $this->assertEquals($user1->skype, $enrolleduser['skype']);
+                $this->assertEquals($user1->yahoo, $enrolleduser['yahoo']);
+                $this->assertEquals($user1->aim, $enrolleduser['aim']);
+                $this->assertEquals($user1->msn, $enrolleduser['msn']);
+                $this->assertEquals($user1->department, $enrolleduser['department']);
+                $this->assertEquals($user1->institution, $enrolleduser['institution']);
+                $this->assertEquals($user1->description, $enrolleduser['description']);
+                $this->assertEquals(FORMAT_HTML, $enrolleduser['descriptionformat']);
+                $this->assertEquals($user1->city, $enrolleduser['city']);
+                $this->assertEquals($user1->country, $enrolleduser['country']);
+                $this->assertEquals($user1->url, $enrolleduser['url']);
+                if (!empty($CFG->usetags)) {
+                    $this->assertEquals(implode(', ', $user1->interests), $enrolleduser['interests']);
+                }
+            }
+        }
+
+        $this->setGuestUser();
 
         // Call without required capability.
         $this->unassignUserCapability('moodle/course:viewparticipants', $context->id, $roleid);

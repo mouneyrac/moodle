@@ -732,6 +732,13 @@ function initialise_fullme() {
             if (!defined('NO_MOODLE_COOKIES')) {
                 define('NO_MOODLE_COOKIES', true);
             }
+            // The login/token.php script should call the correct url/port.
+            if (defined('LOGIN_TOKEN_SCRIPT')) {
+                $wwwrootport = empty($wwwroot['port'])?'':$wwwroot['port'];
+                throw new moodle_exception('wrongurlorport', 'webservice', '', null,
+                    'You called ' . $rurl['host'] . ' ('.$rurl['port'].'), you should have called '
+                        . $wwwroot['host'] . ' ('.$wwwrootport.')');
+            }
             redirect($CFG->wwwroot, get_string('wwwrootmismatch', 'error', $CFG->wwwroot), 3);
         }
     }

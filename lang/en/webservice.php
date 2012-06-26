@@ -198,6 +198,7 @@ $string['webservices'] = 'Web services';
 $string['webservicesoverview'] = 'Overview';
 $string['webservicetokens'] = 'Web service tokens';
 $string['wrongusernamepassword'] = 'Wrong username or password';
+$string['wrongurlorport'] = 'Invalid url or port.';
 $string['wsaccessuserdeleted'] = 'Refused web service access for deleted username: {$a}';
 $string['wsaccessuserexpired'] = 'Refused web service access for password expired username: {$a}';
 $string['wsaccessusernologin'] = 'Refused web service access for nologin authentication username: {$a}';

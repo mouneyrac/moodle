@@ -600,7 +600,7 @@ $functions = array(
         'description' => 'Return some site info / user info / list web service functions',
         'type'        => 'read',
     ),
-
+    
 );
 
 $services = array(
@@ -614,7 +614,9 @@ $services = array(
             'moodle_user_get_course_participants_by_id',
             'moodle_user_get_users_by_courseid',
             'moodle_message_send_instantmessages',
-            'core_course_get_contents'),
+            'core_course_get_contents',
+            'message_airnotifier_add_user_device',
+            'message_airnotifier_get_access_key'),
         'enabled' => 0,
         'restrictedusers' => 0,
         'shortname' => MOODLE_OFFICIAL_MOBILE_SERVICE,

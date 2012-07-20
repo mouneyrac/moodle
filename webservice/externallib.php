@@ -34,7 +34,7 @@
  * @since Moodle 2.2
  */
 class core_webservice_external extends external_api {
-
+    
     /**
      * Returns description of method parameters
      *
@@ -64,7 +64,7 @@ class core_webservice_external extends external_api {
      * @return array site info
      * @since Moodle 2.2
      */
-    public function get_site_info($serviceshortnames = array()) {
+    public static function get_site_info($serviceshortnames = array()) {
         global $USER, $SITE, $CFG, $DB;
 
         $params = self::validate_parameters(self::get_site_info_parameters(),
@@ -180,9 +180,9 @@ class core_webservice_external extends external_api {
             )
         );
     }
-}
+    }
 
-/**
+    /**
  * Deprecated web service related functions
  *
  * @package    core_webservice

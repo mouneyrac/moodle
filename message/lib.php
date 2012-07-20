@@ -2043,6 +2043,9 @@ function message_post_message($userfrom, $userto, $message, $format) {
     }
 
     $eventdata->timecreated     = time();
+    
+    $eventdata->url = $s->url; 
+    
     return message_send($eventdata);
 }
 

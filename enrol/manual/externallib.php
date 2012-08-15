@@ -57,8 +57,8 @@ class enrol_manual_external extends external_api {
                                         'roleid' => new external_value(PARAM_INT, 'Role to assign to the user'),
                                         'userid' => new external_value(PARAM_INT, 'The user that is going to be enrolled'),
                                         'courseid' => new external_value(PARAM_INT, 'The course to enrol the user role in'),
-                                        'timestart' => new external_value(PARAM_INT, 'Timestamp when the enrolment start', VALUE_OPTIONAL),
-                                        'timeend' => new external_value(PARAM_INT, 'Timestamp when the enrolment end', VALUE_OPTIONAL),
+                                        'timestart' => new external_value(PARAM_FLOAT, 'Timestamp when the enrolment start', VALUE_OPTIONAL),
+                                        'timeend' => new external_value(PARAM_FLOAT, 'Timestamp when the enrolment end', VALUE_OPTIONAL),
                                         'suspend' => new external_value(PARAM_INT, 'set to 1 to suspend the enrolment', VALUE_OPTIONAL)
                                     )
                             )

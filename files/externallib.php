@@ -189,7 +189,7 @@ class core_files_external extends external_api {
                             'filename' => new external_value(PARAM_FILE, ''),
                             'isdir'    => new external_value(PARAM_BOOL, ''),
                             'url'      => new external_value(PARAM_TEXT, ''),
-                            'timemodified' => new external_value(PARAM_INT, ''),
+                            'timemodified' => new external_value(PARAM_FLOAT, ''),
                         )
                     )
                 )

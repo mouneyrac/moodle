@@ -388,11 +388,13 @@ abstract class oauth2_client extends curl {
     /** var string The client secret. */
     private $clientsecret = '';
     /** var moodle_url URL to return to after authenticating */
-    private $returnurl = null;
+    public $returnurl = null;
     /** var string scope of the authentication request */
-    private $scope = '';
+    protected $scope = '';
     /** var stdClass access token object */
     private $accesstoken = null;
+    /** var oauth2user the authenticated user */
+    public $oauth2user;
 
     /**
      * Returns the auth url for OAuth 2.0 request
@@ -407,6 +409,12 @@ abstract class oauth2_client extends curl {
     abstract protected function token_url();
 
     /**
+     * The most common API call to get the authenticated user info.
+     * Please fill up (oauth2user) $this->oauth2user with the retrieved information.
+     */
+    abstract protected function retrieve_auth_user_info();
+
+    /**
      * Constructor.
      *
      * @param string $clientid
@@ -414,13 +422,16 @@ abstract class oauth2_client extends curl {
      * @param moodle_url $returnurl
      * @param string $scope
      */
-    public function __construct($clientid, $clientsecret, moodle_url $returnurl, $scope) {
+    public function __construct($clientid, $clientsecret, moodle_url $returnurl, $scope = null) {
         parent::__construct();
         $this->clientid = $clientid;
         $this->clientsecret = $clientsecret;
         $this->returnurl = $returnurl;
-        $this->scope = $scope;
+        if (isset($scope)) {
+            $this->scope = $scope;
+        }
         $this->accesstoken = $this->get_stored_token();
+        $this->oauth2user = new oauth2user();
     }
 
     /**
@@ -508,7 +519,7 @@ abstract class oauth2_client extends curl {
             throw new moodle_exception('Could not upgrade oauth token');
         }
 
-        $r = json_decode($response);
+        $r = $this->decode_access_token_result($response);
 
         if (!isset($r->access_token)) {
             return false;
@@ -521,6 +532,16 @@ abstract class oauth2_client extends curl {
         $this->store_token($accesstoken);
 
         return true;
+    }
+
+    /**
+     * Decode access token result return by the access token request
+     *
+     * @param string $result HTTP result
+     * @return object must contain "access_key" and "expires_in"
+     */
+    protected function decode_access_token_result($response) {
+        return json_decode($response);
     }
 
     /**
@@ -627,4 +648,25 @@ abstract class oauth2_client extends curl {
     protected function use_http_get() {
         return false;
     }
+}
+
+/**
+ * Model: oauth2 user fields
+ */
+class oauth2user {
+    public $id;
+    public $name;
+    public $email;
+    public $verified;
+    public $link;
+    public $firstname;
+    public $lastname;
+    public $gender;
+    public $locale; //lang
+    public $username;
+    public $timezone;
+    public $updated_time;
+
+    /** @var array 'fieldname' => 'value' */
+    public $additionalinfo;
 }

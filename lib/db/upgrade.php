@@ -1181,7 +1181,73 @@ function xmldb_main_upgrade($oldversion) {
         }
 
         // Main savepoint reached
-        upgrade_main_savepoint(true, 2012082300.02);
+        upgrade_main_savepoint(true, 2012082300.02);   
+    }
+
+    if ($oldversion < 2012080200.02) {
+
+        // Define table user_external_accounts to be created
+        $table = new xmldb_table('user_external_accounts');
+
+        // Adding fields to table user_external_accounts
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('component', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('provideruserid', XMLDB_TYPE_INTEGER, '20', null, XMLDB_NOTNULL, null, null);
+
+        // Adding keys to table user_external_accounts
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
+
+        // Conditionally launch create table for user_external_accounts
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Main savepoint reached
+        upgrade_main_savepoint(true, 2012080200.02);
+    }
+
+    if ($oldversion < 2012080200.03) {
+
+        // Changing type of field provideruserid on table user_external_accounts to char
+        $table = new xmldb_table('user_external_accounts');
+        $field = new xmldb_field('provideruserid', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null, 'userid');
+
+        // Launch change of type for field provideruserid
+        $dbman->change_field_type($table, $field);
+
+        // Launch change of precision for field provideruserid
+        $dbman->change_field_precision($table, $field);
+
+        // Main savepoint reached
+        upgrade_main_savepoint(true, 2012080200.03);
+    }
+
+    if ($oldversion < 2012080200.04) {
+
+        // Define table user_external_accounts to be renamed to NEWNAMEGOESHERE
+        $table = new xmldb_table('user_external_accounts');
+
+        // Launch rename table for user_external_accounts
+        $dbman->rename_table($table, 'user_auths');
+
+        // Main savepoint reached
+        upgrade_main_savepoint(true, 2012080200.04);
+    }
+
+    if ($oldversion < 2012090700.01) {
+
+        // Define field email to be added to user_auths
+        $table = new xmldb_table('user_auths');
+        $field = new xmldb_field('email', XMLDB_TYPE_CHAR, '100', null, null, null, null, 'provideruserid');
+
+        // Conditionally launch add field email
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Main savepoint reached
+        upgrade_main_savepoint(true, 2012090700.01);
     }
 
     if ($oldversion < 2012090500.00) {

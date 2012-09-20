@@ -507,3 +507,37 @@ class auth_plugin_base {
     }
 
 }
+
+/**
+ * Standard HTML output renderer for auth plugins
+ */
+abstract class auth_plugin_renderer_base extends plugin_renderer_base {
+    
+    /**
+     * Display login form (same as login.php + param to trigger link action)
+     *
+     * @param type $provider
+     */
+    public function loginform($username, $additionalparam) {
+        return '';
+    }
+}
+
+/**
+ * Standard HTML output renderer for auth oauth2 plugins
+ */
+abstract class oauth2_plugin_renderer_base extends auth_plugin_renderer_base {
+    
+    /**
+     * Display oauth2 link
+     *
+     * $return string
+     */
+    public function link($provider) {
+        $htmlprovider = html_writer::empty_tag('img', array('src' => $provider->logourl));
+        $htmlprovider = html_writer::tag('a', $htmlprovider, array('href' => $provider->oauth2client->get_login_url()));
+        $htmlprovider = html_writer::tag('div', $htmlprovider, array('class' => 'oauth2provider'));
+            
+        return $htmlprovider;
+    }
+}

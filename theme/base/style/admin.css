@@ -252,3 +252,10 @@
 #page-admin-mnet-peers .box.deletedhosts {margin-bottom:1em;font-size:80%;}
 #page-admin-mnet-peers .mform .certdetails {background-color:white;}
 #page-admin-mnet-peers .mform .deletedhostinfo {background-color:#ffd3d9;border 2px solid #eeaaaa;padding:4px;margin-bottom:5px;}
+
+/** Oauth2 */
+.oauth2setting {margin-bottom: 1em;}
+.oauth2settingrow1 {width: 9em;display: inline-block;vertical-align: top;}
+.oauth2settingrow2 {width: 37em;display: inline-block;margin-right: 1em;vertical-align: top;}
+.oauth2settingrow3 {display: block;vertical-align: top;margin-left: 9em;margin-top: 0.3em;}
+.oauth2settingrow2 input[type="text"] {width: 37em;}

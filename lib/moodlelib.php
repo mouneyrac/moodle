@@ -4094,7 +4094,7 @@ function guest_user() {
  * @param string $password  User's password
  * @return user|flase A {@link $USER} object or false if error
  */
-function authenticate_user_login($username, $password) {
+function authenticate_user_login($username, $password, $authplugin = null) {
     global $CFG, $DB;
 
     $authsenabled = get_enabled_auth_plugins();
@@ -4133,6 +4133,11 @@ function authenticate_user_login($username, $password) {
         $user->id = 0;
     }
 
+    // Force authentication plugin.
+    if (!empty($authplugin)) {
+        $auths = array($authplugin);
+    }
+
     foreach ($auths as $auth) {
         $authplugin = get_auth_plugin($auth);
 
@@ -4143,15 +4148,24 @@ function authenticate_user_login($username, $password) {
 
         // successful authentication
         if ($user->id) {                          // User already exists in database
-            if (empty($user->auth)) {             // For some reason auth isn't set yet
-                $DB->set_field('user', 'auth', $auth, array('username'=>$username));
-                $user->auth = $auth;
-            }
+            // Update user info only if it's the primary plugin.
+            if ($user->auth == $auth) {
+                if (empty($user->auth)) {             // For some reason auth isn't set yet
+                    $DB->set_field('user', 'auth', $auth, array('username'=>$username));
+                    $user->auth = $auth;
+                }
+                // Prevent firstaccess from remaining 0 for manual account that never required confirmation.
+                if (empty($user->firstaccess)) {
+                    $DB->set_field('user', 'firstaccess', $user->timemodified, array('id' => $user->id));
+                    $user->firstaccess = $user->timemodified;
+                }
 
-            update_internal_user_password($user, $password); // just in case salt or encoding were changed (magic quotes too one day)
+                // Just in case salt or encoding were changed (magic quotes too one day).
+                update_internal_user_password($user, $password);
 
-            if ($authplugin->is_synchronised_with_external()) { // update user record from external DB
-                $user = update_user_record($username);
+                if ($authplugin->is_synchronised_with_external()) { // update user record from external DB
+                    $user = update_user_record($username);
+                }
             }
         } else {
             // Create account, we verified above that user creation is allowed.

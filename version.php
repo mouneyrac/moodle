@@ -29,7 +29,8 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-
+// Need to be bump to match the change in upgrade.php
+// $version  = 2012092701.00;
 $version  = 2012092700.00;              // YYYYMMDD      = weekly release date of this DEV branch
                                         //         RR    = release increments - 00 in DEV branches
                                         //           .XX = incremental changes

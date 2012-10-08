@@ -181,7 +181,7 @@ function user_get_default_fields() {
         'city', 'url', 'country', 'profileimageurlsmall', 'profileimageurl', 'customfields',
         'groups', 'roles', 'preferences', 'enrolledcourses'
     );
-}
+            }
 
 /**
  *
@@ -489,8 +489,6 @@ function user_get_user_details($user, $course = null, array $userfields = array(
  * or trough one of the user's course enrollments (course profile).
  *
  * @param $user The user.
- * @param $courses The courses that the user is enrolled in.
- * @param array $userfields The userfields that are to be returned.
  * @return null if unsuccessful or the allowed user details.
  */
 function user_get_user_details_courses($user) {
@@ -526,20 +524,19 @@ function user_get_user_details_courses($user) {
 /**
  * Does $USER have the necessary capabilities to obtain user details
  * using a mdl_user record?
+ *
  * @param $user The mdl_user record
  * @param null $course Null only to consider system profile or course to also consider that course's profile.
  * @return bool T if he does, false otherwise
  */
 function can_view_user_details_cap($user, $course = null) {
-    if (!empty($course)) {
+    // Has $USER the capability to view the user details at user context
+    $usercontext = get_context_instance(CONTEXT_USER, $user->id);
+    $result = has_capability('moodle/user:viewdetails', $usercontext);
+    // Otherwise can $USER see them at course context
+    if (!$result && !empty($course)) {
         $context = get_context_instance(CONTEXT_COURSE, $course->id);
-        $usercontext = get_context_instance(CONTEXT_USER, $user->id);
-        $result = (has_capability('moodle/user:viewdetails', $context) || has_capability('moodle/user:viewdetails', $usercontext));
-    }
-    else {
-        $context = get_context_instance(CONTEXT_USER, $user->id);
-        $usercontext = $context;
-        $result = has_capability('moodle/user:viewdetails', $usercontext);
+        $result = has_capability('moodle/user:viewdetails', $context);
     }
     return $result;
 }

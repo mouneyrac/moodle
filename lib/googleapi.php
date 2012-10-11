@@ -422,7 +422,11 @@ class google_picasa {
  * @copyright 2012 Dan Poltawski
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class google_oauth extends oauth2_client {
+class google_oauth extends oauth2_auth_plugin_client {
+
+    /** @var string default scope of the authentication request */
+    protected $authscope = 'https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
+
     /**
      * Returns the auth url for OAuth 2.0 request
      * @return string the auth url
@@ -445,5 +449,28 @@ class google_oauth extends oauth2_client {
     public function reset_state() {
         $this->header = array();
         $this->response = array();
+    }
+
+    /**
+     * Retrieve user info from Google api and set $this->oauth2user
+     */
+    public function retrieve_auth_user_info() {
+        if (empty($this->oauth2user->email)) {
+            $userinfo = $this->get('https://www.googleapis.com/oauth2/v1/userinfo', array('alt' => 'json'));
+            $userinfo = json_decode($userinfo); // Email, id, name, verified_email, given_name, family_name, link, gender, locale.
+
+            if (!empty($userinfo->given_name)) {
+                $this->oauth2user->firstname = $userinfo->given_name;
+            }
+            if (!empty($userinfo->family_name)) {
+                $this->oauth2user->lastname = $userinfo->family_name;
+            }
+
+            $this->oauth2user->id = $userinfo->id;
+            $this->oauth2user->email = $userinfo->email;
+            $this->oauth2user->name = $userinfo->name;
+            $this->oauth2user->verified = $userinfo->verified_email;
+            $this->oauth2user->link = $userinfo->link;
+        }
     }
 }

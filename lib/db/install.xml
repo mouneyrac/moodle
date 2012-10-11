@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="UTF-8" ?>
+<<<<<<< HEAD
 <XMLDB PATH="lib/db" VERSION="20121116" COMMENT="XMLDB file for core Moodle tables"
+=======
+<XMLDB PATH="lib/db" VERSION="20121005" COMMENT="XMLDB file for core Moodle tables"
+>>>>>>> MDL-34426 port of the Oauth2 authentication plugin
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../lib/xmldb/xmldb.xsd"
 >
@@ -2914,7 +2918,7 @@
         <INDEX NAME="roleid" UNIQUE="false" FIELDS="roleid" PREVIOUS="courseid"/>
       </INDEXES>
     </TABLE>
-    <TABLE NAME="temp_log_template" COMMENT="Temporary storage for daily logs" PREVIOUS="temp_enroled_template">
+    <TABLE NAME="temp_log_template" COMMENT="Temporary storage for daily logs" PREVIOUS="temp_enroled_template" NEXT="user_idps">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true" NEXT="userid"/>
         <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" PREVIOUS="id" NEXT="course"/>
@@ -2930,6 +2934,19 @@
         <INDEX NAME="user" UNIQUE="false" FIELDS="userid" PREVIOUS="course" NEXT="usercourseaction"/>
         <INDEX NAME="usercourseaction" UNIQUE="false" FIELDS="userid, course, action" PREVIOUS="user"/>
       </INDEXES>
+    </TABLE>
+    <TABLE NAME="user_idps" COMMENT="Identity provider that a user can use to log in Moodle" PREVIOUS="temp_log_template">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true" NEXT="component"/>
+        <FIELD NAME="component" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" COMMENT="frankenstyle name of the authentication plugin used for the identity provider." PREVIOUS="id" NEXT="userid"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" PREVIOUS="component" NEXT="provideruserid"/>
+        <FIELD NAME="provideruserid" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" COMMENT="The ID given to the user by the identity provider" PREVIOUS="userid" NEXT="email"/>
+        <FIELD NAME="email" TYPE="char" LENGTH="100" NOTNULL="false" SEQUENCE="false" COMMENT="main email address registered on the identity provider" PREVIOUS="provideruserid"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id" NEXT="userid"/>
+        <KEY NAME="userid" TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id" PREVIOUS="primary"/>
+      </KEYS>
     </TABLE>
   </TABLES>
 </XMLDB>

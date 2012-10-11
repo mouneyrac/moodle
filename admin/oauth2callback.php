@@ -38,7 +38,19 @@ $state = required_param('state', PARAM_LOCALURL);
 $redirecturl = new moodle_url($state);
 $params = $redirecturl->params();
 
-if (isset($params['sesskey']) and confirm_sesskey($params['sesskey'])) {
+// We need to know if the redirect url is the login page, so we don't check for sesskey.
+if (!empty($CFG->alternateloginurl)) {
+    $loginurl = $CFG->alternateloginurl;
+} else {
+    $loginurl = get_login_url();
+}
+if (strpos($redirecturl->out(false), $loginurl)===0) {
+    $loginpage = true;
+} else {
+    $loginpage = false;
+}
+
+if ($loginpage or (isset($params['sesskey']) and confirm_sesskey($params['sesskey']))) {
     $redirecturl->param('oauth2code', $code);
     redirect($redirecturl);
 } else {

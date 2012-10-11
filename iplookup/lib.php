@@ -61,6 +61,7 @@ function iplookup_find_location($ip) {
                 $info['country'] = $location->countryName;
             }
             $info['title'][] = $info['country'];
+            $info['countrycode'] = $location->countryCode;
 
         } else if (!empty($location->countryName)) {
             $info['country'] = $location->countryName;
@@ -94,6 +95,7 @@ function iplookup_find_location($ip) {
         if (isset($countries[$countrycode])) {
             // prefer our localized country names
             $info['country'] = $countries[$countrycode];
+            $info['countrycode'] = $countrycode;
         } else {
             $info['country'] = s($ipdata['geoplugin_countryName']);
         }

@@ -507,3 +507,44 @@ class auth_plugin_base {
     }
 
 }
+
+/**
+ * Standard HTML output renderer for auth plugins
+ *
+ * @copyright  2012 Jerome Mouneyrac
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+abstract class auth_plugin_renderer_base extends plugin_renderer_base {
+
+    /**
+     * Display login form (same as login.php + param to trigger link action)
+     *
+     * @param string $username
+     * @param array $additionalparam - parameters that the login form need to send to Moodle
+     */
+    public function loginform($username, $additionalparam, $errormsg) {
+        return '';
+    }
+}
+
+/**
+ * Standard HTML output renderer for auth oauth2 plugins
+ *
+ * @copyright  2012 Jerome Mouneyrac
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+abstract class oauth2_plugin_renderer_base extends auth_plugin_renderer_base {
+
+    /**
+     * Display oauth2 link
+     *
+     * $return string
+     */
+    public function link($provider) {
+        $htmlprovider = html_writer::empty_tag('img', array('src' => $provider->logourl));
+        $htmlprovider = html_writer::tag('a', $htmlprovider, array('href' => $provider->oauth2client->get_login_url()));
+        $htmlprovider = html_writer::tag('div', $htmlprovider, array('class' => 'oauth2provider'));
+
+        return $htmlprovider;
+    }
+}

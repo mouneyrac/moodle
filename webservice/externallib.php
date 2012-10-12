@@ -195,6 +195,173 @@ class core_webservice_external extends external_api {
             )
         );
     }
+
+    /**
+     * Returns description of get_string parameters
+     *
+     * @return external_function_parameters
+     * @since Moodle 2.4
+     */
+    public static function get_string_parameters() {
+        return new external_function_parameters(
+            array('stringid' => new external_value(PARAM_STRINGID, 'string identifier'),
+                  'component' => new external_value(PARAM_COMPONENT,'component', VALUE_DEFAULT, 'moodle'),
+                  'stringparams' => new external_multiple_structure (
+                      new external_single_structure(array(
+                          'name' => new external_value(PARAM_ALPHANUMEXT, 'param name'),
+                          'value' => new external_value(PARAM_TEXT,'param value'),)),
+                          'the definition of a string param (i.e. {$a->name})', VALUE_DEFAULT, array()
+                   )
+            )
+        );
+    }
+
+    /**
+     * Return a core get_string() call
+     *
+     * @param string $identifier string identifier
+     * @param string $component string component
+     * @param array $stringparams the string params
+     * @return string
+     * @since Moodle 2.4
+     */
+    public static function get_string($stringid, $component = 'moodle', $stringparams = array()) {
+        $params = self::validate_parameters(self::get_string_parameters(),
+                      array('stringid'=>$stringid, 'component' => $component, 'stringparams' => $stringparams));
+
+        $strparams = new stdClass();
+        foreach ($params['stringparams'] as $stringparam) {
+            $strparams->{$stringparam['name']} = $stringparam['value'];
+        }
+
+        return get_string($params['stringid'], $params['component'], $strparams);
+    }
+
+    /**
+     * Returns description of get_string() result value
+     *
+     * @return string
+     * @since Moodle 2.4
+     */
+    public static function get_string_returns() {
+        return new external_value(PARAM_TEXT, 'translated string');
+    }
+
+    /**
+     * Returns description of get_string parameters
+     *
+     * @return external_function_parameters
+     * @since Moodle 2.4
+     */
+    public static function get_strings_parameters() {
+        return new external_function_parameters(
+            array('strings' => new external_multiple_structure (
+                    new external_single_structure (array(
+                        'stringid' => new external_value(PARAM_STRINGID, 'string identifier'),
+                        'component' => new external_value(PARAM_COMPONENT, 'component', VALUE_DEFAULT, 'moodle'),
+                        'stringparams' => new external_multiple_structure (
+                            new external_single_structure(array(
+                                'name' => new external_value(PARAM_ALPHANUMEXT, 'param name'),
+                                'value' => new external_value(PARAM_TEXT, 'param value'),)),
+                                'the definition of a string param (i.e. {$a->name})', VALUE_DEFAULT, array()
+                        ))
+                    )
+                )
+            )
+        );
+    }
+
+    /**
+     * Return multiple call to core get_string()
+     *
+     * @param array $strings strings to translate
+     * @return array
+     *
+     * @since Moodle 2.4
+     */
+    public static function get_strings($strings) {
+        $params = self::validate_parameters(self::get_strings_parameters(),
+                      array('strings'=>$strings));
+
+        $translatedstrings = array();
+        foreach($params['strings'] as $string) {
+            $strparams = new stdClass();
+            foreach ($string['stringparams'] as $stringparam) {
+                $strparams->{$stringparam['name']} = $stringparam['value'];
+            }
+            $translatedstrings[] = array(
+                'stringid' => $string['stringid'],
+                'component' => $string['component'],
+                'string' => get_string($string['stringid'], $string['component'], $strparams));
+        }
+
+        return $translatedstrings;
+    }
+
+    /**
+     * Returns description of get_string() result value
+     *
+     * @return array
+     * @since Moodle 2.4
+     */
+    public static function get_strings_returns() {
+        return new external_multiple_structure(
+            new external_single_structure(array(
+                'stringid' => new external_value(PARAM_STRINGID, 'string id'),
+                'component' => new external_value(PARAM_COMPONENT, 'string component'),
+                'string' => new external_value(PARAM_TEXT, 'translated string'))
+            ));
+    }
+
+     /**
+     * Returns description of get_component_strings parameters
+     *
+     * @return external_function_parameters
+     * @since Moodle 2.4
+     */
+    public static function get_component_strings_parameters() {
+        return new external_function_parameters(
+            array('component' => new external_value(PARAM_COMPONENT, 'component'),
+            )
+        );
+    }
+
+    /**
+     * Return all lang strings of a component - call to core get_component_strings().
+     *
+     * @param string $component component name
+     * @return array
+     *
+     * @since Moodle 2.4
+     */
+    public static function get_component_strings($component) {
+        $params = self::validate_parameters(self::get_component_strings_parameters(),
+                      array('component'=>$component));
+
+        $stringmanager = get_string_manager();
+
+        $wsstrings = array();
+        $componentstrings = $stringmanager->load_component_strings($params['component'], current_language());
+        foreach($componentstrings as $stringid => $string) {
+            $wsstrings[$stringid] = $string;
+        }
+
+        return $wsstrings;
+    }
+
+    /**
+     * Returns description of get_component_strings() result value
+     *
+     * @return array
+     * @since Moodle 2.4
+     */
+    public static function get_component_strings_returns() {
+        return new external_multiple_structure(
+            new external_single_structure(array(
+                'stringid' => new external_value(PARAM_STRINGID, 'string id'),
+                'string' => new external_value(PARAM_TEXT, 'translated string'))
+            ));
+    }
 }
 
 /**

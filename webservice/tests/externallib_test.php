@@ -86,4 +86,66 @@ class core_webservice_external_testcase extends externallib_advanced_testcase {
         $this->assertEquals($CFG->version, $siteinfo['version']);
     }
 
+    /**
+     * Test get_string
+     */
+    public function test_get_string() {
+        $this->resetAfterTest(true);
+
+        $service = new stdClass();
+        $service->name = 'Dummy Service';
+        $service->id = 12;
+
+        $returnedstring = core_webservice_external::get_string('addservice', 'webservice',
+                array(array('name' => 'name', 'value' => $service->name),
+                      array('name' => 'id', 'value' => $service->id)));
+        $corestring = get_string('addservice', 'webservice', $service);
+
+        $this->assertEquals($corestring, $returnedstring);
+    }
+
+    /**
+     * Test get_strings
+     */
+    public function test_get_strings() {
+        $this->resetAfterTest(true);
+
+        $service = new stdClass();
+        $service->name = 'Dummy Service';
+        $service->id = 12;
+
+        $returnedstrings = core_webservice_external::get_strings(
+                array(
+                    array(
+                        'stringid' => 'addservice', 'component' => 'webservice',
+                        'stringparams' => array(array('name' => 'name', 'value' => $service->name),
+                              array('name' => 'id', 'value' => $service->id)
+                        )
+                    ),
+                    array('stringid' =>  'addaservice', 'component' => 'webservice')
+                ));
+
+        foreach($returnedstrings as $returnedstring) {
+            $corestring = get_string($returnedstring['stringid'], $returnedstring['component'], $service);
+            $this->assertEquals($corestring, $returnedstring['string']);
+        }
+    }
+
+    /**
+     * Test get_component_strings
+     */
+    public function test_get_component_strings() {
+        global $USER;
+        $this->resetAfterTest(true);
+
+        $stringmanager = get_string_manager();
+
+        $wsstrings = $stringmanager->load_component_strings('webservice', current_language());
+
+        $componentstrings = core_webservice_external::get_component_strings('webservice');
+        $this->assertEquals(count($componentstrings), count($wsstrings));
+        foreach($wsstrings as $name => $string) {
+            $this->assertEquals($string, $componentstrings[$name]);
+        }
+    }
 }

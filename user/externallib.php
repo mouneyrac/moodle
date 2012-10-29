@@ -459,7 +459,176 @@ class core_user_external extends external_api {
      */
     public static function get_users_by_field_returns() {
         return new external_multiple_structure(
-            new external_single_structure(
+            core_user_external::user_description()
+        );
+    }
+
+    /**
+     * Returns description of get_users() parameters
+     *
+     * @return external_function_parameters
+     * @since Moodle 2.4
+     */
+    public static function get_users_parameters() {
+        return new external_function_parameters(
+            array(
+                'criteria' => new external_multiple_structure(
+                    new external_single_structure(
+                        array(
+                            'key'        => new external_value(PARAM_ALPHA, 'the user column to search, expected keys (value format) are:
+                                                    "id" (int) matching user id,
+                                                    "lastname" (string) user last name (Note: you can use % for searching but it can be slow!),
+                                                    "firstname" (string) user first name (Note: you can use % for searching but it can be slow!),
+                                                    "idnumber" (string) matching user idnumber,
+                                                    "username" (string) matching user username,
+                                                    "email" (string) user email (Note: you can use % for searching but it can be slow!),
+                                                    "auth" (plugin) matching user auth plugin'),
+                            'value'      => new external_value(PARAM_RAW, 'the value to search')
+                        )
+                    ), 'the key/value pairs to be considered in user search. Values can not be empty.
+                        Specifiy different keys only once (fullname => \'user1\', auth => \'manual\', ...) - 
+                        key occurences are ignored, only the last occurence is considered.
+                        The search is executed with AND operator on the criterias.'
+                )
+            )
+        );
+    }
+
+    /**
+     * Retrieve matching user
+     *
+     * @param string $field
+     * @param array $values
+     * @return array An array of arrays containg user profiles.
+     * @since Moodle 2.4
+     */
+    public static function get_users($criteria = array()) {
+        global $CFG, $USER, $DB;
+        
+        require_once($CFG->dirroot . "/user/lib.php");
+
+        $params = self::validate_parameters(self::get_users_parameters(),
+                array('criteria' => $criteria));
+
+        // Validate the criteria and retrieve the users
+        $cleanedvalues = array();
+        $firstcriteria = true;
+        $users = array();
+        $warnings = array();
+        $sql = '';
+        $sqlparams = array();
+        
+        
+        foreach ($params['criteria'] as $criteria) {
+            
+            // Clean the parameters
+            $paramtype = PARAM_RAW;
+            switch ($criteria['key']) {
+                case 'id':
+                    $paramtype = PARAM_INT;
+                    break;
+                case 'idnumber':
+                    $paramtype = PARAM_RAW;
+                    break;
+                case 'username':
+                    $paramtype = PARAM_USERNAME;
+                    break;
+                case 'email':
+                    // we use PARAM_RAW to allow searches with %
+                    $paramtype = PARAM_RAW;
+                    break;
+                case 'auth':
+                    $paramtype = PARAM_AUTH;
+                    break;
+                case 'lastname':
+                case 'firstname':
+                    $paramtype = PARAM_TEXT;
+                    break;
+                default:
+                    // Send back a warning that this search key is not supported in this version
+                    // This warning will make the function extandable without breaking clients
+                    $warnings[] = array(
+                        'item' => 'key',
+                        'itemid' => $criteria['key'],
+                        'warningcode' => 'invalidfieldparameter',
+                        'message' => 'The search key \'' . $$criteria['key'] . '\' is not supported, look at the web service documentation'
+                    );
+            }
+            $cleanedvalue = clean_param($criteria['value'], $paramtype);
+            
+            // If first criteria do not add AND to the query
+            if ($firstcriteria) {
+                $firstcriteria = false;
+            } else {
+                $sql .= ' AND ';
+            }
+            
+            // Create the SQL
+            switch ($criteria['key']) {
+                case 'id':
+                case 'idnumber':
+                case 'username':
+                case 'auth':
+                    $sql .= $criteria['key'] . ' = :' . $criteria['key'];
+                    $sqlparams[$criteria['key']] = $cleanedvalue;
+                    break;
+                case 'email':
+                case 'lastname':
+                case 'firstname':
+                    $sql .= $DB->sql_like($criteria['key'], ':'.$criteria['key'], false);
+                    $sqlparams[$criteria['key']] = $cleanedvalue;
+                    break;
+                default:
+                    break;
+            } 
+        }
+
+        $users = $DB->get_records_select('user', $sql, $sqlparams, 'id ASC');
+              
+        // Finally retrieve each users information
+        $returnedusers = array();
+        foreach ($users as $user) {
+
+            $userdetails = user_get_user_details_courses($user);
+
+            // Return the user only if all the searched fields are returned.
+            // Otherwise it means that the $USER was not allowed to search the returned user.
+            if (!empty($userdetails)) {
+                $validuser = true;
+                
+                foreach($params['criteria'] as $criteria) {
+                    if (empty($userdetails[$criteria['key']])) {
+                        $validuser = false;
+                    }
+                }
+                
+                if ($validuser) {
+                    $returnedusers[] = $userdetails;
+                }
+            }
+        }
+
+        return array('users' => $returnedusers, 'warnings' => $warnings);
+    }
+
+    /**
+     * Returns description of get_users result value
+     *
+     * @return external_description
+     * @since Moodle 2.3
+     */
+    public static function get_users_returns() {
+        return new external_single_structure( 
+            array('users' => new external_multiple_structure(
+                                core_user_external::user_description()
+                             ),
+                  'warnings' => new external_warnings()
+            )
+        );
+    }
+    
+    public static function user_description() {
+        return new external_single_structure(
                 array(
                     'id'    => new external_value(PARAM_INT, 'ID of the user'),
                     'username'    => new external_value(PARAM_USERNAME, 'Username policy is defined in Moodle security config', VALUE_OPTIONAL),
@@ -511,9 +680,8 @@ class core_user_external extends external_api {
                             )
                     ), 'User preferences', VALUE_OPTIONAL)
                 )
-            )
-        );
-    }
+            );
+    } 
 
     /**
      * Returns description of method parameters

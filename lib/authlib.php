@@ -118,7 +118,6 @@ class auth_plugin_base {
     );
 
     /**
-
      * This is the primary method that is used by the authenticate_user_login()
      * function in moodlelib.php.
      *
@@ -712,6 +711,8 @@ abstract class auth_plugin_renderer_base extends plugin_renderer_base {
      *
      * @param string $username
      * @param array $additionalparam - parameters that the login form need to send to Moodle
+     * @param string $errormsg
+     * @return string html of the login form
      */
     public function loginform($username, $additionalparam, $errormsg) {
         return '';
@@ -729,7 +730,8 @@ abstract class oauth2_plugin_renderer_base extends auth_plugin_renderer_base {
     /**
      * Display oauth2 link
      *
-     * $return string
+     * @param object $provider Oauth2 provider (Google, Facebook...)
+     * @return string html link
      */
     public function link($provider) {
         $htmlprovider = html_writer::empty_tag('img', array('src' => $provider->logourl));

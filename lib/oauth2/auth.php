@@ -285,7 +285,7 @@ abstract class auth_plugin_oauth2 extends auth_plugin_base {
                         $confirmationpage->param('oauth2code', $authorizationcode);
                         $confirmationpage->param('authprovider', $authprovider);
                         if (!empty($user)) {
-                            $confirmationpage->param('forcelinking', true);
+                            $confirmationpage->param('useremailexists', true);
                         }
                         redirect($confirmationpage);
                     }
@@ -293,11 +293,11 @@ abstract class auth_plugin_oauth2 extends auth_plugin_base {
                     $user = $this->create_user();
 
                     $this->link_account($this->oauth2client->oauth2user->id, $user->id);
-                } 
+                }
 
                 // Authenticate the user.
                 $authenticateduser = $this->authenticate_user($user, null, $this->shortname);
-                // Note: if $user is empty then it means the authentication failed. 
+                // Note: if $user is empty then it means the authentication failed.
                 // However we still continue the redirection (at worst the user will go back to login page).
                 if ($authenticateduser) {
 
@@ -350,14 +350,14 @@ abstract class auth_plugin_oauth2 extends auth_plugin_base {
         }
 
         // If the primary authentication is disabled or nologin, then the user can't authenticate.
-        if ($auth == 'nologin' or !is_enabled_auth($auth)) { // 
+        if ($auth == 'nologin' or !is_enabled_auth($auth)) { //
             add_to_log(SITEID, 'login', 'error', 'index.php', $user->username);
             error_log('[client ' . getremoteaddr() . "]  $CFG->wwwroot  Disabled Login:  $user->username  " . $_SERVER['HTTP_USER_AGENT']);
             return false;
         }
 
         // For some reason auth isn't set yet.
-        if (empty($user->auth)) {             
+        if (empty($user->auth)) {
             $DB->set_field('user', 'auth', $auth, array('username' => $user->username));
             $user->auth = $auth;
         }
@@ -370,7 +370,7 @@ abstract class auth_plugin_oauth2 extends auth_plugin_base {
 
         // update user record from external DB.
         $userauth = get_auth_plugin($user->auth);
-        if ($userauth->is_synchronised_with_external()) { 
+        if ($userauth->is_synchronised_with_external()) {
             $user = update_user_record($user->username);
         }
 
@@ -394,7 +394,7 @@ abstract class auth_plugin_oauth2 extends auth_plugin_base {
      */
     private function create_user() {
         global $CFG, $DB;
-        
+
         // Do not try to authenticate non-existent accounts when user creation is not disabled.
         if (!empty($CFG->authpreventaccountcreation)) {
             throw new coding_exception('Sorry CFG->authpreventaccountcreation is set to true.');
@@ -472,9 +472,9 @@ abstract class auth_plugin_oauth2 extends auth_plugin_base {
      *
      * This function is called from admin/auth.php, and outputs a full page with
      * a form for configuring this plugin.
-     * @param type $config
-     * @param type $err
-     * @param type $user_fields
+     * @param object $config
+     * @param string $err
+     * @param array $user_fields
      */
     public function config_form($config, $err, $user_fields) {
         global $OUTPUT, $CFG, $PAGE;
@@ -510,8 +510,7 @@ abstract class auth_plugin_oauth2 extends auth_plugin_base {
         $clientidinput = html_writer::empty_tag('input', array('type' => 'text', 'id' => 'clientid', 'name' => 'clientid',
             'class' => 'clientid', 'value' => $config->clientid));
         $clientid = html_writer::tag('div', html_writer::tag('span', $clientidlabel, array('class' => 'oauth2settingrow1')) .
-            html_writer::tag('span', $clientidinput, array('class' => 'oauth2settingrow2')) .
-            html_writer::tag('span', get_string('auth_clientid', 'auth_' . $this->shortname),
+            html_writer::tag('span', $clientidinput, array('class' => 'oauth2settingrow2')),
                 array('class' => 'oauth2settingrow3')), array('class' => 'oauth2setting'));
 
         // Client secret.
@@ -520,8 +519,7 @@ abstract class auth_plugin_oauth2 extends auth_plugin_base {
         $clientsecretinput = html_writer::empty_tag('input', array('type' => 'text', 'id' => 'clientsecret', 'name' => 'clientsecret',
             'class' => 'clientsecret', 'value' => $config->clientsecret));
         $clientsecret = html_writer::tag('div', html_writer::tag('span', $clientsecretlabel, array('class' => 'oauth2settingrow1')) .
-            html_writer::tag('span', $clientsecretinput, array('class' => 'oauth2settingrow2')) .
-            html_writer::tag('span', get_string('auth_clientsecret', 'auth_' . $this->shortname),
+            html_writer::tag('span', $clientsecretinput, array('class' => 'oauth2settingrow2')),
                 array('class' => 'oauth2settingrow3')), array('class' => 'oauth2setting'));
 
         // User prefix.

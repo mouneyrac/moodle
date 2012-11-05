@@ -24,9 +24,7 @@
  */
 
 $string['pluginname'] = 'Facebook Oauth2';
-$string['auth_clientid'] = '';
 $string['auth_clientid_key'] = 'API ID';
-$string['auth_clientsecret'] = '';
 $string['auth_clientsecret_key'] = 'App secret';
 $string['auth_oauth2facebookdescription'] = 'Simple and straight forward Oauth2 Facebook authentication.';
 $string['auth_oauth2doc'] = '

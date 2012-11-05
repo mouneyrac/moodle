@@ -24,9 +24,7 @@
  */
 
 $string['pluginname'] = 'Google Oauth2';
-$string['auth_clientid'] = '';
 $string['auth_clientid_key'] = 'Client ID';
-$string['auth_clientsecret'] = '';
 $string['auth_clientsecret_key'] = 'Client secret';
 $string['auth_oauth2googledescription'] = 'Simple and straight forward Oauth2 Google authentication.';
 $string['auth_oauth2doc'] = '

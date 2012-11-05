@@ -130,6 +130,7 @@ $string['ntlmsso_isdisabled'] = 'NTLM SSO is disabled.';
 $string['oauth2setup'] = 'How to setup';
 $string['oauth2linking'] = 'Link your account';
 $string['oauth2linking_help'] = 'Connect to your account to one of your social account. You will be able to login with your social account.';
+$string['oauth2loadfailure'] = 'Failed to load the oauth2 auth plugin named $a';
 $string['oauth2loginrequired'] = 'You need to login first';
 $string['passwordhandling'] = 'Password field handling';
 $string['plaintext'] = 'Plain text';

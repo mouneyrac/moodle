@@ -48,8 +48,6 @@ class auth_oauth2_manager {
      * Only clientid/secretid is saved in the DB by the auth plugin.
      */
     public function __construct() {
-        global $CFG;
-
         // Look to all provider into the folder.
         $this->providers = array();
 
@@ -66,15 +64,14 @@ class auth_oauth2_manager {
      * Logos box - for the login page / linking profile.
      *
      * @param boolean $profilelinking - if true additional linking info are added to the providers.
-     * @param boolean $lastselected - if true then only return the last selected provider.
      * @return array of linkable providers
      */
-    public function get_linkable_providers($profilelinking = false, $lastselected = false) {
-        global $CFG, $USER, $DB;
+    public function get_linkable_providers($profilelinking = false) {
+        global $USER, $DB;
 
         // Retrieve linked providers if user is logged.
         $linkeddbproviders = array();
-        if (isloggedin()) {
+        if (!isguestuser() and isloggedin()) {
             $linkeddbproviders = $DB->get_records_sql('SELECT component FROM {user_idps}
             WHERE userid = :userid GROUP BY component', array('userid' => $USER->id));
         }
@@ -89,20 +86,10 @@ class auth_oauth2_manager {
                 $provider->oauth2client->returnurl->param('sesskey', sesskey());
             }
 
-            // Display the provider if the provider account is setup.
-            if (is_enabled_auth($provider->shortname)) {
+            // Mark provider as linked
+            $provider->linked = array_key_exists('auth_'.$provider->shortname, $linkeddbproviders);
 
-                // Mark provider as linked
-                $provider->linked = false;
-                foreach ($linkeddbproviders as $linkeddbprovider) {
-                    if ($linkeddbprovider->component == 'auth_'.$provider->shortname) {
-                        $provider->linked = true;
-                    }
-                }
-
-                $linkableproviders[] = $provider;
-
-            }
+            $linkableproviders[] = $provider;
         }
 
         // Return providers

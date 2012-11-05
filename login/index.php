@@ -30,6 +30,9 @@ redirect_if_major_upgrade_required();
 
 $testsession = optional_param('testsession', 0, PARAM_INT); // test session works properly
 $cancel      = optional_param('cancel', 0, PARAM_BOOL);      // redirect to frontpage, needed for loginhttps
+$accounttolink = optional_param('accounttolink', '', PARAM_PLUGIN);
+$createorlinkrequest = optional_param('createorlinkrequest', false, PARAM_BOOL);
+$useremailexists = optional_param('useremailexists', false, PARAM_BOOL);
 
 if ($cancel) {
     redirect(new moodle_url('/'));
@@ -57,7 +60,7 @@ $PAGE->navbar->add($loginsite);
 if ($testsession) {
     if ($testsession == $USER->id) {
 
-        if ($accounttolink = optional_param('accounttolink', '', PARAM_ALPHANUMEXT)) {
+        if ($accounttolink) {
             $PAGE->navbar->add(get_string('linkingaccount', 'auth'));
             $PAGE->set_title("$site->fullname: $loginsite");
             $PAGE->set_heading("$site->fullname");
@@ -66,6 +69,12 @@ if ($testsession) {
             echo $OUTPUT->header();
 
             $provider = get_auth_plugin($accounttolink);
+
+            // Check that auth plugin is enabled.
+            if (!is_enabled_auth($accounttolink) and $provider instanceof auth_plugin_oauth2) {
+                throw new moodle_exception('oauth2loadfailure', 'auth', '', $accounttolink);
+            }
+
             $provider->oauth2client->returnurl->param('throwtestsession', $testsession);
             $provider->oauth2client->returnurl->param('profilelinking', true);
             $provider->oauth2client->returnurl->param('sesskey', sesskey());
@@ -262,7 +271,7 @@ if ($frm and isset($frm->username)) {                             // Login WITH 
         // test the session actually works by redirecting to self
         $SESSION->wantsurl = $urltogo;
         $params = array('testsession'=>$USER->id);
-        if ($accounttolink = optional_param('accounttolink', '', PARAM_PLUGIN)) {
+        if ($accounttolink) {
             $params['accounttolink'] = $accounttolink;
         }
         redirect(new moodle_url(get_login_url(), $params));
@@ -363,14 +372,20 @@ if (isloggedin() and !isguestuser()) {
     echo $OUTPUT->confirm(get_string('alreadyloggedin', 'error', fullname($USER)), $logout, $continue);
     echo $OUTPUT->box_end();
 } else {
-    if (optional_param('createorlinkrequest', false, PARAM_BOOL)) {
+    if ($createorlinkrequest) {
         $authprovider = required_param('authprovider', PARAM_ALPHANUMEXT);
         $provider = get_auth_plugin($authprovider);
+
+        // Check that auth plugin is enabled.
+        if (!is_enabled_auth($authprovider) and $provider instanceof auth_plugin_oauth2) {
+            throw new moodle_exception('oauth2loadfailure', 'auth', '', $authprovider);
+        }
+
         $provider->oauth2client->returnurl->param('confirmcreate', true);
         $output = $PAGE->get_renderer('core', 'auth');
         if (get_config('auth/' . $provider->shortname, 'createuser')
                 and empty($CFG->authpreventaccountcreation)
-                and !optional_param('forcelinking', false, PARAM_BOOL)) {
+                and !$useremailexists) {
              echo $output->linkingaccountlink($provider, $frm->username, $errormsg);
         } else {
              echo $output->forceaccountlink($provider, $frm->username, $errormsg);

@@ -41,6 +41,7 @@ class auth_manual_renderer extends auth_plugin_renderer_base {
      * @param string $username
      * @param array $additionalparams the "hidden" param to add to the auth login form
      * @param string $errormsg error
+     * @return string html of the login form (almost identical to login.php)
      */
     public function loginform($username, $additionalparams, $errormsg) {
         global $CFG;

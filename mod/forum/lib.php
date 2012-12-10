@@ -113,7 +113,7 @@ function forum_add_instance($forum, $mform = null) {
     }
 
     forum_grade_item_update($forum);
-
+    
     return $forum->id;
 }
 

@@ -37,6 +37,61 @@ require_once($CFG->libdir . '/conditionlib.php');
 class modinfolib_testcase extends advanced_testcase {
 
     /**
+     * Test create_module()
+     * 
+     */
+    public function test_create_module() {
+        global $DB, $CFG;
+
+        $this->resetAfterTest(true);
+
+        $this->setAdminUser();
+
+        require_once($CFG->dirroot.'/mod/forum/lib.php');
+
+        $course = $this->getDataGenerator()->create_course(array('numsections'=>1),
+           array('createsections'=>true));
+
+        $grouping = $this->getDataGenerator()->create_course(array('courseid' => $course->id));
+
+        $moduleinfo = new stdClass();
+
+        $moduleinfo->modulename= 'forum';
+        $moduleinfo->forcesubscribe = FORUM_INITIALSUBSCRIBE;
+        $moduleinfo->type = 'single';
+        $moduleinfo->section= 1;
+        $moduleinfo->course= $course->id;
+        $moduleinfo->groupingid= $grouping->id;
+        $moduleinfo->groupmod = VISIBLEGROUPS;
+        //        $moduleinfo->groupmembersonly= '';
+        $moduleinfo->name= 'My test forum';
+        //        $moduleinfo->completion= '';
+        //        $moduleinfo->completionview= '';
+        //        $moduleinfo->completionusegrade= '';
+        //        $moduleinfo->groupmodeforce= '';
+        $moduleinfo->visible= true;
+        $moduleinfo->completionexpected= false;
+        $moduleinfo->availablefrom= 0;
+        $moduleinfo->availableuntil= 0;
+        $moduleinfo->showavailability= false;
+        $moduleinfo->showdescription= true;
+        $moduleinfo->intro= 'This is a forum intro';
+        $moduleinfo->introformat= FORMAT_HTML;
+        $moduleinfo->cmidnumber= 'idnumber_XXX';
+        //        $moduleinfo->gradecat= '';
+        //      $moduleinfo->advancedgradingmethod_ + $areaname ???= '';
+
+        $draftid_editor = file_get_submitted_draft_itemid('introeditor');
+        file_prepare_draft_area($draftid_editor, null, null, null, null);
+        $moduleinfo->introeditor = array('text'=>'This is a forum', 'format'=>FORMAT_HTML, 'itemid'=>$draftid_editor);
+
+        $forum = create_module($moduleinfo);
+
+        error_log(print_r($forum, true));
+
+    }
+
+    /**
      * Test is_user_access_restricted_by_group()
      *
      * The underlying groups system is more thoroughly tested in lib/tests/grouplib_test.php

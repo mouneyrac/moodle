@@ -4601,3 +4601,557 @@ function get_sorted_course_formats($enabledonly = false) {
 function course_get_url($courseorid, $section = null, $options = array()) {
     return course_get_format($courseorid)->get_view_url($section, $options);
 }
+
+
+/**
+ * Add course module - no capability check
+ *
+ * @param mixed $moduleinfo
+ * @param mixed $course
+ * @param mixed $mform - this is required by an  hack to deal with files during MODULENAME_add_instance() -
+ *                     we need to get rid of this hack. Core lib function should not deal with mform.
+ * @access public
+ * @return void
+ */
+function add_module($moduleinfo, $course, $mform = null) {
+    global $DB, $CFG;
+
+    $moduleinfo->course = $course->id;
+    $moduleinfo = set_moduleinfo_defaults($moduleinfo);
+
+    if (!empty($course->groupmodeforce) or !isset($moduleinfo->groupmode)) {
+        $moduleinfo->groupmode = 0; // do not set groupmode
+    }
+
+    if (!course_allowed_module($course, $moduleinfo->modulename)) {
+        print_error('moduledisable', '', '', $moduleinfo->modulename);
+    }
+
+    // first add course_module record because we need the context
+    $newcm = new stdClass();
+    $newcm->course           = $course->id;
+    $newcm->module           = $moduleinfo->module;
+    $newcm->instance         = 0; // not known yet, will be updated later (this is similar to restore code)
+    $newcm->visible          = $moduleinfo->visible;
+    $newcm->groupmode        = $moduleinfo->groupmode;
+    $newcm->groupingid       = $moduleinfo->groupingid;
+    $newcm->groupmembersonly = $moduleinfo->groupmembersonly;
+    $completion = new completion_info($course);
+    if ($completion->is_enabled()) {
+        $newcm->completion                = $moduleinfo->completion;
+        $newcm->completiongradeitemnumber = $moduleinfo->completiongradeitemnumber;
+        $newcm->completionview            = $moduleinfo->completionview;
+        $newcm->completionexpected        = $moduleinfo->completionexpected;
+    }
+    if(!empty($CFG->enableavailability)) {
+        $newcm->availablefrom             = $moduleinfo->availablefrom;
+        $newcm->availableuntil            = $moduleinfo->availableuntil;
+        $newcm->showavailability          = $moduleinfo->showavailability;
+    }
+    if (isset($moduleinfo->showdescription)) {
+        $newcm->showdescription = $moduleinfo->showdescription;
+    } else {
+        $newcm->showdescription = 0;
+    }
+
+    if (!$moduleinfo->coursemodule = add_course_module($newcm)) {
+        print_error('cannotaddcoursemodule');
+    }
+
+    if (plugin_supports('mod', $moduleinfo->modulename, FEATURE_MOD_INTRO, true)) {
+        $introeditor = $moduleinfo->introeditor;
+        unset($moduleinfo->introeditor);
+        $moduleinfo->intro       = $introeditor['text'];
+        $moduleinfo->introformat = $introeditor['format'];
+    }
+
+    $addinstancefunction    = $moduleinfo->modulename."_add_instance";
+    $returnfromfunc = $addinstancefunction($moduleinfo, $mform);
+
+    if (!$returnfromfunc or !is_number($returnfromfunc)) {
+        // undo everything we can
+        $modcontext = context_module::instance($moduleinfo->coursemodule);
+        delete_context(CONTEXT_MODULE, $moduleinfo->coursemodule);
+        $DB->delete_records('course_modules', array('id'=>$moduleinfo->coursemodule));
+
+        if (!is_number($returnfromfunc)) {
+            print_error('invalidfunction', '', course_get_url($course, $cw->section));
+        } else {
+            print_error('cannotaddnewmodule', '', course_get_url($course, $cw->section), $moduleinfo->modulename);
+        }
+    }
+
+    $moduleinfo->instance = $returnfromfunc;
+
+    $DB->set_field('course_modules', 'instance', $returnfromfunc, array('id'=>$moduleinfo->coursemodule));
+
+    // update embedded links and save files
+    $modcontext = context_module::instance($moduleinfo->coursemodule);
+    if (!empty($introeditor)) {
+        $moduleinfo->intro = file_save_draft_area_files($introeditor['itemid'], $modcontext->id,
+                                                      'mod_'.$moduleinfo->modulename, 'intro', 0,
+                                                      array('subdirs'=>true), $introeditor['text']);
+        $DB->set_field($moduleinfo->modulename, 'intro', $moduleinfo->intro, array('id'=>$moduleinfo->instance));
+    }
+
+    // course_modules and course_sections each contain a reference
+    // to each other, so we have to update one of them twice.
+    $sectionid = course_add_cm_to_section($course, $moduleinfo->coursemodule, $moduleinfo->section);
+
+    // make sure visibility is set correctly (in particular in calendar)
+    // note: allow them to set it even without moodle/course:activityvisibility
+    set_coursemodule_visible($moduleinfo->coursemodule, $moduleinfo->visible);
+
+    if (isset($moduleinfo->cmidnumber)) { //label
+        // set cm idnumber - uniqueness is already verified by form validation
+        set_coursemodule_idnumber($moduleinfo->coursemodule, $moduleinfo->cmidnumber);
+    }
+
+    // Set up conditions
+    if ($CFG->enableavailability) {
+        condition_info::update_cm_from_form((object)array('id'=>$moduleinfo->coursemodule), $moduleinfo, false);
+    }
+
+    $eventname = 'mod_created';
+
+    add_to_log($course->id, "course", "add mod",
+               "../mod/$moduleinfo->modulename/view.php?id=$moduleinfo->coursemodule",
+               "$moduleinfo->modulename $moduleinfo->instance");
+    add_to_log($course->id, $moduleinfo->modulename, "add",
+               "view.php?id=$moduleinfo->coursemodule",
+               "$moduleinfo->instance", $moduleinfo->coursemodule);
+
+    edit_module_post_actions($moduleinfo, $course, 'mod_created');
+
+    return $moduleinfo;
+}
+
+
+function edit_module_post_actions($moduleinfo, $course, $eventname) {
+    global $USER, $CFG;
+
+    $modcontext = context_module::instance($moduleinfo->coursemodule);
+
+    // Trigger mod_created/mod_updated event with information about this module.
+    $eventdata = new stdClass();
+    $eventdata->modulename = $moduleinfo->modulename;
+    $eventdata->name       = $moduleinfo->name;
+    $eventdata->cmid       = $moduleinfo->coursemodule;
+    $eventdata->courseid   = $course->id;
+    $eventdata->userid     = $USER->id;
+    events_trigger($eventname, $eventdata);
+
+    // sync idnumber with grade_item
+    if ($grade_item = grade_item::fetch(array('itemtype'=>'mod', 'itemmodule'=>$moduleinfo->modulename,
+                 'iteminstance'=>$moduleinfo->instance, 'itemnumber'=>0, 'courseid'=>$course->id))) {
+        if ($grade_item->idnumber != $moduleinfo->cmidnumber) {
+            $grade_item->idnumber = $moduleinfo->cmidnumber;
+            $grade_item->update();
+        }
+    }
+
+    $items = grade_item::fetch_all(array('itemtype'=>'mod', 'itemmodule'=>$moduleinfo->modulename,
+                                         'iteminstance'=>$moduleinfo->instance, 'courseid'=>$course->id));
+
+    // create parent category if requested and move to correct parent category
+    if ($items and isset($moduleinfo->gradecat)) {
+        if ($moduleinfo->gradecat == -1) {
+            $grade_category = new grade_category();
+            $grade_category->courseid = $course->id;
+            $grade_category->fullname = $moduleinfo->name;
+            $grade_category->insert();
+            if ($grade_item) {
+                $parent = $grade_item->get_parent_category();
+                $grade_category->set_parent($parent->id);
+            }
+            $moduleinfo->gradecat = $grade_category->id;
+        }
+        foreach ($items as $itemid=>$unused) {
+            $items[$itemid]->set_parent($moduleinfo->gradecat);
+            if ($itemid == $grade_item->id) {
+                // use updated grade_item
+                $grade_item = $items[$itemid];
+            }
+        }
+    }
+
+    // add outcomes if requested
+    if ($outcomes = grade_outcome::fetch_all_available($course->id)) {
+        $grade_items = array();
+
+        // Outcome grade_item.itemnumber start at 1000, there is nothing above outcomes
+        $max_itemnumber = 999;
+        if ($items) {
+            foreach($items as $item) {
+                if ($item->itemnumber > $max_itemnumber) {
+                    $max_itemnumber = $item->itemnumber;
+                }
+            }
+        }
+
+        foreach($outcomes as $outcome) {
+            $elname = 'outcome_'.$outcome->id;
+
+            if (property_exists($moduleinfo, $elname) and $moduleinfo->$elname) {
+                // so we have a request for new outcome grade item?
+                if ($items) {
+                    foreach($items as $item) {
+                        if ($item->outcomeid == $outcome->id) {
+                            //outcome aready exists
+                            continue 2;
+                        }
+                    }
+                }
+
+                $max_itemnumber++;
+
+                $outcome_item = new grade_item();
+                $outcome_item->courseid     = $course->id;
+                $outcome_item->itemtype     = 'mod';
+                $outcome_item->itemmodule   = $moduleinfo->modulename;
+                $outcome_item->iteminstance = $moduleinfo->instance;
+                $outcome_item->itemnumber   = $max_itemnumber;
+                $outcome_item->itemname     = $outcome->fullname;
+                $outcome_item->outcomeid    = $outcome->id;
+                $outcome_item->gradetype    = GRADE_TYPE_SCALE;
+                $outcome_item->scaleid      = $outcome->scaleid;
+                $outcome_item->insert();
+
+                // move the new outcome into correct category and fix sortorder if needed
+                if ($grade_item) {
+                    $outcome_item->set_parent($grade_item->categoryid);
+                    $outcome_item->move_after_sortorder($grade_item->sortorder);
+
+                } else if (isset($moduleinfo->gradecat)) {
+                    $outcome_item->set_parent($moduleinfo->gradecat);
+                }
+            }
+        }
+    }
+
+    if (plugin_supports('mod', $moduleinfo->modulename, FEATURE_ADVANCED_GRADING, false)
+            and has_capability('moodle/grade:managegradingforms', $modcontext)) {
+        require_once($CFG->dirroot.'/grade/grading/lib.php');
+        $gradingman = get_grading_manager($modcontext, 'mod_'.$moduleinfo->modulename);
+        $showgradingmanagement = false;
+        foreach ($gradingman->get_available_areas() as $areaname => $aretitle) {
+            $formfield = 'advancedgradingmethod_'.$areaname;
+            if (isset($moduleinfo->{$formfield})) {
+                $gradingman->set_area($areaname);
+                $methodchanged = $gradingman->set_active_method($moduleinfo->{$formfield});
+                if (empty($moduleinfo->{$formfield})) {
+                    // going back to the simple direct grading is not a reason
+                    // to open the management screen
+                    $methodchanged = false;
+                }
+                $showgradingmanagement = $showgradingmanagement || $methodchanged;
+            }
+        }
+    }
+
+    rebuild_course_cache($course->id);
+    grade_regrade_final_grades($course->id);
+    require_once($CFG->libdir.'/plagiarismlib.php');
+    plagiarism_save_form_elements($moduleinfo); //save plagiarism settings
+}
+
+
+/**
+ * Set some module data default value before creating/updating a module.
+ *
+ * @param object $moduleinfo the current known data of the module
+ * @access public
+ * @return void
+ */
+function set_moduleinfo_defaults($moduleinfo) {
+    global $DB;
+
+    if (empty($moduleinfo->coursemodule)) {
+        // Add
+        $cm = null;
+        $moduleinfo->instance     = '';
+        $moduleinfo->coursemodule = '';
+    } else {
+        // Update
+        $cm = get_coursemodule_from_id('', $moduleinfo->coursemodule, 0, false, MUST_EXIST);
+        $moduleinfo->instance     = $cm->instance;
+        $moduleinfo->coursemodule = $cm->id;
+    }
+
+    $moduleinfo->modulename = clean_param($moduleinfo->modulename, PARAM_PLUGIN);  // For safety
+
+    if (!isset($moduleinfo->groupingid)) {
+        $moduleinfo->groupingid = 0;
+    }
+
+    if (!isset($moduleinfo->groupmembersonly)) {
+        $moduleinfo->groupmembersonly = 0;
+    }
+
+    if (!isset($moduleinfo->name)) { //label
+        $moduleinfo->name = $moduleinfo->modulename;
+    }
+
+    if (!isset($moduleinfo->completion)) {
+        $moduleinfo->completion = COMPLETION_DISABLED;
+    }
+    if (!isset($moduleinfo->completionview)) {
+        $moduleinfo->completionview = COMPLETION_VIEW_NOT_REQUIRED;
+    }
+
+    // Convert the 'use grade' checkbox into a grade-item number: 0 if
+    // checked, null if not
+    if (isset($moduleinfo->completionusegrade) && $moduleinfo->completionusegrade) {
+        $moduleinfo->completiongradeitemnumber = 0;
+    } else {
+        $moduleinfo->completiongradeitemnumber = null;
+    }
+
+    return $moduleinfo;
+}
+
+function can_add_module($course, $modulename, $section) {
+    global $DB;
+
+    $module = $DB->get_record('modules', array('name'=>$modulename), '*', MUST_EXIST);
+
+    $context = context_course::instance($course->id);
+    require_capability('moodle/course:manageactivities', $context);
+
+    course_create_sections_if_missing($course, $section);
+    $cw = get_fast_modinfo($course)->get_section_info($section);
+
+    if (!course_allowed_module($course, $module->name)) {
+        print_error('moduledisable');
+    }
+
+    return array($module, $context, $cw);
+}
+
+function can_update_module($cm) {
+    global $DB;
+
+    // Check the $USER has the right capability
+    $context = context_module::instance($cm->id);
+    require_capability('moodle/course:manageactivities', $context);
+
+    // Check module exists.
+    $module = $DB->get_record('modules', array('id'=>$cm->module), '*', MUST_EXIST);
+
+    // Check the moduleinfo exists.
+    $data = $DB->get_record($module->name, array('id'=>$cm->instance), '*', MUST_EXIST);
+
+    // Check the course section exists.
+    $cw = $DB->get_record('course_sections', array('id'=>$cm->section), '*', MUST_EXIST);
+
+    return array($cm, $context, $module, $data, $cw);
+}
+
+function update_module($cm, $moduleinfo, $course, $mform = null) {
+    global $DB, $CFG;
+
+    $moduleinfo->course = $course->id;
+    $moduleinfo = set_moduleinfo_defaults($moduleinfo);
+
+    if (!empty($course->groupmodeforce) or !isset($moduleinfo->groupmode)) {
+        $moduleinfo->groupmode = $cm->groupmode; // keep original
+    }
+
+    // update course module first
+    $cm->groupmode = $moduleinfo->groupmode;
+    if (isset($moduleinfo->groupingid)) {
+        $cm->groupingid = $moduleinfo->groupingid;
+    }
+    if (isset($moduleinfo->groupmembersonly)) {
+        $cm->groupmembersonly = $moduleinfo->groupmembersonly;
+    }
+
+    $completion = new completion_info($course);
+    if ($completion->is_enabled()) {
+        // Update completion settings
+        $cm->completion                = $moduleinfo->completion;
+        $cm->completiongradeitemnumber = $moduleinfo->completiongradeitemnumber;
+        $cm->completionview            = $moduleinfo->completionview;
+        $cm->completionexpected        = $moduleinfo->completionexpected;
+    }
+    if (!empty($CFG->enableavailability)) {
+        $cm->availablefrom             = $moduleinfo->availablefrom;
+        $cm->availableuntil            = $moduleinfo->availableuntil;
+        $cm->showavailability          = $moduleinfo->showavailability;
+        condition_info::update_cm_from_form($cm,$moduleinfo,true);
+    }
+    if (isset($moduleinfo->showdescription)) {
+        $cm->showdescription = $moduleinfo->showdescription;
+    } else {
+        $cm->showdescription = 0;
+    }
+
+        $DB->update_record('course_modules', $cm);
+
+        $modcontext = context_module::instance($moduleinfo->coursemodule);
+
+        // update embedded links and save files
+        if (plugin_supports('mod', $moduleinfo->modulename, FEATURE_MOD_INTRO, true)) {
+            $moduleinfo->intro = file_save_draft_area_files($moduleinfo->introeditor['itemid'], $modcontext->id,
+                                                          'mod_'.$moduleinfo->modulename, 'intro', 0,
+                                                          array('subdirs'=>true), $moduleinfo->introeditor['text']);
+            $moduleinfo->introformat = $moduleinfo->introeditor['format'];
+            unset($moduleinfo->introeditor);
+        }
+        $updateinstancefunction = $moduleinfo->modulename."_update_instance";
+        if (!$updateinstancefunction($moduleinfo, $mform)) {
+            print_error('cannotupdatemod', '', course_get_url($course, $cw->section), $moduleinfo->modulename);
+        }
+
+        // make sure visibility is set correctly (in particular in calendar)
+        if (has_capability('moodle/course:activityvisibility', $modcontext)) {
+            set_coursemodule_visible($moduleinfo->coursemodule, $moduleinfo->visible);
+        }
+
+        if (isset($moduleinfo->cmidnumber)) { //label
+            // set cm idnumber - uniqueness is already verified by form validation
+            set_coursemodule_idnumber($moduleinfo->coursemodule, $moduleinfo->cmidnumber);
+        }
+
+        // Now that module is fully updated, also update completion data if
+        // required (this will wipe all user completion data and recalculate it)
+        if ($completion->is_enabled() && !empty($moduleinfo->completionunlocked)) {
+            $completion->reset_all_state($cm);
+        }
+
+        add_to_log($course->id, "course", "update mod",
+                   "../mod/$moduleinfo->modulename/view.php?id=$moduleinfo->coursemodule",
+                   "$moduleinfo->modulename $moduleinfo->instance");
+        add_to_log($course->id, $moduleinfo->modulename, "update",
+                   "view.php?id=$moduleinfo->coursemodule",
+                   "$moduleinfo->instance", $moduleinfo->coursemodule);
+
+        edit_module_post_actions($moduleinfo, $course, 'mod_updated');
+
+        return array($cm, $moduleinfo);
+}
+
+function include_once_module($module) {
+    global $CFG;
+    $modlib = "$CFG->dirroot/mod/$module->name/lib.php";
+    if (file_exists($modlib)) {
+        include_once($modlib);
+    } else {
+        throw new moodle_exception('modulemissingcode', '', '', $modlib);
+    }
+}
+
+/**
+ * Create a module
+ * It includes:
+ *      - capability and other checks)
+ *      - create the module
+ *      - executing all post necessary post actions
+ *
+ * @param object $module
+ *               $moduleinfo->modulename 'forum','database',...
+ *               $moduleinfo->section //section number
+ *               $moduleinfo->course //course id
+ *               $moduleinfo->groupingid
+ *               $moduleinfo->groupmembersonly
+ *               $moduleinfo->name
+ *               $moduleinfo->completion
+ *               $moduleinfo->completionview
+ *               $moduleinfo->completionusegrade
+ *               $moduleinfo->groupmodeforce
+ *               $moduleinfo->visible
+ *               $moduleinfo->completionexpected
+ *               $moduleinfo->availablefrom
+ *               $moduleinfo->availableuntil
+ *               $moduleinfo->showavailability
+ *               $moduleinfo->showdescription
+ *               $moduleinfo->introeditor => array('text' => '', 'format' => FORMAT_XXX, 'idemid' => $draftid_editor)
+ *               $moduleinfo->cmidnumber
+ *               $moduleinfo->gradecat
+ *               $moduleinfo->advancedgradingmethod_ + $areaname ???
+ */
+function create_module($moduleinfo) {
+    global $DB;
+    // Check manadatory attributs.
+    $mandatoryfields = array('modulename', 'course', 'section', 'visible');
+    if (plugin_supports('mod', $moduleinfo->modulename, FEATURE_MOD_INTRO, true)) {
+        $mandatoryfields[] = 'introeditor';
+    }
+    foreach($mandatoryfields as $mandatoryfield) {
+        if (!isset($moduleinfo->{$mandatoryfield})) {
+            throw new moodle_exception('createmodulemissingattribut', '', '', $mandatoryfield);
+        }
+    }
+
+    // Some additional checks (capability / existing instances)
+    $course = $DB->get_record('course', array('id'=>$moduleinfo->course), '*', MUST_EXIST);
+    list($module, $context, $cw) = can_add_module($course, $moduleinfo->modulename, $moduleinfo->section);
+
+    // Load module library.
+    include_once_module($module);
+
+    // Add the module.
+    $moduleinfo->module = $module->id;
+    $moduleinfo = add_module($moduleinfo, $course, null);
+
+    return $moduleinfo;
+}
+
+/**
+ * Update a module
+ * It includes:
+ *      - capability and other checks)
+ *      - update the module
+ *      - executing all post necessary post actions
+ *
+ * @param object $module
+ *               $moduleinfo->modulename 'forum','database',...
+ *               $moduleinfo->id
+ *               $moduleinfo->section //section number
+ *               $moduleinfo->course //course id
+ *               $moduleinfo->groupingid
+ *               $moduleinfo->groupmembersonly
+ *               $moduleinfo->name
+ *               $moduleinfo->completion
+ *               $moduleinfo->completionview
+ *               $moduleinfo->completionusegrade
+ *               $moduleinfo->groupmodeforce
+ *               $moduleinfo->visible
+ *               $moduleinfo->completionexpected
+ *               $moduleinfo->availablefrom
+ *               $moduleinfo->availableuntil
+ *               $moduleinfo->showavailability
+ *               $moduleinfo->showdescription
+ *               $moduleinfo->introeditor => array('text' => '', 'format' => FORMAT_XXX, 'idemid' => $draftid_editor)
+ *               $moduleinfo->cmidnumber
+ *               $moduleinfo->gradecat
+ *               $moduleinfo->advancedgradingmethod_ + $areaname ???
+ * @return object the moduleinfo
+ */
+function update_moduleinfo($moduleinfo) {
+    global $DB;
+
+    // Check the course module exists.
+    $cm = get_coursemodule_from_id('', $moduleinfo->coursemodule, 0, false, MUST_EXIST);
+
+    // Check the course exists.
+    $course = $DB->get_record('course', array('id'=>$cm->course), '*', MUST_EXIST);
+
+    // Some checks (capaibility / existing instances)
+    list($cm, $context, $module, $data, $cw) = can_update_module($cm);
+
+    // Load module library
+    include_once_module($module);
+
+    // Retrieve few information needed by update_module
+    $moduleinfo->modulename = $cm->modname;
+    if (!isset($moduleinfo->scale)) {
+        $moduleinfo->scale = 0;
+    }
+    $moduleinfo->type = 'mod';
+
+    // Update the module
+    list($cm, $moduleinfo) = update_module($cm, $moduleinfo, $course, null);
+
+    return $moduleinfo;
+}

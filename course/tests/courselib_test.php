@@ -63,7 +63,7 @@ class courselib_testcase extends advanced_testcase {
         $moduleinfo->name= 'My test forum';
         $moduleinfo->completion= '';
         $moduleinfo->completionview= '';
-        $moduleinfo->completiongradeitemonly= '';
+        $moduleinfo->completiongradeitemnumber= '';
         $moduleinfo->completionexpected= false;
         $moduleinfo->availablefrom= 0;
         $moduleinfo->availableuntil= 0;
@@ -107,7 +107,7 @@ class courselib_testcase extends advanced_testcase {
         $moduleinfo->name= 'My test assignment';
         $moduleinfo->completion= '';
         $moduleinfo->completionview= '';
-        $moduleinfo->completiongradeitemonly= '';
+        $moduleinfo->completiongradeitemnumber= '';
         $moduleinfo->completionexpected= false;
         $moduleinfo->availablefrom= 0;
         $moduleinfo->availableuntil= 0;
@@ -204,7 +204,7 @@ class courselib_testcase extends advanced_testcase {
         $moduleinfo->name= 'My test assignment';
         $moduleinfo->completion= '';
         $moduleinfo->completionview= '';
-        $moduleinfo->completiongradeitemonly= '';
+        $moduleinfo->completiongradeitemnumber= '';
         $moduleinfo->completionexpected= false;
         $moduleinfo->availablefrom= 0;
         $moduleinfo->availableuntil= 0;

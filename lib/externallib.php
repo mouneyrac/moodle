@@ -699,6 +699,88 @@ function external_format_text($text, $textformat, $contextid, $component, $filea
     return array($text, $textformat);
 }
 
+function create_module_params_desc($modulename) {
+    global $CFG;
+
+    // List all possible plagiarism settings - to diplay in the generated API documentation
+    $plagiarismsettings = array();
+    if (!empty($CFG->enableplagiarism)) {
+        $plagiarismplugins = plagiarism_load_available_plugins();
+        foreach($plagiarismplugins as $plugin => $dir) {
+            require_once($dir.'/lib.php');
+            $plagiarismclass = "plagiarism_plugin_$plugin";
+            $plagiarismplugin = new $plagiarismclass;
+            $plagiarismsettings = array_merge($plagiarismplugin->get_configs(), $plagiarismsettings);
+        }
+    }
+    if (!empty($plagiarismsettings)) {
+        $plagiarismsettings = implode(',', $plagiarismsettings);
+    } else {
+        $plagiarismsettings = 'none';
+    }
+    // List all possible advanced grading settings - to display in the generated API documentation
+    $advancedgradingsettings = array();
+    if (plugin_supports('mod', $modulename, FEATURE_ADVANCED_GRADING, false)) {
+        require_once($CFG->dirroot.'/grade/grading/lib.php');
+        $gradingman = get_grading_manager(null, 'mod_'.$modulename);
+        $areas = $gradingman->get_available_areas();
+        foreach ($areas as $areaname => $areatitle) {
+            $formfield = 'advancedgradingmethod_'.$areaname;
+            $advancedgradingsettings[] = $$formfield;
+        }
+    }
+    if (!empty($advancedgradingsettings)) {
+        $advancedgradingsettings = implode(',', $advancedgradingsettings);
+    } else {
+        $advancedgradingsettings = 'none';
+    }
+    $params = array('section' => new external_value(PARAM_INT, 'course section'),
+                 'course' => new external_value(PARAM_INT, 'course id'),
+                 'groupingid' => new external_value(PARAM_INT, 'grouping id'),
+                 'groupmembersonly' => new external_value(PARAM_BOOL, 'group members only'),
+                 'visible' => new external_value(PARAM_BOOL, 'visible'),
+                 'name' => new external_value(PARAM_TEXT, 'title of the module', VALUE_OPTIONAL),
+                 'completion' => new external_value(PARAM_INT, COMPLETION_TRACKING_NONE . '=> disabled, '
+                    . COMPLETION_TRACKING_MANUAL . ' => manual, ' . COMPLETION_TRACKING_AUTOMATIC . ' => automatic', VALUE_OPTIONAL),
+                 'description' => new external_value(PARAM_RAW, 'description / intro', VALUE_OPTIONAL),
+                 'descriptionformat' => new external_format_value('description', VALUE_OPTIONAL),
+                 'completionview' => new external_value(PARAM_INT, 'enable automatic completion once viewed', VALUE_OPTIONAL),
+                 'completiongradeitemnumber' => new external_value(PARAM_, '', VALUE_OPTIONAL),
+                 'completionexpected' => new external_value(PARAM_, '', VALUE_OPTIONAL),
+                 'completionusegrade' => new external_value(PARAM_, '', VALUE_OPTIONAL),
+                 'showdescription' => new external_value(PARAM_INT, 'Do we show the description on the course format?', VALUE_OPTIONAL),
+                 'availablefrom' => new external_value(PARAM_, '', VALUE_OPTIONAL),
+                 'availableuntil' => new external_value(PARAM_, '', VALUE_OPTIONAL),
+                 'showavailability' => new external_value(PARAM_, '', VALUE_OPTIONAL),
+                 'showdescription' => new external_value(PARAM_, '', VALUE_OPTIONAL),
+                 'grade' => new external_value(PARAM_, '', VALUE_OPTIONAL),
+                 'gradecat' => new external_value(PARAM_, '', VALUE_OPTIONAL),
+                 'groupmode' => new external_value(PARAM_, '', VALUE_OPTIONAL),
+                 'cmidnumber' => new external_value(PARAM_, '', VALUE_OPTIONAL),
+                 'advancedgrading' = new external_multiple_structure(
+                        new external_single_structure(
+                        array('key' => new external_value(PARAM_ALPHANUMEXT, 'name of the advanced grading settings'),
+                              'value' => new external_value(PARAM_RAW, 'value of the advanced grading setings'),
+                              'Possible advanced grading setting names: ' . $advancedgradingsettings)
+                        ), 'advanced grading settings', VALUE_OPTIONAL),
+                 'plagiarism' = new external_multiple_structure(
+                        new external_single_structure(
+                        array('key' => new external_value(PARAM_ALPHANUMEXT, 'name of the plagiarism settings'),
+                              'value' => new external_value(PARAM_RAW, 'value of the plagirism setings'),
+                              'Expected plagiarism setting name: ' . $plagiarismsettings)
+                        ), 'plagiarism settings', VALUE_OPTIONAL),
+
+
+                );
+        return $params;
+}
+
+function update_module_params_desc($modulename) {
+    $params = create_module_params_desc($modulename);
+    $params['id'] = new external_value(PARAM_INT, 'module instance id');
+    return $params;
+}
+
 /**
  * Singleton to handle the external settings.
  *

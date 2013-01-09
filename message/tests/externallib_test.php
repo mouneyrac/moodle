@@ -39,7 +39,9 @@ class core_message_external_testcase extends externallib_advanced_testcase {
 
         global $DB, $USER, $CFG;
 
-        $this->resetAfterTest(true);
+        // Little trick to stop transaction (message_send() forbid transaction mode).
+        $this->resetAfterTest(false);
+        $this->preventResetByRollback();
 
         // Turn off all message processors (so nothing is really sent)
         require_once($CFG->dirroot . '/message/lib.php');

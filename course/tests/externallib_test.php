@@ -581,6 +581,11 @@ class core_course_external_testcase extends externallib_advanced_testcase {
         $page = $this->getDataGenerator()->create_module('page', array('course'=>$course->id));
         $pagecontext = context_module::instance($page->cmid);
         $pagecm = get_coursemodule_from_instance('page', $page->id);
+        $label = $this->getDataGenerator()->create_module('label', array('course' => $course->id,
+            'intro' => 'This is a very long label to test if more than 50 characters are returned.
+                So bla bla bla bla <b>bold bold bold</b> bla bla bla bla.'));
+        $labelcontext = context_module::instance($label->cmid);
+        $labelcm = get_coursemodule_from_instance('label', $label->id);
 
         // Set the required capabilities by the external function.
         $context = context_course::instance($course->id);
@@ -592,8 +597,8 @@ class core_course_external_testcase extends externallib_advanced_testcase {
         // We need to execute the return values cleaning process to simulate the web service server.
         $courses = external_api::clean_returnvalue(core_course_external::get_course_contents_returns(), $courses);
 
-        // Check that the course has the 3 created modules
-        $this->assertEquals(3, count($courses[0]['modules']));
+        // Check that the course has the 4 created modules
+        $this->assertEquals(4, count($courses[0]['modules']));
     }
 
     /**

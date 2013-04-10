@@ -548,6 +548,7 @@ if (!$csv) {
 ///
 /// Display a row for each user
 ///
+echo '<tbody>';
 foreach ($progress as $user) {
 
     // User name
@@ -727,6 +728,8 @@ foreach ($progress as $user) {
         print '</tr>';
     }
 }
+
+echo '</tbody>';
 
 if ($csv) {
     $export->download_file();

@@ -105,9 +105,16 @@ class course_edit_form extends moodleform {
         $mform->addElement('editor','summary_editor', get_string('coursesummary'), null, $editoroptions);
         $mform->addHelpButton('summary_editor', 'coursesummary');
         $mform->setType('summary_editor', PARAM_RAW);
+        $summaryfields = 'summary_editor';
+
+        if ($overviewfilesoptions = course_overviewfiles_options($course)) {
+            $mform->addElement('filemanager', 'overviewfiles_filemanager', get_string('courseoverviewfiles'), null, $overviewfilesoptions);
+            $mform->addHelpButton('overviewfiles_filemanager', 'courseoverviewfiles');
+            $summaryfields .= ',overviewfiles_filemanager';
+        }
 
         if (!empty($course->id) and !has_capability('moodle/course:changesummary', $coursecontext)) {
-            $mform->hardFreeze('summary_editor');
+            $mform->hardFreeze($summaryfields);
         }
 
         $courseformats = get_sorted_course_formats(true);
@@ -250,18 +257,10 @@ class course_edit_form extends moodleform {
             $mform->addElement('select', 'enablecompletion', get_string('completion','completion'),
                 array(0=>get_string('completiondisabled','completion'), 1=>get_string('completionenabled','completion')));
             $mform->setDefault('enablecompletion', $courseconfig->enablecompletion);
-
-            $mform->addElement('advcheckbox', 'completionstartonenrol', get_string('completionstartonenrol', 'completion'));
-            $mform->setDefault('completionstartonenrol', $courseconfig->completionstartonenrol);
-            $mform->disabledIf('completionstartonenrol', 'enablecompletion', 'eq', 0);
         } else {
             $mform->addElement('hidden', 'enablecompletion');
             $mform->setType('enablecompletion', PARAM_INT);
             $mform->setDefault('enablecompletion',0);
-
-            $mform->addElement('hidden', 'completionstartonenrol');
-            $mform->setType('completionstartonenrol', PARAM_INT);
-            $mform->setDefault('completionstartonenrol',0);
         }
 
 /// customizable role names in this course

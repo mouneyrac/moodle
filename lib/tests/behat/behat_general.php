@@ -27,7 +27,8 @@
 
 require_once(__DIR__ . '/../../behat/behat_base.php');
 
-use Behat\Mink\Exception\ExpectationException as ExpectationException;
+use Behat\Mink\Exception\ExpectationException as ExpectationException,
+    Behat\Mink\Exception\ElementNotFoundException as ElementNotFoundException;
 
 /**
  * Cross component steps definitions.
@@ -51,6 +52,15 @@ class behat_general extends behat_base {
      */
     public function i_am_on_homepage() {
         $this->getSession()->visit($this->locate_path('/'));
+    }
+
+    /**
+     * Reloads the current page.
+     *
+     * @Given /^I reload the page$/
+     */
+    public function reload() {
+        $this->getSession()->reload();
     }
 
     /**
@@ -181,6 +191,60 @@ class behat_general extends behat_base {
     }
 
     /**
+     * Checks, that the first specified element appears before the second one.
+     *
+     * @Given /^"(?P<preceding_element_string>(?:[^"]|\\")*)" "(?P<selector1_string>(?:[^"]|\\")*)" should appear before "(?P<following_element_string>(?:[^"]|\\")*)" "(?P<selector2_string>(?:[^"]|\\")*)"$/
+     * @throws ExpectationException
+     * @param string $preelement The locator of the preceding element
+     * @param string $preselectortype The locator of the preceding element
+     * @param string $postelement The locator of the latest element
+     * @param string $postselectortype The selector type of the latest element
+     */
+    public function should_appear_before($preelement, $preselectortype, $postelement, $postselectortype) {
+
+        // We allow postselectortype as a non-text based selector.
+        list($preselector, $prelocator) = $this->transform_selector($preselectortype, $preelement);
+        list($postselector, $postlocator) = $this->transform_selector($postselectortype, $postelement);
+
+        $prexpath = $this->find($preselector, $prelocator)->getXpath();
+        $postxpath = $this->find($postselector, $postlocator)->getXpath();
+
+        // Using following xpath axe to find it.
+        $msg = '"'.$preelement.'" "'.$preselectortype.'" does not appear before "'.$postelement.'" "'.$postselectortype.'"';
+        $xpath = $prexpath.'/following::*[contains(., '.$postxpath.')]';
+        if (!$this->getSession()->getDriver()->find($xpath)) {
+            throw new ExpectationException($msg, $this->getSession());
+        }
+    }
+
+    /**
+     * Checks, that the first specified element appears after the second one.
+     *
+     * @Given /^"(?P<following_element_string>(?:[^"]|\\")*)" "(?P<selector1_string>(?:[^"]|\\")*)" should appear after "(?P<preceding_element_string>(?:[^"]|\\")*)" "(?P<selector2_string>(?:[^"]|\\")*)"$/
+     * @throws ExpectationException
+     * @param string $postelement The locator of the latest element
+     * @param string $postselectortype The selector type of the latest element
+     * @param string $preelement The locator of the preceding element
+     * @param string $preselectortype The locator of the preceding element
+     */
+    public function should_appear_after($postelement, $postselectortype, $preelement, $preselectortype) {
+
+        // We allow postselectortype as a non-text based selector.
+        list($postselector, $postlocator) = $this->transform_selector($postselectortype, $postelement);
+        list($preselector, $prelocator) = $this->transform_selector($preselectortype, $preelement);
+
+        $postxpath = $this->find($postselector, $postlocator)->getXpath();
+        $prexpath = $this->find($preselector, $prelocator)->getXpath();
+
+        // Using preceding xpath axe to find it.
+        $msg = '"'.$postelement.'" "'.$postselectortype.'" does not appear after "'.$preelement.'" "'.$preselectortype.'"';
+        $xpath = $postxpath.'/preceding::*[contains(., '.$prexpath.')]';
+        if (!$this->getSession()->getDriver()->find($xpath)) {
+            throw new ExpectationException($msg, $this->getSession());
+        }
+    }
+
+    /**
      * Checks, that element of specified type is disabled.
      *
      * @Then /^the "(?P<element_string>(?:[^"]|\\")*)" "(?P<selector_string>[^"]*)" should be disabled$/
@@ -213,6 +277,46 @@ class behat_general extends behat_base {
 
         if ($node->hasAttribute('disabled')) {
             throw new ExpectationException('The element "' . $element . '" is not enabled', $this->getSession());
+        }
+    }
+
+    /**
+     * Checks the provided element and selector type exists in the current page.
+     *
+     * This step is for advanced users, use it if you don't find anything else suitable for what you need.
+     *
+     * @Then /^"(?P<element_string>(?:[^"]|\\")*)" "(?P<selector_string>[^"]*)" should exists$/
+     * @throws ElementNotFoundException Thrown by behat_base::find
+     * @param string $element The locator of the specified selector
+     * @param string $selectortype The selector type
+     */
+    public function should_exists($element, $selectortype) {
+
+        // Getting Mink selector and locator.
+        list($selector, $locator) = $this->transform_selector($selectortype, $element);
+
+        // Will throw an ElementNotFoundException if it does not exist.
+        $this->find($selector, $locator);
+    }
+
+    /**
+     * Checks that the provided element and selector type not exists in the current page.
+     *
+     * This step is for advanced users, use it if you don't find anything else suitable for what you need.
+     *
+     * @Then /^"(?P<element_string>(?:[^"]|\\")*)" "(?P<selector_string>[^"]*)" should not exists$/
+     * @throws ExpectationException
+     * @param string $element The locator of the specified selector
+     * @param string $selectortype The selector type
+     */
+    public function should_not_exists($element, $selectortype) {
+
+        try {
+            $this->should_exists($element, $selectortype);
+            throw new ExpectationException('The "' . $element . '" "' . $selectortype . '" exists in the current page', $this->getSession());
+        } catch (ElementNotFoundException $e) {
+            // It passes.
+            return;
         }
     }
 

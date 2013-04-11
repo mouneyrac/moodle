@@ -80,7 +80,6 @@ if ($hassiteconfig
     $temp->add(new admin_setting_configselect('moodlecourse/enablecompletion', new lang_string('completion','completion'), '',
         0, array(0 => new lang_string('completiondisabled','completion'), 1 => new lang_string('completionenabled','completion'))));
 
-    $temp->add(new admin_setting_configcheckbox('moodlecourse/completionstartonenrol', new lang_string('completionstartonenrol','completion'), new lang_string('completionstartonenrolhelp', 'completion'), 0));
     $ADMIN->add('courses', $temp);
 
 /// "courserequests" settingpage
@@ -133,6 +132,11 @@ if ($hassiteconfig
     $temp->add(new admin_setting_configcheckbox_with_lock('backup/backup_general_userscompletion', new lang_string('generaluserscompletion','backup'), new lang_string('configgeneraluserscompletion','backup'), array('value'=>1, 'locked'=>0)));
     $temp->add(new admin_setting_configcheckbox_with_lock('backup/backup_general_logs', new lang_string('generallogs','backup'), new lang_string('configgenerallogs','backup'), array('value'=>0, 'locked'=>0)));
     $temp->add(new admin_setting_configcheckbox_with_lock('backup/backup_general_histories', new lang_string('generalhistories','backup'), new lang_string('configgeneralhistories','backup'), array('value'=>0, 'locked'=>0)));
+    $ADMIN->add('backups', $temp);
+
+    // Create a page for general import configuration and defaults.
+    $temp = new admin_settingpage('importgeneralsettings', new lang_string('importgeneralsettings', 'backup'), 'moodle/backup:backupcourse');
+    $temp->add(new admin_setting_configtext('backup/import_general_maxresults', new lang_string('importgeneralmaxresults', 'backup'), new lang_string('importgeneralmaxresults_desc', 'backup'), 10));
     $ADMIN->add('backups', $temp);
 
     // Create a page for automated backups configuration and defaults.

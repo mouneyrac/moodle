@@ -2817,6 +2817,11 @@ function get_login_url() {
 function require_login($courseorid = NULL, $autologinguest = true, $cm = NULL, $setwantsurltome = true, $preventredirect = false) {
     global $CFG, $SESSION, $USER, $PAGE, $SITE, $DB, $OUTPUT;
 
+    // Must not redirect when byteserving already started.
+    if (!empty($_SERVER['HTTP_RANGE'])) {
+        $preventredirect = true;
+    }
+
     // setup global $COURSE, themes, language and locale
     if (!empty($courseorid)) {
         if (is_object($courseorid)) {
@@ -8109,6 +8114,7 @@ function get_core_subsystems() {
             'admin'       => $CFG->admin,
             'auth'        => 'auth',
             'backup'      => 'backup/util/ui',
+            'badges'      => 'badges',
             'block'       => 'blocks',
             'blog'        => 'blog',
             'bulkusers'   => NULL,
@@ -11197,12 +11203,15 @@ function get_home_page() {
  * Gets the name of a course to be displayed when showing a list of courses.
  * By default this is just $course->fullname but user can configure it. The
  * result of this function should be passed through print_string.
- * @param object $course Moodle course object
+ * @param stdClass|course_in_list $course Moodle course object
  * @return string Display name of course (either fullname or short + fullname)
  */
 function get_course_display_name_for_list($course) {
     global $CFG;
     if (!empty($CFG->courselistshortnames)) {
+        if (!($course instanceof stdClass)) {
+            $course = (object)convert_to_array($course);
+        }
         return get_string('courseextendednamedisplay', '', $course);
     } else {
         return $course->fullname;

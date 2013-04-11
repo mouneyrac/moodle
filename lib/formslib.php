@@ -916,9 +916,23 @@ abstract class moodleform {
             $this->definition_after_data();
         }
 
-        $this->detectMissingSetType();
-
         $this->_form->display();
+    }
+
+    /**
+     * Renders the html form (same as display, but returns the result).
+     *
+     * Note that you can only output this rendered result once per page, as
+     * it contains IDs which must be unique.
+     *
+     * @return string HTML code for the form
+     */
+    public function render() {
+        ob_start();
+        $this->display();
+        $out = ob_get_contents();
+        ob_end_clean();
+        return $out;
     }
 
     /**
@@ -1310,7 +1324,9 @@ class MoodleQuickForm extends HTML_QuickForm_DHTMLRulesTableless {
     var $_advancedElements = array();
 
     /**
-     * Array whose keys are element names and the the boolean values reflect the current state. If the key exists this is a collapsible element.
+     * Array whose keys are element names and values are the desired collapsible state.
+     * True for collapsed, False for expanded. If not present, set to default in
+     * {@link self::accept()}.
      *
      * @var array
      */
@@ -1339,14 +1355,6 @@ class MoodleQuickForm extends HTML_QuickForm_DHTMLRulesTableless {
      * @var string
      */
     var $_pageparams = '';
-
-    /**
-     * The maximum number of headers the form should contain in order not to be
-     * defined as collapsible.
-     *
-     * @var int
-     */
-    var $_non_collapsible_headers = 2;
 
     /**
      * Class constructor - same parameters as HTML_QuickForm_DHTMLRulesTableless
@@ -1402,7 +1410,7 @@ class MoodleQuickForm extends HTML_QuickForm_DHTMLRulesTableless {
      * @param string $elementName group or element name (not the element name of something inside a group).
      * @param bool $advanced default true sets the element to advanced. False removes advanced mark.
      */
-    function setAdvanced($elementName, $advanced=true){
+    function setAdvanced($elementName, $advanced = true) {
         if ($advanced){
             $this->_advancedElements[$elementName]='';
         } elseif (isset($this->_advancedElements[$elementName])) {
@@ -1416,9 +1424,11 @@ class MoodleQuickForm extends HTML_QuickForm_DHTMLRulesTableless {
      *
      * @param string $headername header element name
      * @param boolean $expanded default true sets the element to expanded. False makes the element collapsed.
+     * @param boolean $ignoreuserstate override the state regardless of the state it was on when
+     *                                 the form was submitted.
      * @return void
      */
-    function setExpanded($headername, $expanded=true){
+    function setExpanded($headername, $expanded = true, $ignoreuserstate = false) {
         if (empty($headername)) {
             return;
         }
@@ -1432,9 +1442,9 @@ class MoodleQuickForm extends HTML_QuickForm_DHTMLRulesTableless {
             $headerid = $element->getAttribute('id');
         }
         if ($this->getElementType('mform_isexpanded_' . $headerid) === false) {
-            // See if we the form has been submitted already.
+            // See if the form has been submitted already.
             $formexpanded = optional_param('mform_isexpanded_' . $headerid, -1, PARAM_INT);
-            if (!$expanded && $formexpanded != -1) {
+            if (!$ignoreuserstate && $formexpanded != -1) {
                 // Override expanded state with the form variable.
                 $expanded = $formexpanded;
             }
@@ -1578,44 +1588,53 @@ class MoodleQuickForm extends HTML_QuickForm_DHTMLRulesTableless {
             }
             $renderer->setAdvancedElements($this->_advancedElements);
         }
-        if (method_exists($renderer, 'setCollapsibleElements') && !$this->_disableShortforms){
-            // Check how many headers we have in total, if less than $_non_collapsible_headers,
-            // the form should not be collapsible at all (unless overidden in the form definition).
-            $headercounter = 0;
+        if (method_exists($renderer, 'setCollapsibleElements') && !$this->_disableShortforms) {
+
+            // Count the number of sections.
+            $headerscount = 0;
             foreach (array_keys($this->_elements) as $elementIndex){
                 $element =& $this->_elements[$elementIndex];
                 if ($element->getType() == 'header') {
+                    $headerscount++;
+                }
+            }
+
+            $anyrequiredorerror = false;
+            $headercounter = 0;
+            $headername = null;
+            foreach (array_keys($this->_elements) as $elementIndex){
+                $element =& $this->_elements[$elementIndex];
+
+                if ($element->getType() == 'header') {
                     $headercounter++;
+                    $element->_generateId();
+                    $headername = $element->getName();
+                    $anyrequiredorerror = false;
+                } else if (in_array($element->getName(), $this->_required) || isset($this->_errors[$element->getName()])) {
+                    $anyrequiredorerror = true;
+                } else {
+                    // Do not reset $anyrequiredorerror to false because we do not want any other element
+                    // in this header (fieldset) to possibly revert the state given.
                 }
-            }
-            if ($headercounter > $this->_non_collapsible_headers) {
-                // So, we have more than $_non_collapsible_headers headers
-                // add all headers to collapsible elements array (if they have not been added yet).
-                $anyrequiredorerror = false;
-                $headercounter = 0;
-                $headername = null;
-                foreach (array_keys($this->_elements) as $elementIndex){
-                    $element =& $this->_elements[$elementIndex];
 
-                    if ($element->getType() == 'header') {
-                        $headercounter++;
-                        $element->_generateId();
-                        $headername = $element->getName();
-                        $anyrequiredorerror = false;
-                    } else if (in_array($element->getName(), $this->_required) || isset($this->_errors[$element->getName()])) {
-                        $anyrequiredorerror = true;
-                    }
-
-                    if ($headercounter === 1 || $anyrequiredorerror) {
-                        // If we're working on the first header, or if any error or required field
-                        // is present in this header, we need to expand it.
+                if ($element->getType() == 'header') {
+                    if ($headercounter === 1 && !isset($this->_collapsibleElements[$headername])) {
+                        // By default the first section is always expanded, except if a state has already been set.
                         $this->setExpanded($headername, true);
-                    } else if (!isset($this->_collapsibleElements[$headername])) {
-                        // Define element as collapsed by default.
-                        $this->setExpanded($headername, false);
+                    } else if (($headercounter === 2 && $headerscount === 2) && !isset($this->_collapsibleElements[$headername])) {
+                        // The second section is always expanded if the form only contains 2 sections),
+                        // except if a state has already been set.
+                        $this->setExpanded($headername, true);
                     }
+                } else if ($anyrequiredorerror) {
+                    // If any error or required field are present within the header, we need to expand it.
+                    $this->setExpanded($headername, true, true);
+                } else if (!isset($this->_collapsibleElements[$headername])) {
+                    // Define element as collapsed by default.
+                    $this->setExpanded($headername, false);
                 }
             }
+
             // Pass the array to renderer object.
             $renderer->setCollapsibleElements($this->_collapsibleElements);
         }
@@ -2392,10 +2411,16 @@ class MoodleQuickForm_Renderer extends HTML_QuickForm_Renderer_Tableless{
     var $_requiredNoteTemplate =
         "\n\t\t<div class=\"fdescription required\">{requiredNote}</div>";
 
-    /** @var string Collapsible buttons string template */
+    /**
+     * Collapsible buttons string template.
+     *
+     * Note that the <span> will be converted as a link. This is done so that the link is not yet clickable
+     * until the Javascript has been fully loaded.
+     *
+     * @var string
+     */
     var $_collapseButtonsTemplate =
-        "\n\t<div class=\"collapsible-actions\"><button disabled=\"disabled\" class=\"btn-expandall\">{strexpandall}</button>
-        <button disabled=\"disabled\" class=\"btn-collapseall\">{strcollapseall}</button></div>";
+        "\n\t<div class=\"collapsible-actions\"><span class=\"collapseexpand\">{strexpandall}</span></div>";
 
     /**
      * Array whose keys are element names. If the key exists this is a advanced element
@@ -2488,8 +2513,8 @@ class MoodleQuickForm_Renderer extends HTML_QuickForm_Renderer_Tableless{
         if (!empty($this->_collapsibleElements)) {
             if (count($this->_collapsibleElements) > 1) {
                 $this->_collapseButtons = $this->_collapseButtonsTemplate;
-                $this->_collapseButtons = str_replace('{strcollapseall}', get_string('collapseall'), $this->_collapseButtons);
                 $this->_collapseButtons = str_replace('{strexpandall}', get_string('expandall'), $this->_collapseButtons);
+                $PAGE->requires->strings_for_js(array('collapseall', 'expandall'), 'moodle');
             }
             $PAGE->requires->yui_module('moodle-form-shortforms', 'M.form.shortforms', array(array('formid' => $formid)));
         }

@@ -132,7 +132,7 @@ class behat_forms extends behat_base {
 
             // Show all fields.
             $showmorestr = get_string('showmore', 'form');
-            $showmores = $this->find_all('xpath', "//a[contains(concat(' ', normalize-space(.), ' '), '" . $showmorestr . "')][contains(concat(' ', normalize-space(@class), ' '), ' morelesstoggler')]");
+            $showmores = $this->find_all('xpath', "//a[contains(concat(' ', normalize-space(.), ' '), '" . $showmorestr . "')][contains(concat(' ', normalize-space(@class), ' '), ' moreless-toggler')]");
 
             // We are supposed to have 'show more's here, otherwise exception.
 
@@ -176,7 +176,9 @@ class behat_forms extends behat_base {
         $selectnode->selectOption($option);
 
         // Adding a click as Selenium requires it to fire some JS events.
-        $selectnode->click();
+        if ($this->running_javascript()) {
+            $selectnode->click();
+        }
     }
 
     /**
@@ -192,7 +194,9 @@ class behat_forms extends behat_base {
         $radionode->check();
 
         // Adding a click as Selenium requires it to fire some JS events.
-        $radionode->click();
+        if ($this->running_javascript()) {
+            $radionode->click();
+        }
     }
 
     /**

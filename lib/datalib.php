@@ -191,6 +191,95 @@ function search_users($courseid, $groupid, $searchtext, $sort='', array $excepti
 }
 
 /**
+ * Returns SQL used to search through user table to find users (in a query
+ * which may also join and apply other conditions).
+ *
+ * You can combine this SQL with an existing query by adding 'AND $sql' to the
+ * WHERE clause of your query (where $sql is the first element in the array
+ * returned by this function), and merging in the $params array to the parameters
+ * of your query (where $params is the second element). Your query should use
+ * named parameters such as :param, rather than the question mark style.
+ *
+ * There are examples of basic usage in the unit test for this function.
+ *
+ * @param string $search the text to search for (empty string = find all)
+ * @param string $u the table alias for the user table in the query being
+ *     built. May be ''.
+ * @param bool $searchanywhere If true (default), searches in the middle of
+ *     names, otherwise only searches at start
+ * @param array $extrafields Array of extra user fields to include in search
+ * @param array $exclude Array of user ids to exclude (empty = don't exclude)
+ * @param array $includeonly If specified, only returns users that have ids
+ *     incldued in this array (empty = don't restrict)
+ * @return array an array with two elements, a fragment of SQL to go in the
+ *     where clause the query, and an associative array containing any required
+ *     parameters (using named placeholders).
+ */
+function users_search_sql($search, $u = 'u', $searchanywhere = true, array $extrafields = array(),
+        array $exclude = null, array $includeonly = null) {
+    global $DB, $CFG;
+    $params = array();
+    $tests = array();
+
+    if ($u) {
+        $u .= '.';
+    }
+
+    // If we have a $search string, put a field LIKE '$search%' condition on each field.
+    if ($search) {
+        $conditions = array(
+            $DB->sql_fullname($u . 'firstname', $u . 'lastname'),
+            $conditions[] = $u . 'lastname'
+        );
+        foreach ($extrafields as $field) {
+            $conditions[] = $u . $field;
+        }
+        if ($searchanywhere) {
+            $searchparam = '%' . $search . '%';
+        } else {
+            $searchparam = $search . '%';
+        }
+        $i = 0;
+        foreach ($conditions as $key => $condition) {
+            $conditions[$key] = $DB->sql_like($condition, ":con{$i}00", false, false);
+            $params["con{$i}00"] = $searchparam;
+            $i++;
+        }
+        $tests[] = '(' . implode(' OR ', $conditions) . ')';
+    }
+
+    // Add some additional sensible conditions.
+    $tests[] = $u . "id <> :guestid";
+    $params['guestid'] = $CFG->siteguest;
+    $tests[] = $u . 'deleted = 0';
+    $tests[] = $u . 'confirmed = 1';
+
+    // If we are being asked to exclude any users, do that.
+    if (!empty($exclude)) {
+        list($usertest, $userparams) = $DB->get_in_or_equal($exclude, SQL_PARAMS_NAMED, 'ex', false);
+        $tests[] = $u . 'id ' . $usertest;
+        $params = array_merge($params, $userparams);
+    }
+
+    // If we are validating a set list of userids, add an id IN (...) test.
+    if (!empty($includeonly)) {
+        list($usertest, $userparams) = $DB->get_in_or_equal($includeonly, SQL_PARAMS_NAMED, 'val');
+        $tests[] = $u . 'id ' . $usertest;
+        $params = array_merge($params, $userparams);
+    }
+
+    // In case there are no tests, add one result (this makes it easier to combine
+    // this with an existing query as you can always add AND $sql).
+    if (empty($tests)) {
+        $tests[] = '1 = 1';
+    }
+
+    // Combing the conditions and return.
+    return array(implode(' AND ', $tests), $params);
+}
+
+
+/**
  * This function generates the standard ORDER BY clause for use when generating
  * lists of users. If you don't have a reason to use a different order, then
  * you should use this method to generate the order when displaying lists of users.
@@ -603,226 +692,6 @@ function get_courses_page($categoryid="all", $sort="c.sortorder ASC", $fields="c
     }
     $rs->close();
     return $visiblecourses;
-}
-
-/**
- * Retrieve course records with the course managers and other related records
- * that we need for print_course(). This allows print_courses() to do its job
- * in a constant number of DB queries, regardless of the number of courses,
- * role assignments, etc.
- *
- * The returned array is indexed on c.id, and each course will have
- * - $course->managers - array containing RA objects that include a $user obj
- *                       with the minimal fields needed for fullname()
- *
- * @global object
- * @global object
- * @global object
- * @uses CONTEXT_COURSE
- * @uses CONTEXT_SYSTEM
- * @uses CONTEXT_COURSECAT
- * @uses SITEID
- * @param int|string $categoryid Either the categoryid for the courses or 'all'
- * @param string $sort A SQL sort field and direction
- * @param array $fields An array of additional fields to fetch
- * @return array
- */
-function get_courses_wmanagers($categoryid=0, $sort="c.sortorder ASC", $fields=array()) {
-    /*
-     * The plan is to
-     *
-     * - Grab the courses JOINed w/context
-     *
-     * - Grab the interesting course-manager RAs
-     *   JOINed with a base user obj and add them to each course
-     *
-     * So as to do all the work in 2 DB queries. The RA+user JOIN
-     * ends up being pretty expensive if it happens over _all_
-     * courses on a large site. (Are we surprised!?)
-     *
-     * So this should _never_ get called with 'all' on a large site.
-     *
-     */
-    global $USER, $CFG, $DB;
-
-    $params = array();
-    $allcats = false; // bool flag
-    if ($categoryid === 'all') {
-        $categoryclause   = '';
-        $allcats = true;
-    } elseif (is_numeric($categoryid)) {
-        $categoryclause = "c.category = :catid";
-        $params['catid'] = $categoryid;
-    } else {
-        debugging("Could not recognise categoryid = $categoryid");
-        $categoryclause = '';
-    }
-
-    $basefields = array('id', 'category', 'sortorder',
-                        'shortname', 'fullname', 'idnumber',
-                        'startdate', 'visible',
-                        'newsitems', 'groupmode', 'groupmodeforce');
-
-    if (!is_null($fields) && is_string($fields)) {
-        if (empty($fields)) {
-            $fields = $basefields;
-        } else {
-            // turn the fields from a string to an array that
-            // get_user_courses_bycap() will like...
-            $fields = explode(',',$fields);
-            $fields = array_map('trim', $fields);
-            $fields = array_unique(array_merge($basefields, $fields));
-        }
-    } elseif (is_array($fields)) {
-        $fields = array_merge($basefields,$fields);
-    }
-    $coursefields = 'c.' .join(',c.', $fields);
-
-    if (empty($sort)) {
-        $sortstatement = "";
-    } else {
-        $sortstatement = "ORDER BY $sort";
-    }
-
-    $where = 'WHERE c.id != ' . SITEID;
-    if ($categoryclause !== ''){
-        $where = "$where AND $categoryclause";
-    }
-
-    // pull out all courses matching the cat
-    list($ccselect, $ccjoin) = context_instance_preload_sql('c.id', CONTEXT_COURSE, 'ctx');
-    $sql = "SELECT $coursefields $ccselect
-              FROM {course} c
-           $ccjoin
-               $where
-               $sortstatement";
-
-    $catpaths = array();
-    $catpath  = NULL;
-    if ($courses = $DB->get_records_sql($sql, $params)) {
-        // loop on courses materialising
-        // the context, and prepping data to fetch the
-        // managers efficiently later...
-        foreach ($courses as $k => $course) {
-            context_instance_preload($course);
-            $coursecontext = context_course::instance($course->id);
-            $courses[$k] = $course;
-            $courses[$k]->managers = array();
-            if ($allcats === false) {
-                // single cat, so take just the first one...
-                if ($catpath === NULL) {
-                    $catpath = preg_replace(':/\d+$:', '', $coursecontext->path);
-                }
-            } else {
-                // chop off the contextid of the course itself
-                // like dirname() does...
-                $catpaths[] = preg_replace(':/\d+$:', '', $coursecontext->path);
-            }
-        }
-    } else {
-        return array(); // no courses!
-    }
-
-    $CFG->coursecontact = trim($CFG->coursecontact);
-    if (empty($CFG->coursecontact)) {
-        return $courses;
-    }
-
-    $managerroles = explode(',', $CFG->coursecontact);
-    $catctxids = '';
-    if (count($managerroles)) {
-        if ($allcats === true) {
-            $catpaths  = array_unique($catpaths);
-            $ctxids = array();
-            foreach ($catpaths as $cpath) {
-                $ctxids = array_merge($ctxids, explode('/',substr($cpath,1)));
-            }
-            $ctxids = array_unique($ctxids);
-            $catctxids = implode( ',' , $ctxids);
-            unset($catpaths);
-            unset($cpath);
-        } else {
-            // take the ctx path from the first course
-            // as all categories will be the same...
-            $catpath = substr($catpath,1);
-            $catpath = preg_replace(':/\d+$:','',$catpath);
-            $catctxids = str_replace('/',',',$catpath);
-        }
-        if ($categoryclause !== '') {
-            $categoryclause = "AND $categoryclause";
-        }
-        /*
-         * Note: Here we use a LEFT OUTER JOIN that can
-         * "optionally" match to avoid passing a ton of context
-         * ids in an IN() clause. Perhaps a subselect is faster.
-         *
-         * In any case, this SQL is not-so-nice over large sets of
-         * courses with no $categoryclause.
-         *
-         */
-        $sql = "SELECT ctx.path, ctx.instanceid, ctx.contextlevel,
-                       r.id AS roleid, r.name AS rolename, r.shortname AS roleshortname,
-                       rn.name AS rolecoursealias, u.id AS userid, u.firstname, u.lastname
-                  FROM {role_assignments} ra
-                  JOIN {context} ctx ON ra.contextid = ctx.id
-                  JOIN {user} u ON ra.userid = u.id
-                  JOIN {role} r ON ra.roleid = r.id
-             LEFT JOIN {role_names} rn ON (rn.contextid = ctx.id AND rn.roleid = r.id)
-                  LEFT OUTER JOIN {course} c
-                       ON (ctx.instanceid=c.id AND ctx.contextlevel=".CONTEXT_COURSE.")
-                WHERE ( c.id IS NOT NULL";
-        // under certain conditions, $catctxids is NULL
-        if($catctxids == NULL){
-            $sql .= ") ";
-        }else{
-            $sql .= " OR ra.contextid  IN ($catctxids) )";
-        }
-
-        $sql .= "AND ra.roleid IN ({$CFG->coursecontact})
-                      $categoryclause
-                ORDER BY r.sortorder ASC, ctx.contextlevel ASC, ra.sortorder ASC";
-        $rs = $DB->get_recordset_sql($sql, $params);
-
-        // This loop is fairly stupid as it stands - might get better
-        // results doing an initial pass clustering RAs by path.
-        foreach($rs as $ra) {
-            $user = new stdClass;
-            $user->id        = $ra->userid;    unset($ra->userid);
-            $user->firstname = $ra->firstname; unset($ra->firstname);
-            $user->lastname  = $ra->lastname;  unset($ra->lastname);
-            $ra->user = $user;
-            if ($ra->contextlevel == CONTEXT_SYSTEM) {
-                foreach ($courses as $k => $course) {
-                    $courses[$k]->managers[] = $ra;
-                }
-            } else if ($ra->contextlevel == CONTEXT_COURSECAT) {
-                if ($allcats === false) {
-                    // It always applies
-                    foreach ($courses as $k => $course) {
-                        $courses[$k]->managers[] = $ra;
-                    }
-                } else {
-                    foreach ($courses as $k => $course) {
-                        $coursecontext = context_course::instance($course->id);
-                        // Note that strpos() returns 0 as "matched at pos 0"
-                        if (strpos($coursecontext->path, $ra->path.'/') === 0) {
-                            // Only add it to subpaths
-                            $courses[$k]->managers[] = $ra;
-                        }
-                    }
-                }
-            } else { // course-level
-                if (!array_key_exists($ra->instanceid, $courses)) {
-                    //this course is not in a list, probably a frontpage course
-                    continue;
-                }
-                $courses[$ra->instanceid]->managers[] = $ra;
-            }
-        }
-        $rs->close();
-    }
-
-    return $courses;
 }
 
 /**

@@ -677,12 +677,18 @@ class navigation_node implements renderable {
      * Hides the node and any children it has.
      *
      * @since 2.5
+     * @param array $typestohide Optional. An array of node types that should be hidden.
+     *      If null all nodes will be hidden.
+     *      If an array is given then nodes will only be hidden if their type mtatches an element in the array.
+     *          e.g. array(navigation_node::TYPE_COURSE) would hide only course nodes.
      */
-    public function hide() {
-        $this->display = false;
-        if ($this->has_children()) {
-            foreach ($this->children as $child) {
-                $child->hide();
+    public function hide(array $typestohide = null) {
+        if ($typestohide === null || in_array($this->type, $typestohide)) {
+            $this->display = false;
+            if ($this->has_children()) {
+                foreach ($this->children as $child) {
+                    $child->hide($typestohide);
+                }
             }
         }
     }
@@ -1693,7 +1699,7 @@ class global_navigation extends navigation_node {
                 $excessivecategories = $DB->get_records_sql($sql, $params);
                 foreach ($categories as &$category) {
                     if (array_key_exists($category->key, $excessivecategories) && !$this->can_add_more_courses_to_category($category)) {
-                        $url = new moodle_url('/course/category.php', array('id'=>$category->key));
+                        $url = new moodle_url('/course/index.php', array('categoryid' => $category->key));
                         $category->add(get_string('viewallcourses'), $url, self::TYPE_SETTING);
                     }
                 }
@@ -1713,7 +1719,7 @@ class global_navigation extends navigation_node {
         if (array_key_exists($category->id, $this->addedcategories)) {
             return;
         }
-        $url = new moodle_url('/course/category.php', array('id' => $category->id));
+        $url = new moodle_url('/course/index.php', array('categoryid' => $category->id));
         $context = context_coursecat::instance($category->id);
         $categoryname = format_string($category->name, true, array('context' => $context));
         $categorynode = $parent->add($categoryname, $url, $nodetype, $categoryname, $category->id);
@@ -2438,27 +2444,6 @@ class global_navigation extends navigation_node {
             $participants = $coursenode->add(get_string('participants'), null, self::TYPE_CONTAINER, get_string('participants'), 'participants');
         }
 
-        // View course reports
-        if (has_capability('moodle/site:viewreports', $this->page->context)) { // basic capability for listing of reports
-            $reportnav = $coursenode->add(get_string('reports'), null, self::TYPE_CONTAINER, null, null, new pix_icon('i/stats', ''));
-            $coursereports = get_plugin_list('coursereport'); // deprecated
-            foreach ($coursereports as $report=>$dir) {
-                $libfile = $CFG->dirroot.'/course/report/'.$report.'/lib.php';
-                if (file_exists($libfile)) {
-                    require_once($libfile);
-                    $reportfunction = $report.'_report_extend_navigation';
-                    if (function_exists($report.'_report_extend_navigation')) {
-                        $reportfunction($reportnav, $course, $this->page->context);
-                    }
-                }
-            }
-
-            $reports = get_plugin_list_with_function('report', 'extend_navigation_course', 'lib.php');
-            foreach ($reports as $reportfunction) {
-                $reportfunction($reportnav, $course, $this->page->context);
-            }
-        }
-
         // Badges.
         if ($CFG->enablebadges && has_capability('moodle/badges:viewbadges', $this->page->context)) {
             $url = new moodle_url($CFG->wwwroot . '/badges/view.php',
@@ -2558,18 +2543,24 @@ class global_navigation extends navigation_node {
     public function set_expansion_limit($type) {
         global $SITE;
         $nodes = $this->find_all_of_type($type);
+
+        // We only want to hide specific types of nodes.
+        // Only nodes that represent "structure" in the navigation tree should be hidden.
+        // If we hide all nodes then we risk hiding vital information.
+        $typestohide = array(
+            self::TYPE_CATEGORY,
+            self::TYPE_COURSE,
+            self::TYPE_SECTION,
+            self::TYPE_ACTIVITY
+        );
+
         foreach ($nodes as $node) {
             // We need to generate the full site node
             if ($type == self::TYPE_COURSE && $node->key == $SITE->id) {
                 continue;
             }
             foreach ($node->children as $child) {
-                // We still want to show course reports and participants containers
-                // or there will be navigation missing.
-                if ($type == self::TYPE_COURSE && $child->type === self::TYPE_CONTAINER) {
-                    continue;
-                }
-                $child->hide();
+                $child->hide($typestohide);
             }
         }
         return true;
@@ -4110,7 +4101,7 @@ class settings_navigation extends navigation_node {
         $onmanagepage = $this->page->url->compare(new moodle_url('/course/manage.php'), URL_MATCH_BASE);
 
         if (can_edit_in_category($this->context->instanceid) && !$onmanagepage) {
-            $url = new moodle_url('/course/manage.php', array('id' => $this->context->instanceid));
+            $url = new moodle_url('/course/manage.php', array('categoryid' => $this->context->instanceid));
             $editstring = get_string('managecategorythis');
             $categorynode->add($editstring, $url, self::TYPE_SETTING, null, null, new pix_icon('i/edit', ''));
         }

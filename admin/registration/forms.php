@@ -156,8 +156,10 @@ class hub_selector_form extends moodleform {
         //Private hub
         $mform->addElement('text', 'unlistedurl', get_string('privatehuburl', 'hub'),
                 array('class' => 'registration_textfield'));
+        $mform->setType('unlistedurl', PARAM_URL);
         $mform->addElement('text', 'password', get_string('password'),
                 array('class' => 'registration_textfield'));
+        $mform->setType('password', PARAM_RAW);
 
         $this->add_action_buttons(false, get_string('selecthub', 'hub'));
     }
@@ -311,6 +313,7 @@ class site_registration_form extends moodleform {
                 array('class' => 'registration_textfield'));
         $mform->setDefault('geolocation', $geolocation);
         $mform->addHelpButton('geolocation', 'sitegeolocation', 'hub');
+        $mform->setType('geolocation', PARAM_RAW);
 
         $mform->addElement('text', 'contactname', get_string('siteadmin', 'hub'),
                 array('class' => 'registration_textfield'));

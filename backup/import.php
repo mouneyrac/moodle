@@ -79,7 +79,9 @@ if (!($bc = backup_ui::load_controller($backupid))) {
 }
 
 // Prepare the import UI
-$backup = new import_ui($bc, array('importid'=>$importcourse->id, 'target'=>$restoretarget));
+$backupparams = array(new backup_param('importid', $importcourse->id, PARAM_INT),
+    new backup_param('target', $restoretarget, PARAM_INT));
+$backup = new import_ui($bc, $backupparams);
 // Process the current stage
 $backup->process();
 

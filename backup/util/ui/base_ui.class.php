@@ -24,6 +24,77 @@
  */
 
 /**
+ * This is the backup additional parameter model class
+ *
+ * For each stage of the backup, additional parameter can be sent throughout the process.
+ *
+ * @copyright 2013 Jerome Mouneyrac
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+class backup_param {
+    /**
+     * The param name.
+     * @var string
+     */
+    protected $name;
+
+    /**
+     * The param value.
+     * @var string
+     */
+    protected $value;
+
+    /**
+     * The param type (PARAM_INT, PARAM_TEXT...)
+     * @var string
+     */
+    protected $type;
+
+    /**
+     * The constructor.
+     * @param string $name
+     * @param string $value
+     * @param string $type
+     */
+    public function __construct($name, $value, $type) {
+
+        if (empty($name) or empty($value) or empty($type)) {
+            throw new coding_exception('Backup additional parameter must have a name/value/type.
+                The faulty param is constructed as "name" => '. $name . ', "value" => ' . $value
+                . ', "type (should be PARAM_INT, PARAM_TEXT...)" => ' . $type);
+        }
+
+        $this->name = $name;
+        $this->value = $value;
+        $this->type = $type;
+    }
+
+    /**
+     * Get param name.
+     * @return string
+     */
+    public function get_name() {
+        return $this->name;
+    }
+
+    /**
+     * Get param value.
+     * @return string
+     */
+    public function get_value() {
+        return $this->value;
+    }
+
+    /**
+     * Get param type.
+     * @return bool
+     */
+    public function get_type() {
+        return $this->type;
+    }
+}
+
+/**
  * This is the backup user interface class
  *
  * The backup user interface class manages the user interface and backup for

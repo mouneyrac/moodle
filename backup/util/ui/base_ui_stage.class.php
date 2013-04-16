@@ -56,6 +56,7 @@ abstract class base_ui_stage {
     protected $stageform = null;
     /**
      * Custom form params that will be added as hidden inputs
+     * @var array (can be either list of backup_param, either name=>value for backward compatibility)
      */
     protected $params = null;
     /**
@@ -72,6 +73,19 @@ abstract class base_ui_stage {
      */
     final public function get_params() {
         return $this->params;
+    }
+    /**
+     * Returns the custom param values for this stage.
+     * @return array
+     */
+    public function get_param_values() {
+        $paramvalues = array();
+        if (!empty($this->params)) {
+            foreach($this->params as $param) {
+                $paramvalues[$param->get_name()] = $param->get_value();
+            }
+        }
+        return $paramvalues;
     }
     /**
      * The current stage

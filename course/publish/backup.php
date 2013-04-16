@@ -64,8 +64,13 @@ if (!($bc = backup_ui::load_controller($backupid))) {
     $bc = new backup_controller(backup::TYPE_1COURSE, $id, backup::FORMAT_MOODLE,
                     backup::INTERACTIVE_YES, backup::MODE_HUB, $USER->id);
 }
-$backup = new backup_ui($bc,
-        array('id' => $id, 'hubcourseid' => $hubcourseid, 'huburl' => $huburl, 'hubname' => $hubname));
+
+$backupparams = array(new backup_param('id', $id, PARAM_INT),
+    new backup_param('hubcourseid', $hubcourseid, PARAM_INT),
+    new backup_param('huburl', $huburl, PARAM_URL),
+    new backup_param('hubname', $hubname, PARAM_TEXT));
+
+$backup = new backup_ui($bc, $backupparams);
 $backup->process();
 if ($backup->get_stage() == backup_ui::STAGE_FINAL) {
     $backup->execute();

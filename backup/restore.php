@@ -35,7 +35,8 @@ if ($stage & restore_ui::STAGE_CONFIRM + restore_ui::STAGE_DESTINATION) {
             $rc->convert();
         }
 
-        $restore = new restore_ui($rc, array('contextid'=>$context->id));
+        $restoreparams = array(new backup_param('contextid', $context->id, PARAM_INT));
+        $restore = new restore_ui($rc, $restoreparams);
     }
 }
 

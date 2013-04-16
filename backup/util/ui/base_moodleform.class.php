@@ -88,16 +88,9 @@ abstract class base_moodleform extends moodleform {
         $mform->setType($ui->get_name(), PARAM_ALPHANUM);
         $params = $this->uistage->get_params();
         if (is_array($params) && count($params) > 0) {
-            foreach ($params as $name=>$value) {
-                // TODO: Horrible hack, but current backup ui structure does not allow
-                // to make this easy (only changing params to objects that would be
-                // possible. MDL-38735.
-                $intparams = array(
-                        'contextid', 'importid', 'target');
-                $stage = $mform->addElement('hidden', $name, $value);
-                if (in_array($name, $intparams)) {
-                    $mform->setType($name, PARAM_INT);
-                }
+            foreach ($params as $param) {
+                $stage = $mform->addElement('hidden', $param->get_name(), $param->get_value());
+                $mform->setType($param->get_name(), $param->get_type());
             }
         }
     }

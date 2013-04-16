@@ -51,12 +51,12 @@ class import_ui extends backup_ui {
             }
             $item = array('text' => strlen(decbin($stage*2)).'. '.get_string('importcurrentstage'.$stage, 'backup'),'class' => join(' ', $classes));
             if ($stage < $currentstage && $currentstage < self::STAGE_COMPLETE && (!self::$skipcurrentstage || $stage*2 != $currentstage)) {
-                $item['link'] = new moodle_url($PAGE->url, $this->stage->get_params() + array('backup'=>$this->get_backupid(), 'stage'=>$stage));
+                $item['link'] = new moodle_url($PAGE->url, $this->stage->get_param_values() + array('backup'=>$this->get_backupid(), 'stage'=>$stage));
             }
             array_unshift($items, $item);
             $stage = floor($stage/2);
         }
-        $selectorlink = new moodle_url($PAGE->url, $this->stage->get_params());
+        $selectorlink = new moodle_url($PAGE->url, $this->stage->get_param_values());
         $selectorlink->remove_params('importid');
         array_unshift($items, array(
                 'text' => '1. '.get_string('importcurrentstage0', 'backup'),

@@ -513,6 +513,7 @@ if (!$csv) {
 
     print '</tr>' . '</thead>';
 
+    echo '<tbody>';
 } else {
     // The CSV headers
     $row = array();
@@ -548,7 +549,6 @@ if (!$csv) {
 ///
 /// Display a row for each user
 ///
-echo '<tbody>';
 foreach ($progress as $user) {
 
     // User name
@@ -729,10 +729,10 @@ foreach ($progress as $user) {
     }
 }
 
-echo '</tbody>';
-
 if ($csv) {
     $export->download_file();
+} else {
+    echo '</tbody>';
 }
 
 print '</table>';

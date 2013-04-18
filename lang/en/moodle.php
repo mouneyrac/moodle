@@ -1594,6 +1594,7 @@ $string['sizemb'] = 'MB';
 $string['skipped'] = 'Skipped';
 $string['skypeid'] = 'Skype ID';
 $string['socialheadline'] = 'Social forum - latest topics';
+$string['sociallogin'] = 'Login with your social account';
 $string['someallowguest'] = 'Some courses may allow guest access';
 $string['someerrorswerefound'] = 'Some information was missing or incorrect. Look below for details.';
 $string['sortby'] = 'Sort by';

@@ -122,7 +122,7 @@ function useredit_update_interests($user, $interests) {
 }
 
 function useredit_shared_definition(&$mform, $editoroptions = null, $filemanageroptions = null) {
-    global $CFG, $USER, $DB;
+    global $CFG, $USER, $DB, $PAGE;
 
     $user = $DB->get_record('user', array('id' => $USER->id));
     useredit_load_preferences($user, false);
@@ -284,6 +284,44 @@ function useredit_shared_definition(&$mform, $editoroptions = null, $filemanager
     $mform->addElement('editor', 'description_editor', get_string('userdescription'), null, $editoroptions);
     $mform->setType('description_editor', PARAM_CLEANHTML);
     $mform->addHelpButton('description_editor', 'userdescription');
+
+    // Oauth2 linking section.
+    require_once($CFG->dirroot . "/lib/oauth2/lib.php");
+    $profilelinking = true;
+    $oauth2manager = new auth_oauth2_manager();
+    $providers = $oauth2manager->get_linkable_providers(true);
+
+    // Retrieve all oauth2 providers.
+    $oauth2boxhtml = '';
+    foreach ($providers as $provider) {
+        if ($provider->linked) {
+            $linkedproviders[] = $provider;
+        }
+
+        require_once($CFG->dirroot . '/auth/' . $provider->shortname . '/renderer.php');
+        $authrendererclass = 'auth_'. $provider->shortname .'_renderer';
+        $authrenderer = new $authrendererclass($PAGE, 'auth');
+        $oauth2boxhtml .= $authrenderer->link($provider);
+    }
+
+    // Display the linked oauth2 provider text information.
+    if (empty($linkedproviders)) {
+        $linkedprovidershtml = html_writer::tag('div', get_string('nolinkedproviders', 'auth'),
+                array('class' => 'linkedprovidertext'));
+    } else {
+        $providernames = array();
+        foreach ($linkedproviders as $provider) {
+            $providernames[] = $provider->name;
+        }
+        $providernames = implode(',', $providernames);
+        $linkedprovidershtml = html_writer::tag('div', get_string('linkedproviders', 'auth', $providernames),
+                array('class' => 'linkedprovidertext'));
+    }
+
+    // Display the oauth2 providers box.
+    $mform->addElement('static', 'oauth2linking',
+            get_string('oauth2linking', 'auth'), $oauth2boxhtml . $linkedprovidershtml);
+    $mform->addHelpButton('oauth2linking', 'oauth2linking', 'auth');
 
     if (empty($USER->newadminuser)) {
         $mform->addElement('header', 'moodle_picture', get_string('pictureofuser'));

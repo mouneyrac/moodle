@@ -3012,5 +3012,18 @@
         <KEY NAME="fk_backpackid" TYPE="foreign" FIELDS="backpackid" REFTABLE="badge_backpack" REFFIELDS="id"/>
       </KEYS>
     </TABLE>
+    <TABLE NAME="user_idps" COMMENT="Identity provider that a user can use to log in Moodle">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="component" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" COMMENT="frankenstyle name of the authentication plugin used for the identity provider."/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="provideruserid" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" COMMENT="The ID given to the user by the identity provider"/>
+        <FIELD NAME="email" TYPE="char" LENGTH="100" NOTNULL="false" SEQUENCE="false" COMMENT="main email address registered on the identity provider"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="userid" TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id"/>
+      </KEYS>
+    </TABLE>
   </TABLES>
 </XMLDB>

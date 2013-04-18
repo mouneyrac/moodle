@@ -383,15 +383,15 @@ class oauth_helper {
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 abstract class oauth2_client extends curl {
-    /** var string client identifier issued to the client */
+    /** @var string client identifier issued to the client */
     private $clientid = '';
-    /** var string The client secret. */
+    /** @var string The client secret. */
     private $clientsecret = '';
-    /** var moodle_url URL to return to after authenticating */
-    private $returnurl = null;
-    /** var string scope of the authentication request */
+    /** @var moodle_url URL to return to after authenticating */
+    public $returnurl = null;
+    /** @var string scope of the authentication request */
     private $scope = '';
-    /** var stdClass access token object */
+    /** @var stdClass access token object */
     private $accesstoken = null;
 
     /**
@@ -420,7 +420,7 @@ abstract class oauth2_client extends curl {
         $this->clientsecret = $clientsecret;
         $this->returnurl = $returnurl;
         $this->scope = $scope;
-        $this->accesstoken = $this->get_stored_token();
+        $this->accesstoken = $this->get_stored_token(); 
     }
 
     /**
@@ -508,7 +508,7 @@ abstract class oauth2_client extends curl {
             throw new moodle_exception('Could not upgrade oauth token');
         }
 
-        $r = json_decode($response);
+        $r = $this->decode_access_token_result($response);
 
         if (!isset($r->access_token)) {
             return false;
@@ -521,6 +521,16 @@ abstract class oauth2_client extends curl {
         $this->store_token($accesstoken);
 
         return true;
+    }
+
+    /**
+     * Decode access token result return by the access token request
+     *
+     * @param string $response HTTP result
+     * @return object must contain "access_key" and "expires_in"
+     */
+    protected function decode_access_token_result($response) {
+        return json_decode($response);
     }
 
     /**
@@ -626,5 +636,96 @@ abstract class oauth2_client extends curl {
      */
     protected function use_http_get() {
         return false;
+    }
+}
+
+/**
+ * Model: oauth2 user fields
+ *
+ * @package   core
+ * @copyright 2012 Jerome Mouneyrac
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+class oauth2user {
+
+    /** @var string user id in the provider database */
+    public $id;
+
+    /** @var string user fullname */
+    public $name;
+
+    /** @var string user email */
+    public $email;
+
+    /** @var bool true is the provider certified the email address as verified */
+    public $verified;
+
+    /** @var string profil url (like Google profile) */
+    public $link;
+
+    /** @var string first name */
+    public $firstname;
+
+    /** @var string last name */
+    public $lastname;
+
+    /** @var string gender */
+    public $gender;
+
+    /** @var string language */
+    public $locale;
+
+    /** @var string username in the provider database */
+    public $username;
+
+    /** @var string  timezone*/
+    public $timezone;
+
+    /** @var int timestamp of the last time the user info was updated in the provider database*/
+    public $updated_time;
+
+    /** @var array 'fieldname' => 'value' */
+    public $additionalinfo;
+}
+
+/**
+ * OAuth 2.0 Client for authentication plugins.
+ *
+ * @package   core_auth
+ * @copyright 2012 Jerome Mouneyrac
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+abstract class oauth2_auth_plugin_client extends oauth2_client {
+
+    /** @var oauth2user the authenticated user */
+    public $oauth2user;
+
+    /** @var string the scope to get user info at least the email */
+    protected $authscope;
+
+    /**
+     * The most common API call to get the authenticated user info.
+     * Please fill up $this->oauth2user with the retrieved information - see oauth2user model class.
+     */
+    abstract protected function retrieve_auth_user_info();
+
+    /**
+     * Constructor.
+     *
+     * @param string $clientid
+     * @param string $clientsecret
+     * @param moodle_url $returnurl
+     */
+    public function __construct($clientid, $clientsecret, moodle_url $returnurl) {
+
+        // Check that the scope has been set.
+        if (!isset($this->authscope)) {
+            throw new coding_exception("You forgot to set the scope (\$authscope)
+                - it can be set to '' (i.e empty), but it must be set.");
+        }
+
+        parent::__construct($clientid, $clientsecret, $returnurl, $this->authscope);
+
+        $this->oauth2user = new oauth2user();
     }
 }

@@ -36,6 +36,9 @@ redirect_if_major_upgrade_required();
 
 $testsession = optional_param('testsession', 0, PARAM_INT); // test session works properly
 $cancel      = optional_param('cancel', 0, PARAM_BOOL);      // redirect to frontpage, needed for loginhttps
+$accounttolink = optional_param('accounttolink', '', PARAM_PLUGIN);
+$createorlinkrequest = optional_param('createorlinkrequest', false, PARAM_BOOL);
+$useremailexists = optional_param('useremailexists', false, PARAM_BOOL);
 
 if ($cancel) {
     redirect(new moodle_url('/'));
@@ -53,16 +56,48 @@ $PAGE->set_pagelayout('login');
 $errormsg = '';
 $errorcode = 0;
 
+// Define variables used in page.
+$site = get_site();
+
+$loginsite = get_string("loginsite");
+$PAGE->navbar->add($loginsite);
+
 // login page requested session test
 if ($testsession) {
     if ($testsession == $USER->id) {
-        if (isset($SESSION->wantsurl)) {
-            $urltogo = $SESSION->wantsurl;
+
+        if ($accounttolink) {
+            $PAGE->navbar->add(get_string('linkingaccount', 'auth'));
+            $PAGE->set_title("$site->fullname: $loginsite");
+            $PAGE->set_heading("$site->fullname");
+
+            // Testsession to be passed in login.php.
+            echo $OUTPUT->header();
+
+            $provider = get_auth_plugin($accounttolink);
+
+            // Check that auth plugin is enabled.
+            if (!is_enabled_auth($accounttolink) and $provider instanceof auth_plugin_oauth2) {
+                throw new moodle_exception('oauth2loadfailure', 'auth', '', $accounttolink);
+            }
+
+            $provider->oauth2client->returnurl->param('throwtestsession', $testsession);
+            $provider->oauth2client->returnurl->param('profilelinking', true);
+            $provider->oauth2client->returnurl->param('sesskey', sesskey());
+            $output = $PAGE->get_renderer('core', 'auth');
+            echo $output->linkaccount($provider);
+
+            echo $OUTPUT->footer();
+            die();
         } else {
-            $urltogo = $CFG->wwwroot.'/';
+            if (isset($SESSION->wantsurl)) {
+                $urltogo = $SESSION->wantsurl;
+            } else {
+                $urltogo = $CFG->wwwroot . '/';
+            }
+            unset($SESSION->wantsurl);
+            redirect($urltogo);
         }
-        unset($SESSION->wantsurl);
-        redirect($urltogo);
     } else {
         // TODO: try to find out what is the exact reason why sessions do not work
         $errormsg = get_string("cookiesnotenabled");
@@ -87,13 +122,6 @@ foreach($authsequence as $authname) {
     $authplugin = get_auth_plugin($authname);
     $authplugin->loginpage_hook();
 }
-
-
-/// Define variables used in page
-$site = get_site();
-
-$loginsite = get_string("loginsite");
-$PAGE->navbar->add($loginsite);
 
 if ($user !== false or $frm !== false or $errormsg !== '') {
     // some auth plugin already supplied full user, fake form data or prevented user login with error message
@@ -252,7 +280,11 @@ if ($frm and isset($frm->username)) {                             // Login WITH 
 
         // test the session actually works by redirecting to self
         $SESSION->wantsurl = $urltogo;
-        redirect(new moodle_url(get_login_url(), array('testsession'=>$USER->id)));
+        $params = array('testsession'=>$USER->id);
+        if ($accounttolink) {
+            $params['accounttolink'] = $accounttolink;
+        }
+        redirect(new moodle_url(get_login_url(), $params));
 
     } else {
         if (empty($errormsg)) {
@@ -367,12 +399,32 @@ if (isloggedin() and !isguestuser()) {
     echo $OUTPUT->confirm(get_string('alreadyloggedin', 'error', fullname($USER)), $logout, $continue);
     echo $OUTPUT->box_end();
 } else {
-    include("index_form.html");
-    if ($errormsg) {
-        $PAGE->requires->js_init_call('M.util.focus_login_error', null, true);
-    } else if (!empty($CFG->loginpageautofocus)) {
-        //focus username or password
-        $PAGE->requires->js_init_call('M.util.focus_login_form', null, true);
+    if ($createorlinkrequest) {
+        $authprovider = required_param('authprovider', PARAM_ALPHANUMEXT);
+        $provider = get_auth_plugin($authprovider);
+
+        // Check that auth plugin is enabled.
+        if (!is_enabled_auth($authprovider) and $provider instanceof auth_plugin_oauth2) {
+            throw new moodle_exception('oauth2loadfailure', 'auth', '', $authprovider);
+        }
+
+        $provider->oauth2client->returnurl->param('confirmcreate', true);
+        $output = $PAGE->get_renderer('core', 'auth');
+        if (get_config('auth/' . $provider->shortname, 'createuser')
+                and empty($CFG->authpreventaccountcreation)
+                and !$useremailexists) {
+             echo $output->linkingaccountlink($provider, $frm->username, $errormsg);
+        } else {
+             echo $output->forceaccountlink($provider, $frm->username, $errormsg);
+        }
+    } else {
+        include("index_form.html");
+        if ($errormsg) {
+            $PAGE->requires->js_init_call('M.util.focus_login_error', null, true);
+        } else if (!empty($CFG->loginpageautofocus)) {
+            //focus username or password
+            $PAGE->requires->js_init_call('M.util.focus_login_form', null, true);
+        }
     }
 }
 

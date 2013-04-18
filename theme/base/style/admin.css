@@ -349,3 +349,10 @@
 #core-cache-store-summaries .store-requires-attention {background-color:#ffd3d9;}
 
 .tinymcesubplugins img.icon { padding-top: 0; padding-bottom: 0; }
+
+/** Oauth2 */
+.oauth2setting {margin-bottom: 1em;}
+.oauth2settingrow1 {width: 9em;display: inline-block;vertical-align: top;}
+.oauth2settingrow2 {width: 37em;display: inline-block;margin-right: 1em;vertical-align: top;}
+.oauth2settingrow3 {display: block;vertical-align: top;margin-left: 9em;margin-top: 0.3em;}
+.oauth2settingrow2 input[type="text"] {width: 37em;}

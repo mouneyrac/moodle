@@ -109,7 +109,16 @@ if (!empty($CFG->loginpasswordautocomplete)) {
         <h6><?php print_string('potentialidps', 'auth'); ?></h6>
         <div class="potentialidplist">
 <?php foreach ($potentialidps as $idp) {
-    echo  '<div class="potentialidp"><a href="' . $idp['url']->out() . '" title="' . $idp['name'] . '">' . $OUTPUT->render($idp['icon'], $idp['name']) . $idp['name'] . '</a></div>';
+    if (!empty($idp['icon'])) {
+        $idpicon = $OUTPUT->render($idp['icon'], $idp['name']);
+    } else {
+        if (empty($idp['image'])) {
+            $idpicon = '';
+        } else {
+            $idpicon = html_writer::empty_tag('img', array('src' => $idp['image']->out()));
+        }
+    }
+    echo  '<div class="potentialidp"><a href="' . $idp['url']->out() . '" title="' . $idp['name'] . '">' . $idpicon . '&nbsp;' . $idp['name'] . '</a></div>';
 } ?>
         </div>
     </div>

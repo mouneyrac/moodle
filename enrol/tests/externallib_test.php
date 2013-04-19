@@ -100,6 +100,32 @@ class core_enrol_external_testcase extends externallib_advanced_testcase {
 
         // Check we retrieve the good total number of enrolled users.
         $this->assertEquals(2, count($enrolledincourses));
+
+        // Create a user that is enrolled in a course where $USER is not enrolled.
+        $user1 = self::getDataGenerator()->create_user();
+        $course3 = self::getDataGenerator()->create_course();
+        $this->getDataGenerator()->enrol_user($user1->id, $course3->id, $roleid, 'manual');
+
+        // Call the external function.
+        $enrolledincourses = core_enrol_external::get_users_courses($user1->id);
+
+        // We need to execute the return values cleaning process to simulate the web service server.
+        $enrolledincourses = external_api::clean_returnvalue(core_enrol_external::get_users_courses_returns(), $enrolledincourses);
+
+        // Check we retrieved no user as $USER is not enrolled in $course3.
+        $this->assertEquals(0, count($enrolledincourses));
+
+        // Now we give moodle/site:viewparticipants to $USER.
+        $this->assignUserCapability('moodle/site:viewparticipants', context_system::instance(), $roleid);
+
+        // Call the external function.
+        $enrolledincourses = core_enrol_external::get_users_courses($user1->id);
+
+        // We need to execute the return values cleaning process to simulate the web service server.
+        $enrolledincourses = external_api::clean_returnvalue(core_enrol_external::get_users_courses_returns(), $enrolledincourses);
+
+        // Check we retrieved the user.
+        $this->assertEquals(1, count($enrolledincourses));
     }
 
     /**

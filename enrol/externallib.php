@@ -301,16 +301,21 @@ class core_enrol_external extends external_api {
         $courses = enrol_get_users_courses($params['userid'], true, 'id, shortname, fullname, idnumber, visible');
         $result = array();
 
+        $siteviewparticipants = has_capability('moodle/site:viewparticipants', context_system::instance());
+
         foreach ($courses as $course) {
             $context = context_course::instance($course->id, IGNORE_MISSING);
             try {
                 self::validate_context($context);
             } catch (Exception $e) {
-                // current user can not access this course, sorry we can not disclose who is enrolled in this course!
-                continue;
+                if (!$siteviewparticipants) {
+                    // current user can not access this course, sorry we can not disclose who is enrolled in this course!
+                    continue;
+                }
             }
 
-            if ($userid != $USER->id and !has_capability('moodle/course:viewparticipants', $context)) {
+            if ($userid != $USER->id and !has_capability('moodle/course:viewparticipants', $context)
+                and !$siteviewparticipants) {
                 // we need capability to view participants
                 continue;
             }

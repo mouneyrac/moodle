@@ -7156,7 +7156,7 @@ class admin_setting_enablemobileservice extends admin_setting_configcheckbox {
     public function write_setting($data) {
         global $DB, $CFG;
 
-        //for install cli script, $CFG->defaultuserroleid is not set so do nothing
+        // For install cli script, $CFG->defaultuserroleid is not set so do nothing.
         if (empty($CFG->defaultuserroleid)) {
             return '';
         }
@@ -7168,70 +7168,80 @@ class admin_setting_enablemobileservice extends admin_setting_configcheckbox {
 
         $updateprotocol = false;
         if ((string)$data === $this->yes) {
-             //code run when enable mobile web service
-             //enable web service systeme if necessary
-             set_config('enablewebservices', true);
+            // Code run when enable mobile web service.
+            // Enable web service systeme if necessary.
+            set_config('enablewebservices', true);
 
-             //enable mobile service
-             $mobileservice = $webservicemanager->get_external_service_by_shortname(MOODLE_OFFICIAL_MOBILE_SERVICE);
-             $mobileservice->enabled = 1;
-             $webservicemanager->update_external_service($mobileservice);
+            // Enable mobile service.
+            $mobileservice = $webservicemanager->get_external_service_by_shortname(MOODLE_OFFICIAL_MOBILE_SERVICE);
+            $mobileservice->enabled = 1;
+            $webservicemanager->update_external_service($mobileservice);
 
-             //enable xml-rpc server
+            // Enable iPhone/iPad message output plugin if the plugin is correctly setup.
+            if  (!empty($CFG->airnotifierurl) && !empty($CFG->airnotifierport) &&
+                !empty($CFG->airnotifieraccesskey) && !empty($CFG->airnotifierdeviceaccesskey) &&
+                !empty($CFG->airnotifierappname)) {
+                $DB->set_field('message_processors', 'enabled', '1', array('name' => 'airnotifier'));
+            }
+
+            // Enable xml-rpc server.
+            $activeprotocols = empty($CFG->webserviceprotocols) ? array() : explode(',', $CFG->webserviceprotocols);
+
+            if (!in_array('xmlrpc', $activeprotocols)) {
+             $activeprotocols[] = 'xmlrpc';
+             $updateprotocol = true;
+            }
+
+            if (!in_array('rest', $activeprotocols)) {
+             $activeprotocols[] = 'rest';
+             $updateprotocol = true;
+            }
+
+            if ($updateprotocol) {
+             set_config('webserviceprotocols', implode(',', $activeprotocols));
+            }
+
+            // Allow xml-rpc:use capability for authenticated user.
+            $this->set_protocol_cap(true);
+
+        } else {
+            // Disable web service system if no other services are enabled.
+            $otherenabledservices = $DB->get_records_select('external_services',
+                 'enabled = :enabled AND (shortname != :shortname OR shortname IS NULL)', array('enabled' => 1,
+                     'shortname' => MOODLE_OFFICIAL_MOBILE_SERVICE));
+            if (empty($otherenabledservices)) {
+             set_config('enablewebservices', false);
+
+             // Also disable xml-rpc server.
              $activeprotocols = empty($CFG->webserviceprotocols) ? array() : explode(',', $CFG->webserviceprotocols);
-
-             if (!in_array('xmlrpc', $activeprotocols)) {
-                 $activeprotocols[] = 'xmlrpc';
-                 $updateprotocol = true;
+             $protocolkey = array_search('xmlrpc', $activeprotocols);
+             if ($protocolkey !== false) {
+                unset($activeprotocols[$protocolkey]);
+                $updateprotocol = true;
              }
 
-             if (!in_array('rest', $activeprotocols)) {
-                 $activeprotocols[] = 'rest';
-                 $updateprotocol = true;
+             $protocolkey = array_search('rest', $activeprotocols);
+             if ($protocolkey !== false) {
+                unset($activeprotocols[$protocolkey]);
+                $updateprotocol = true;
              }
 
              if ($updateprotocol) {
-                 set_config('webserviceprotocols', implode(',', $activeprotocols));
+                set_config('webserviceprotocols', implode(',', $activeprotocols));
              }
 
-             //allow xml-rpc:use capability for authenticated user
-             $this->set_protocol_cap(true);
+             // Disallow xml-rpc:use capability for authenticated user.
+             $this->set_protocol_cap(false);
 
-         } else {
-             //disable web service system if no other services are enabled
-             $otherenabledservices = $DB->get_records_select('external_services',
-                     'enabled = :enabled AND (shortname != :shortname OR shortname IS NULL)', array('enabled' => 1,
-                         'shortname' => MOODLE_OFFICIAL_MOBILE_SERVICE));
-             if (empty($otherenabledservices)) {
-                 set_config('enablewebservices', false);
+             // Disable airnotifier messaging output.
+             $DB->set_field('message_processors', 'enabled', '0', array('name' => 'airnotifier'));
+            }
 
-                 //also disable xml-rpc server
-                 $activeprotocols = empty($CFG->webserviceprotocols) ? array() : explode(',', $CFG->webserviceprotocols);
-                 $protocolkey = array_search('xmlrpc', $activeprotocols);
-                 if ($protocolkey !== false) {
-                    unset($activeprotocols[$protocolkey]);
-                    $updateprotocol = true;
-                 }
-
-                 $protocolkey = array_search('rest', $activeprotocols);
-                 if ($protocolkey !== false) {
-                    unset($activeprotocols[$protocolkey]);
-                    $updateprotocol = true;
-                 }
-
-                 if ($updateprotocol) {
-                    set_config('webserviceprotocols', implode(',', $activeprotocols));
-                 }
-
-                 //disallow xml-rpc:use capability for authenticated user
-                 $this->set_protocol_cap(false);
-             }
-
-             //disable the mobile service
-             $mobileservice = $webservicemanager->get_external_service_by_shortname(MOODLE_OFFICIAL_MOBILE_SERVICE);
-             $mobileservice->enabled = 0;
-             $webservicemanager->update_external_service($mobileservice);
-         }
+            // Disable the mobile service.
+            $mobileservice = $webservicemanager->get_external_service_by_shortname(MOODLE_OFFICIAL_MOBILE_SERVICE);
+            $mobileservice->enabled = 0;
+            $webservicemanager->update_external_service($mobileservice);
+        }
 
         return (parent::write_setting($data));
     }

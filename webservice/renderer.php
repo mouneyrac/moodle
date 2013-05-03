@@ -326,7 +326,7 @@ class core_webservice_renderer extends plugin_renderer_base {
 
                 $validuntil = '';
                 if (!empty($token->validuntil)) {
-                    $validuntil = date("F j, Y"); //TODO: language support (look for moodle function)
+                    $validuntil = userdate($token->validuntil, get_string('strftimedatetime', 'langconfig'));
                 }
 
                 $tokenname = $token->name;

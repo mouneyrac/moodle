@@ -312,8 +312,9 @@
 // Resize, reflow file-picker on small devices
    #filesskin .yui3-panel,
    #filesskin .file-picker.fp-generallayout {
-        width: 100%;
-        left: 0;
+        width: 100% !important;
+        left: 0px !important;
+        top: 0px !important;
     }
     .userprofile dl.list {
     // copied from dl-horizontal in bootstrap/repsonsive.less
@@ -376,4 +377,26 @@
   div[role=main] {
       margin-bottom: 2em;
   }
+
+    .file-picker.fp-select {
+     width: 100%;
+     }
+
+     #filesskin .yui3-panel-content {
+        -webkit-border-radius: 0px;
+        -moz-border-radius: 0px;
+        border-radius: 0px;
+     }
+
+     #filesskin .file-picker.fp-generallayout  {
+        -webkit-border-radius: 0px;
+        -moz-border-radius: 0px;
+        border-radius: 0px;
+     }
+
+     .filemanager input[type="text"], .file-picker input[type="text"], .file-picker input[type="select"] {
+     /* 16px is the minimum font size for iOS not zooming the text */
+        font-size:16px;
+    }
+
 }

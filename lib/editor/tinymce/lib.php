@@ -34,6 +34,12 @@ class tinymce_texteditor extends texteditor {
      * @return bool
      */
     public function supported_by_browser() {
+
+        // Disable tinymce for iOS as Moodle+Tinymce+iOS is slow and buggy - see MDL-36803.
+        if (check_browser_version('Safari iOS')) {
+            return false;
+        }
+
         if (check_browser_version('MSIE', 6)) {
             return true;
         }
@@ -47,9 +53,6 @@ class tinymce_texteditor extends texteditor {
             return true;
         }
         if (check_browser_version('Opera', 9)) {
-            return true;
-        }
-        if (check_browser_version('Safari iOS', 534)) {
             return true;
         }
         if (check_browser_version('WebKit', 534)) {

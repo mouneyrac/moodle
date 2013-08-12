@@ -663,7 +663,7 @@ class plugin_manager {
             ),
 
             'assignfeedback' => array(
-                'comments', 'file', 'offline'
+                'comments', 'file', 'offline', 'pdf'
             ),
 
             'auth' => array(

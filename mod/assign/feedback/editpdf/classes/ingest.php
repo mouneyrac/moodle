@@ -1,0 +1,337 @@
+<?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+/**
+ * This file contains the ingest manager for the assignfeedback_editpdf plugin
+ *
+ * @package   assignfeedback_editpdf
+ * @copyright 2012 Davo Smith
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+namespace assignfeedback_editpdf;
+
+/**
+ * This class controls the ingest of student submission files to a normalised
+ * PDF 1.4 document with all submission files concatinated together.
+ */
+class ingest {
+
+    const COMBINED_PDF_FILEAREA = 'combined';
+    const PAGE_IMAGE_FILEAREA = 'pages';
+    const COMBINED_PDF_FILENAME = 'combined.pdf';
+
+    /**
+     * This function will take an int or an assignment instance and
+     * return an assignment instance. It is just for convenience.
+     * @param mixed id or assign class
+     * @return assign
+     */
+    private static function get_assignment_from_param($assignment) {
+        global $CFG;
+
+        require_once($CFG->dirroot . '/mod/assign/locallib.php');
+
+        if (!is_object($assignment)) {
+            $cm = \get_coursemodule_from_instance('assign', $assignment, 0, false, MUST_EXIST);
+            $context = \context_module::instance($cm->id);
+
+            $assignment = new \assign($context, null, null);
+        }
+        return $assignment;
+    }
+
+    /**
+     * Get a hash that will be unique and can be used in a path name.
+     * @param mixed id or assign class
+     * @param int userid
+     * @param int attemptnumber (-1 means latest attempt)
+     */
+    private static function hash($assignment, $userid, $attemptnumber) {
+        if (is_object($assignment)) {
+            $assignmentid = $assignment->get_instance()->id;
+        } else {
+            $assignmentid = $assignment;
+        }
+        return sha1($assignmentid . '_' . $userid . '_' . $attemptnumber);
+    }
+
+    /**
+     * This function will search for all files that can be converted
+     * and concatinated into a PDF (1.4) - for any submission plugin
+     * for this students attempt.
+     * @param mixed id or assign class
+     * @param int userid
+     * @param int attemptnumber (-1 means latest attempt)
+     * @return array(stored_file)
+     */
+    public static function list_compatible_submission_files_for_attempt($assignment, $userid, $attemptnumber) {
+        global $USER, $DB;
+
+        $assignment = self::get_assignment_from_param($assignment);
+
+        // Capability checks.
+        if (!$assignment->can_view_submission($userid)) {
+            \print_error('nopermission');
+        }
+
+        $files = array();
+
+        if ($assignment->get_instance()->teamsubmission) {
+            $submission = $assignment->get_group_submission($userid, 0, false);
+        } else {
+            $submission = $assignment->get_user_submission($userid, false);
+        }
+        $user = $DB->get_record('user', array('id' => $userid));
+
+        // User has not submitted anything yet.
+        if (!$submission) {
+            return $files;
+        }
+        // Ask each plugin for it's list of files.
+        foreach ($assignment->get_submission_plugins() as $plugin) {
+            if ($plugin->is_enabled() && $plugin->is_visible()) {
+                $pluginfiles = $plugin->get_files($submission, $user);
+                foreach ($pluginfiles as $filename => $file) {
+                    if ($file->get_mimetype() === 'application/pdf') {
+                        $files[$filename] = $file;
+                    }
+                }
+            }
+        }
+        return $files;
+    }
+
+    /**
+     * This function return the combined pdf for all valid submission files.
+     * @param mixed id or assign class
+     * @param int userid
+     * @param int attemptnumber (-1 means latest attempt)
+     * @return stored_file
+     */
+    public static function get_combined_pdf_for_attempt($assignment, $userid, $attemptnumber) {
+
+        global $USER, $DB;
+
+        $assignment = self::get_assignment_from_param($assignment);
+
+        // Capability checks.
+        if (!$assignment->can_view_submission($userid)) {
+            \print_error('nopermission');
+        }
+
+        $grade = $assignment->get_user_grade($userid, true);
+        if ($assignment->get_instance()->teamsubmission) {
+            $submission = $assignment->get_group_submission($userid, 0, false);
+        } else {
+            $submission = $assignment->get_user_submission($userid, false);
+        }
+
+        $contextid = $assignment->get_context()->id;
+        $component = 'assignfeedback_editpdf';
+        $filearea = self::COMBINED_PDF_FILEAREA;
+        $itemid = $grade->id;
+        $filepath = '/';
+        $filename = self::COMBINED_PDF_FILENAME;
+        $fs = \get_file_storage();
+
+        $combinedpdf = $fs->get_file($contextid, $component, $filearea, $itemid, $filepath, $filename);
+        if (!$combinedpdf ||
+                ($submission && ($combinedpdf->get_timemodified() < $submission->timemodified))) {
+            return self::generate_combined_pdf_for_attempt($assignment, $userid, $attemptnumber);
+        }
+        return $combinedpdf;
+    }
+
+    /**
+     * This function will take all of the compatible files for a submission
+     * and combine them into one PDF.
+     * @param mixed id or assign class
+     * @param int userid
+     * @param int attemptnumber (-1 means latest attempt)
+     * @return stored_file
+     */
+    public static function generate_combined_pdf_for_attempt($assignment, $userid, $attemptnumber) {
+        global $CFG;
+
+        require_once($CFG->libdir . '/pdflib.php');
+
+        $assignment = self::get_assignment_from_param($assignment);
+
+        if (!$assignment->can_view_submission($userid)) {
+            \print_error('nopermission');
+        }
+
+        $files = self::list_compatible_submission_files_for_attempt($assignment, $userid, $attemptnumber);
+
+        $pdf = new pdf();
+        if (!$files) {
+            // No valid submission files - create an empty pdf.
+            $pdf->AddPage();
+        } else {
+
+            // Create a mega joined PDF.
+            $compatiblepdfs = array();
+            foreach ($files as $file) {
+                $compatiblepdf = pdf::ensure_pdf_compatible($file);
+                if ($compatiblepdf) {
+                    array_push($compatiblepdfs, $compatiblepdf);
+                }
+            }
+
+            $tmpdir = \make_temp_directory('assignfeedback_editpdf/combined/' . self::hash($assignment, $userid, $attemptnumber));
+            $tmpfile = $tmpdir . '/' . self::COMBINED_PDF_FILENAME;
+
+            @unlink($tmpfile);
+            $pagecount = $pdf->combine_pdfs($compatiblepdfs, $tmpfile);
+            if ($pagecount == 0) {
+                // We at least want a single blank page.
+                $pdf->AddPage();
+                @unlink($tmpfile);
+                $files = false;
+            }
+        }
+
+        $grade = $assignment->get_user_grade($userid, true);
+        $record = new \stdClass();
+
+        $record->contextid = $assignment->get_context()->id;
+        $record->component = 'assignfeedback_editpdf';
+        $record->filearea = self::COMBINED_PDF_FILEAREA;
+        $record->itemid = $grade->id;
+        $record->filepath = '/';
+        $record->filename = self::COMBINED_PDF_FILENAME;
+        $fs = \get_file_storage();
+
+        $fs->delete_area_files($record->contextid, $record->component, $record->filearea, $record->itemid);
+
+        if (!$files) {
+            // This was a blank pdf.
+            $content = $pdf->Output(self::COMBINED_PDF_FILENAME, 'S');
+            $file = $fs->create_file_from_string($record, $content);
+        } else {
+            // This was a combined pdf.
+            $file = $fs->create_file_from_pathname($record, $tmpfile);
+            @unlink($tmpfile);
+        }
+
+        return $file;
+    }
+
+    /**
+     * This function will generate and return a list of the page images from a pdf.
+     * @param mixed id or assign class
+     * @param int userid
+     * @param int attemptnumber (-1 means latest attempt)
+     * @return array(stored_file)
+     */
+    public static function generate_page_images_for_attempt($assignment, $userid, $attemptnumber) {
+        global $CFG;
+
+        require_once($CFG->libdir . '/pdflib.php');
+
+        $assignment = self::get_assignment_from_param($assignment);
+
+        if (!$assignment->can_view_submission($userid)) {
+            \print_error('nopermission');
+        }
+
+        // Need to generate the page images - first get a combined pdf.
+        $file = self::get_combined_pdf_for_attempt($assignment, $userid, $attemptnumber);
+        if (!$file) {
+            throw \moodle_exception('Could not generate combined pdf.');
+        }
+
+        $tmpdir = \make_temp_directory('assignfeedback_editpdf/pageimages/' . self::hash($assignment, $userid, $attemptnumber));
+        $combined = $tmpdir . '/' . self::COMBINED_PDF_FILENAME;
+        $file->copy_content_to($combined); // Copy the file.
+
+        $pdf = new pdf();
+
+        $pdf->set_image_folder($tmpdir);
+        $pagecount = $pdf->set_pdf($combined);
+
+        $i = 0;
+        $images = array();
+        for ($i = 0; $i < $pagecount; $i++) {
+            $images[$i] = $pdf->get_image($i);
+        }
+        $grade = $assignment->get_user_grade($userid, true);
+
+        $files = array();
+        $record = new \stdClass();
+        $record->contextid = $assignment->get_context()->id;
+        $record->component = 'assignfeedback_editpdf';
+        $record->filearea = self::PAGE_IMAGE_FILEAREA;
+        $record->itemid = $grade->id;
+        $record->filepath = '/';
+        $fs = \get_file_storage();
+
+        foreach ($images as $index => $image) {
+            $record->filename = basename($image);
+            $files[$index] = $fs->create_file_from_pathname($record, $tmpdir . '/' . $image);
+        }
+
+        return $files;
+    }
+
+    /**
+     * This function returns a list of the page images from a pdf.
+     * @param mixed id or assign class
+     * @param int userid
+     * @param int attemptnumber (-1 means latest attempt)
+     * @return array(stored_file)
+     */
+    public static function get_page_images_for_attempt($assignment, $userid, $attemptnumber) {
+
+        $assignment = self::get_assignment_from_param($assignment);
+
+        if (!$assignment->can_view_submission($userid)) {
+            \print_error('nopermission');
+        }
+
+        if ($assignment->get_instance()->teamsubmission) {
+            $submission = $assignment->get_group_submission($userid, 0, false);
+        } else {
+            $submission = $assignment->get_user_submission($userid, false);
+        }
+        $grade = $assignment->get_user_grade($userid, true);
+
+        $contextid = $assignment->get_context()->id;
+        $component = 'assignfeedback_editpdf';
+        $filearea = self::PAGE_IMAGE_FILEAREA;
+        $itemid = $grade->id;
+        $filepath = '/';
+
+        $fs = \get_file_storage();
+
+        $files = $fs->get_directory_files($contextid, $component, $filearea, $itemid, $filepath);
+
+        if (!empty($files)) {
+            $first = reset($files);
+            if ($first->get_timemodified() < $submission->timemodified) {
+
+                $fs->delete_area_files($contextid, $component, $filearea, $itemid);
+                // Image files are stale - regenerate them.
+                $files = array();
+            } else {
+                return $files;
+            }
+        }
+        return self::generate_page_images_for_attempt($assignment, $userid, $attemptnumber);
+    }
+
+}

@@ -1,0 +1,24 @@
+.assignfeedback_editpdf_widget .toolbar ul {
+    display: none;
+}
+
+.assignfeedback_editpdf_widget .toolbar li {
+    list-style-type: none;
+}
+.assignfeedback_editpdf_widget .drawingcanvas {
+    position: relative;
+    min-width: 817px;
+    min-height: 1169px;
+    cursor: crosshair;
+}
+.assignfeedback_editpdf_widget .navigation select,
+.assignfeedback_editpdf_widget .navigation button {
+    margin: 0px 0px 10px 5px;
+}
+
+.assignfeedback_editpdf_widget .moodle-dialogue-bd,
+.moodle-dialogue-base .moodle-dialogue.assignfeedback_editpdf_widget .moodle-dialogue-content .moodle-dialogue-ft {
+    text-align: center;
+}
+
+

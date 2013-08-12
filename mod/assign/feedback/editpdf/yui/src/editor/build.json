@@ -1,0 +1,10 @@
+{
+  "name": "moodle-assignfeedback_editpdf-editor",
+  "builds": {
+    "moodle-assignfeedback_editpdf-editor": {
+      "jsfiles": [
+        "editor.js"
+      ]
+    }
+  }
+}

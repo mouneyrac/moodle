@@ -6,6 +6,7 @@
         "node",
         "io",
         "graphics",
+        "json",
         "querystring-stringify-simple",
         "moodle-core-notification-dialog",
         "moodle-core-notification-exception",

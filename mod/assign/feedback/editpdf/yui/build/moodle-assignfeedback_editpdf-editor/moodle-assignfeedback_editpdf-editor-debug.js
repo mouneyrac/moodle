@@ -33,6 +33,8 @@ var AJAXBASE = M.cfg.wwwroot + '/mod/assign/feedback/editpdf/ajax.php',
         LOADINGICON : '.' + CSS.DIALOGUE + ' .loading',
         DRAWINGREGION : '.' + CSS.DIALOGUE + ' .drawingregion',
         DRAWINGCANVAS : '.' + CSS.DIALOGUE + ' .drawingcanvas',
+        CANCEL : '.' + CSS.DIALOGUE + ' .cancelbutton',
+        SAVE : '.' + CSS.DIALOGUE + ' .savebutton',
         DIALOGUE : '.' + CSS.DIALOGUE
     };
 /**
@@ -236,7 +238,9 @@ EDITOR.prototype = {
      * @method load_all_pages
      */
     load_all_pages : function() {
-        var ajaxurl = AJAXBASE;
+        var ajaxurl = AJAXBASE,
+            config;
+
         config = {
             method: 'get',
             context: this,
@@ -250,7 +254,6 @@ EDITOR.prototype = {
             },
             on: {
                 success: function(tid, response) {
-                    Y.log(response.responseText);
                     this.all_pages_loaded(response.responseText);
                 },
                 failure: function(tid, response) {
@@ -284,8 +287,74 @@ EDITOR.prototype = {
         // Update the ui.
         this.setup_navigation();
         this.change_page();
+        this.setup_save_cancel();
 
+    },
 
+    /**
+     * Attach listeners and enable the save/cancel buttons.
+     * @protected
+     * @method setup_save_cancel
+     */
+    setup_save_cancel : function() {
+        var cancel = Y.one(SELECTOR.CANCEL),
+            save = Y.one(SELECTOR.SAVE);
+
+        cancel.on('click', this.handle_cancel, this);
+        cancel.on('key', this.handle_cancel, 'down:13', this);
+        cancel.removeAttribute('disabled');
+
+        save.on('click', this.handle_save, this);
+        save.on('key', this.handle_save, 'down:13', this);
+        save.removeAttribute('disabled');
+    },
+
+    /**
+     * Hide the popup - but don't save anything anyqhere.
+     * @protected
+     * @method handle_cancel
+     */
+    handle_cancel : function(e) {
+        e.preventDefault();
+        this.dialogue.hide();
+    },
+
+    /**
+     * Hide the popup - after saving all the edits.
+     * @protected
+     * @method handle_save
+     */
+    handle_save : function(e) {
+        e.preventDefault();
+
+        var ajaxurl = AJAXBASE,
+            config;
+
+        config = {
+            method: 'post',
+            context: this,
+            sync: false,
+            data : {
+                'sesskey' : M.cfg.sesskey,
+                'action' : 'saveallpages',
+                'userid' : this.get('userid'),
+                'attemptnumber' : this.get('attemptnumber'),
+                'assignmentid' : this.get('assignmentid'),
+                'pages' : Y.JSON.stringify(this.pages)
+            },
+            on: {
+                success: function() {
+                    this.dialogue.hide();
+                },
+                failure: function(tid, response) {
+                    return new M.core.ajaxException(response);
+                }
+            }
+        };
+
+        Y.io(ajaxurl, config);
+
+        this.dialogue.hide();
     },
 
     /**
@@ -492,6 +561,10 @@ EDITOR.prototype = {
 
         drawingregion.append(node);
         node.focus();
+        node.on('blur', function() {
+            // Save the changes back to the comment.
+            comment.rawtext = node.getHTML();
+        });
 
         drawable.nodes.push(node);
         return drawable;
@@ -632,6 +705,7 @@ M.assignfeedback_editpdf.editor.init = M.assignfeedback_editpdf.editor.init || f
         "node",
         "io",
         "graphics",
+        "json",
         "querystring-stringify-simple",
         "moodle-core-notification-dialog",
         "moodle-core-notification-exception",

@@ -141,8 +141,10 @@ class assignfeedback_editpdf_renderer extends plugin_renderer_base {
 
         $body .= '<hr/>';
 
-        $footer = html_writer::tag('button', get_string('savechanges'), array('disabled'=>'true'));
-        $footer .= html_writer::tag('button', get_string('cancel'), array('disabled'=>'true'));
+        $attributes = array('disabled'=>'true', 'class'=>'savebutton');
+        $footer = html_writer::tag('button', get_string('savechanges'), $attributes);
+        $attributes = array('disabled'=>'true', 'class'=>'cancelbutton');
+        $footer .= html_writer::tag('button', get_string('cancel'), $attributes);
         $editorparams = array(array('header'=>$header,
                                     'body'=>$body,
                                     'footer'=>$footer,

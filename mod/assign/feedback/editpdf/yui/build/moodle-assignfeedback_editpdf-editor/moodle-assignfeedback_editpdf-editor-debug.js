@@ -1,11 +1,25 @@
 YUI.add('moodle-assignfeedback_editpdf-editor', function (Y, NAME) {
 
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
 /**
  * Provides an in browser PDF editor.
  *
  * @module moodle-assignfeedback_editpdf-editor
  */
-
 
 // Globals
 var AJAXBASE = M.cfg.wwwroot + '/mod/assign/feedback/editpdf/ajax.php',
@@ -260,7 +274,8 @@ EDITOR.prototype = {
         try {
             data = Y.JSON.parse(responsetext);
         } catch (e) {
-            return new M.core.exception(responsetext);
+             this.dialogue.hide();
+             new M.core.exception(responsetext);
         }
 
         this.pagecount = data.pagecount;
@@ -269,6 +284,8 @@ EDITOR.prototype = {
         // Update the ui.
         this.setup_navigation();
         this.change_page();
+
+
     },
 
     /**

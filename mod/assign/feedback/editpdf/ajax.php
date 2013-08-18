@@ -47,7 +47,7 @@ if (!$assignment->can_view_submission($userid)) {
 
 if ($action == 'loadallpages') {
 
-    $pages = \assignfeedback_editpdf\ingest::get_page_images_for_attempt($assignment,
+    $pages = \assignfeedback_editpdf\document_services::get_page_images_for_attempt($assignment,
                                                                          $userid,
                                                                          $attemptnumber);
 
@@ -63,7 +63,7 @@ if ($action == 'loadallpages') {
         $comments = \assignfeedback_editpdf\page_editor::get_comments($grade->id, $index);
         $page->url = moodle_url::make_pluginfile_url($context->id,
                                                      'assignfeedback_editpdf',
-                                                     \assignfeedback_editpdf\ingest::PAGE_IMAGE_FILEAREA,
+                                                     \assignfeedback_editpdf\document_services::PAGE_IMAGE_FILEAREA,
                                                      $grade->id,
                                                      '/',
                                                      $pagefile->get_filename())->out();
@@ -96,6 +96,7 @@ if ($action == 'loadallpages') {
             array_push($response->errors, get_string('couldnotsavepage', 'assignfeedback_editpdf', $index+1));
         }
     }
+    \assignfeedback_editpdf\document_services::generate_feedback_document($assignment, $userid, $attemptnumber);
 
     echo json_encode($response);
     die();

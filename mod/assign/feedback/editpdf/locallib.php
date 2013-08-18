@@ -63,4 +63,27 @@ class assign_feedback_editpdf extends assign_feedback_plugin {
         $mform->addElement('static', 'editpdf', get_string('editpdf', 'assignfeedback_editpdf'), $html);
         $mform->addHelpButton('editpdf', 'editpdf', 'assignfeedback_editpdf');
     }
+
+    /**
+     * Display the list of files in the feedback status table.
+     *
+     * @param stdClass $grade
+     * @return string
+     */
+    public function view_summary(stdClass $grade, & $showviewlink) {
+        $showviewlink = false;
+        return $this->view($grade);
+    }
+
+    /**
+     * Display the list of files in the feedback status table.
+     *
+     * @param stdClass $grade
+     * @return string
+     */
+    public function view(stdClass $grade) {
+        return $this->assignment->render_area_files('assignfeedback_editpdf',
+                                                    \assignfeedback_editpdf\document_services::FINAL_PDF_FILEAREA,
+                                                    $grade->id);
+    }
 }

@@ -26,10 +26,13 @@ namespace assignfeedback_editpdf;
 
 /**
  * This class controls the ingest of student submission files to a normalised
- * PDF 1.4 document with all submission files concatinated together.
+ * PDF 1.4 document with all submission files concatinated together. It also
+ * provides the functions to generate a downloadable pdf with all comments and
+ * annotations embedded.
  */
-class ingest {
+class document_services {
 
+    const FINAL_PDF_FILEAREA = 'download';
     const COMBINED_PDF_FILEAREA = 'combined';
     const PAGE_IMAGE_FILEAREA = 'pages';
     const COMBINED_PDF_FILENAME = 'combined.pdf';
@@ -283,7 +286,10 @@ class ingest {
         foreach ($images as $index => $image) {
             $record->filename = basename($image);
             $files[$index] = $fs->create_file_from_pathname($record, $tmpdir . '/' . $image);
+            @unlink($tmpdir . '/' . $image);
         }
+        @unlink($combined);
+        @rmdir($tmpdir);
 
         return $files;
     }
@@ -332,6 +338,129 @@ class ingest {
             }
         }
         return self::generate_page_images_for_attempt($assignment, $userid, $attemptnumber);
+    }
+
+    /**
+     * This function takes the combined pdf and embeds all the comments and annotations.
+     * @param mixed id or assign class
+     * @param int userid
+     * @param int attemptnumber (-1 means latest attempt)
+     * @return array(stored_file)
+     */
+    public static function generate_feedback_document($assignment, $userid, $attemptnumber) {
+
+        $assignment = self::get_assignment_from_param($assignment);
+
+        if (!$assignment->can_view_submission($userid)) {
+            \print_error('nopermission');
+        }
+
+        // Need to generate the page images - first get a combined pdf.
+        $file = self::get_combined_pdf_for_attempt($assignment, $userid, $attemptnumber);
+        if (!$file) {
+            throw \moodle_exception('Could not generate combined pdf.');
+        }
+
+        $tmpdir = \make_temp_directory('assignfeedback_editpdf/final/' . self::hash($assignment, $userid, $attemptnumber));
+        $combined = $tmpdir . '/' . self::COMBINED_PDF_FILENAME;
+        $file->copy_content_to($combined); // Copy the file.
+
+        $pdf = new pdf();
+
+        $pagecount = $pdf->set_pdf($combined);
+        $grade = $assignment->get_user_grade($userid, true);
+
+        for ($i = 0; $i < $pagecount; $i++) {
+            $pdf->copy_page();
+            $comments = page_editor::get_comments($grade->id, $i);
+            $annotations = page_editor::get_annotations($grade->id, $i);
+
+            foreach ($comments as $comment) {
+                $pdf->add_comment($comment->rawtext,
+                                  $comment->x,
+                                  $comment->y,
+                                  $comment->width,
+                                  $comment->fgcolour,
+                                  $comment->bgcolour);
+            }
+
+            foreach ($annotations as $annotation) {
+                $pdf->add_annotation($annotation->x,
+                                     $annotation->y,
+                                     $annotation->endx,
+                                     $annotation->endy,
+                                     $annotation->fgcolour,
+                                     $annotation->bgcolour,
+                                     $annotation->type,
+                                     $annotation->path);
+            }
+        }
+
+
+
+
+        $generatedpdf = $tmpdir . '/' . get_string('downloadablefilename', 'assignfeedback_editpdf');
+        $pdf->save_pdf($generatedpdf);
+
+        $filename = get_string('downloadablefilename', 'assignfeedback_editpdf');
+
+        $record = new \stdClass();
+
+        $record->contextid = $assignment->get_context()->id;
+        $record->component = 'assignfeedback_editpdf';
+        $record->filearea = self::FINAL_PDF_FILEAREA;
+        $record->itemid = $grade->id;
+        $record->filepath = '/';
+        $fs = \get_file_storage();
+
+        $record->filename = $fs->get_unused_filename($record->contextid,
+                                                     $record->component,
+                                                     $record->filearea,
+                                                     $record->itemid,
+                                                     $record->filepath,
+                                                     $filename);
+
+        $file = $fs->create_file_from_pathname($record, $generatedpdf);
+
+        // Cleanup.
+        @unlink($generatedpdf);
+        @unlink($combined);
+        @rmdir($tmpdir);
+
+        return $file;
+    }
+
+
+    /**
+     * This function takes the combined pdf and embeds all the comments and annotations.
+     * @param mixed id or assign class
+     * @param int userid
+     * @param int attemptnumber (-1 means latest attempt)
+     * @return array(stored_file)
+     */
+    public static function get_feedback_documents($assignment, $userid, $attemptnumber) {
+
+        $assignment = self::get_assignment_from_param($assignment);
+
+        if (!$assignment->can_view_submission($userid)) {
+            \print_error('nopermission');
+        }
+
+        $grade = $assignment->get_user_grade($userid, true);
+
+        $contextid = $assignment->get_context()->id;
+        $component = 'assignfeedback_editpdf';
+        $filearea = self::FINAL_PDF_FILEAREA;
+        $itemid = $grade->id;
+        $filepath = '/';
+
+        $fs = \get_file_storage();
+        return $fs->get_area_files($contextid,
+                                   $component,
+                                   $filearea,
+                                   $itemid,
+                                   "itemid, filepath, filename",
+                                   false);
     }
 
 }

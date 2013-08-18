@@ -188,11 +188,11 @@ class pdf extends \FPDI {
      * @param $colour string optional the background colour of the comment (red, yellow, green, blue, white, clear)
      * @return bool true if successful (always)
      */
-    public function add_comment($text, $x, $y, $width, $colour = 'yellow') {
+    public function add_comment($text, $x, $y, $width, $colour = 'black', $bgcolour = 'yellow') {
         if (!$this->filename) {
             return false;
         }
-        switch ($colour) {
+        switch ($bgcolour) {
             case 'red':
                 $this->SetFillColor(255, 176, 176);
                 break;
@@ -243,7 +243,7 @@ class pdf extends \FPDI {
      *              the line, for 'stamp' annotations it is the name of the stamp file (without the path)
      * @return bool true if successful (always)
      */
-    public function add_annotation($sx, $sy, $ex, $ey, $colour = 'red', $type = 'line', $path = null) {
+    public function add_annotation($sx, $sy, $ex, $ey, $colour = 'red', $bgcolour = 'black', $type = 'line', $path = null) {
         global $CFG;
         if (!$this->filename) {
             return false;

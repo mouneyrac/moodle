@@ -257,7 +257,7 @@ EDITOR.prototype = {
                     this.all_pages_loaded(response.responseText);
                 },
                 failure: function(tid, response) {
-                    return new M.core.ajaxException(response);
+                    return M.core.exception(response.responseText);
                 }
             }
         };
@@ -278,7 +278,7 @@ EDITOR.prototype = {
             data = Y.JSON.parse(responsetext);
         } catch (e) {
              this.dialogue.hide();
-             new M.core.exception(responsetext);
+             return new M.core.exception(e);
         }
 
         this.pagecount = data.pagecount;
@@ -343,18 +343,27 @@ EDITOR.prototype = {
                 'pages' : Y.JSON.stringify(this.pages)
             },
             on: {
-                success: function() {
-                    this.dialogue.hide();
+                success: function(tid, response) {
+                    var jsondata;
+                    Y.log(response.responseText);
+                    try {
+                        jsondata = Y.JSON.parse(response.responseText);
+                        if (jsondata.error) {
+                            return new M.core.ajaxException(jsondata);
+                        } else {
+                            this.dialogue.hide();
+                        }
+                    } catch (e) {
+                        return new M.core.exception(e);
+                    }
                 },
                 failure: function(tid, response) {
-                    return new M.core.ajaxException(response);
+                    return M.core.exception(response.responseText);
                 }
             }
         };
 
         Y.io(ajaxurl, config);
-
-        this.dialogue.hide();
     },
 
     /**
@@ -493,8 +502,8 @@ EDITOR.prototype = {
         if (this.currenttool === 'comment') {
             data = {
                 gradeid : this.get('gradeid'),
-                posx : x,
-                posy : y,
+                x : x,
+                y : y,
                 width : width,
                 rawtext : '',
                 pageno : this.currentpage,
@@ -549,8 +558,8 @@ EDITOR.prototype = {
         }
         node.setStyles({
             position: 'absolute',
-            left: (comment.posx + offsetleft) + 'px',
-            top: (comment.posy + offsettop) + 'px',
+            left: (parseInt(comment.x, 10) + offsetleft) + 'px',
+            top: (parseInt(comment.y, 10) + offsettop) + 'px',
             width: comment.width + 'px',
             backgroundColor: comment.bgcolour,
             color: comment.fgcolour,
@@ -560,6 +569,7 @@ EDITOR.prototype = {
         });
 
         drawingregion.append(node);
+        node.setHTML(comment.rawtext);
         node.focus();
         node.on('blur', function() {
             // Save the changes back to the comment.
@@ -576,20 +586,23 @@ EDITOR.prototype = {
      * @method all_pages_loaded
      */
     change_page : function() {
-        var drawingcanvas = Y.one(SELECTOR.DRAWINGCANVAS), i;
+        var drawingcanvas = Y.one(SELECTOR.DRAWINGCANVAS),
+            i,
+            page;
 
+        page = this.pages[this.currentpage];
         this.loadingicon.hide();
-        drawingcanvas.setStyle('backgroundImage', 'url("' + this.pages[this.currentpage].url + '")');
+        drawingcanvas.setStyle('backgroundImage', 'url("' + page.url + '")');
 
         while (this.drawables.length > 0) {
             this.erase_drawable(this.drawables.pop());
         }
 
-        for (i = 0; i < this.pages[this.currentpage].annotations.length; i++) {
-            this.drawables.push(this.draw_annotation(this.pages[this.currentpage].annotations[i]));
+        for (i = 0; i < page.annotations.length; i++) {
+            this.drawables.push(this.draw_annotation(page.annotations[i]));
         }
-        for (i = 0; i < this.pages[this.currentpage].comments.length; i++) {
-            this.drawables.push(this.draw_comment(this.pages[this.currentpage].comments[i]));
+        for (i = 0; i < page.comments.length; i++) {
+            this.drawables.push(this.draw_comment(page.comments[i]));
         }
 
     },

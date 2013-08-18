@@ -27,7 +27,7 @@ namespace assignfeedback_editpdf;
 /**
  * This class adds and removes annotations from a page of a response.
  */
-class annotation extends stdClass {
+class annotation extends \stdClass {
 
     /** @var int unique id for this annotation */
     public $id = 0;
@@ -53,8 +53,11 @@ class annotation extends stdClass {
     /** @var string path information for drawing the annotation. */
     public $path = '';
 
-    /** @var string colour - One of red, yellow, green, blue, white, black */
-    public $colour = 'black';
+    /** @var string fgcolour - One of red, yellow, green, blue, white, black */
+    public $fgcolour = 'black';
+
+    /** @var string bgcolour - One of red, yellow, green, blue, white, black */
+    public $bgcolour = 'yellow';
 
     /** @var string type - One of line, oval, rect, etc */
     public $type = 'line';

@@ -49,15 +49,40 @@ class page_editor {
     }
 
     /**
+     * Set all comments for a page.
+     * @param int gradeid
+     * @param int pageno
+     * @param comment[]
+     * @return int - the number of comments.
+     */
+    public static function set_comments($gradeid, $pageno, $comments) {
+        global $DB;
+
+        $DB->delete_records('assignfeedback_editpdf_cmnt', array('gradeid'=>$gradeid, 'pageno'=>$pageno));
+        $added = 0;
+        foreach ($comments as $record) {
+            // Force these.
+            $comment = self::comment_from_record($record);
+            $comment->gradeid = $gradeid;
+            $comment->pageno = $pageno;
+            if (self::add_comment($comment)) {
+                $added++;
+            }
+        }
+
+        return $added;
+    }
+
+    /**
      * Convert a compatible stdClass into an instance of a comment.
      * @param int gradeid
      * @param int pageno
      * @return array(comment)
      */
-    public static function comment_from_record(stdClass $record) {
+    public static function comment_from_record(\stdClass $record) {
         $comment = new comment();
         foreach ($comment as $key => $value) {
-            $comment->$key = $record->key;
+            $comment->$key = $record->$key;
         }
         return $comment;
     }
@@ -83,6 +108,7 @@ class page_editor {
      * @return bool
      */
     public static function add_comment(comment $comment) {
+        global $DB;
         $comment->id = null;
         return $DB->insert_record('assignfeedback_editpdf_cmnt', $comment);
     }
@@ -93,6 +119,7 @@ class page_editor {
      * @return bool
      */
     public static function remove_comment($commentid) {
+        global $DB;
         return $DB->delete_record('assignfeedback_editpdf_cmnt', array('id'=>$commentid));
     }
 
@@ -115,12 +142,38 @@ class page_editor {
     }
 
     /**
+     * Set all annotations for a page.
+     * @param int gradeid
+     * @param int pageno
+     * @param annotation[]
+     * @return int - the number of annotations.
+     */
+    public static function set_annotations($gradeid, $pageno, $annotations) {
+        global $DB;
+
+        $DB->delete_records('assignfeedback_editpdf_annot', array('gradeid'=>$gradeid, 'pageno'=>$pageno));
+        $added = 0;
+        foreach ($annotations as $annotation) {
+            // Force these.
+            $annotation = self::annotation_from_record($annotation);
+            $annotation->gradeid = $gradeid;
+            $annotation->pageno = $pageno;
+            if (self::add_annotation($annotation)) {
+                $added++;
+            }
+        }
+
+        return $added;
+    }
+
+
+    /**
      * Convert a compatible stdClass into an instance of a annotation.
      * @param int gradeid
      * @param int pageno
      * @return annotation
      */
-    public static function annotation_from_record(stdClass $record) {
+    public static function annotation_from_record(\stdClass $record) {
         $annotation = new annotation();
         foreach ($annotation as $key => $value) {
             $annotation->$key = $record->key;
@@ -134,6 +187,8 @@ class page_editor {
      * @return annotation or false
      */
     public static function get_annotation($annotationid) {
+        global $DB;
+
         $record = $DB->get_record('assignfeedback_editpdf_annot', array('id'=>$annotationid), '*', IGNORE_MISSING);
         if ($record) {
             return self::annotation_from_record($record);
@@ -149,6 +204,8 @@ class page_editor {
      * @return bool
      */
     public static function add_annotation(annotation $annotation) {
+        global $DB;
+
         $annotation->id = null;
         return $DB->insert_record('assignfeedback_editpdf_annot', $annotation);
     }
@@ -159,6 +216,8 @@ class page_editor {
      * @return bool
      */
     public static function remove_annotation($annotationid) {
+        global $DB;
+
         return $DB->delete_record('assignfeedback_editpdf_annot', array('id'=>$annotationid));
     }
 }

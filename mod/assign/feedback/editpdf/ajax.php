@@ -32,20 +32,20 @@ require_once($CFG->dirroot . '/mod/assign/locallib.php');
 require_sesskey();
 
 $action = optional_param('action', '', PARAM_ALPHANUM);
+$assignmentid = required_param('assignmentid', PARAM_INT);
+$userid = required_param('userid', PARAM_INT);
+$attemptnumber = required_param('attemptnumber', PARAM_INT);
+
+$cm = \get_coursemodule_from_instance('assign', $assignmentid, 0, false, MUST_EXIST);
+$context = \context_module::instance($cm->id);
+
+$assignment = new \assign($context, null, null);
+
+if (!$assignment->can_view_submission($userid)) {
+    print_error('nopermission');
+}
 
 if ($action == 'loadallpages') {
-    $assignmentid = required_param('assignmentid', PARAM_INT);
-    $userid = required_param('userid', PARAM_INT);
-    $attemptnumber = required_param('attemptnumber', PARAM_INT);
-
-    $cm = \get_coursemodule_from_instance('assign', $assignmentid, 0, false, MUST_EXIST);
-    $context = \context_module::instance($cm->id);
-
-    $assignment = new \assign($context, null, null);
-
-    if (!$assignment->can_view_submission($userid)) {
-        print_error('nopermission');
-    }
 
     $pages = \assignfeedback_editpdf\ingest::get_page_images_for_attempt($assignment,
                                                                          $userid,
@@ -75,5 +75,30 @@ if ($action == 'loadallpages') {
 
     echo json_encode($response);
     die();
+} else if ($action == 'saveallpages') {
+    require_capability('mod/assign:grade', $context);
+
+    $response = new stdClass();
+    $response->errors = array();
+
+    $grade = $assignment->get_user_grade($userid, true);
+
+    $pagesjson = required_param('pages', PARAM_RAW);
+    $pages = json_decode($pagesjson);
+
+    foreach ($pages as $index => $page) {
+        $added = \assignfeedback_editpdf\page_editor::set_comments($grade->id, $index, $page->comments);
+        if ($added != count($page->comments)) {
+            array_push($response->errors, get_string('couldnotsavepage', 'assignfeedback_editpdf', $index+1));
+        }
+        $added = \assignfeedback_editpdf\page_editor::set_annotations($grade->id, $index, $page->annotations);
+        if ($added != count($page->annotations)) {
+            array_push($response->errors, get_string('couldnotsavepage', 'assignfeedback_editpdf', $index+1));
+        }
+    }
+
+    echo json_encode($response);
+    die();
+
 }
 

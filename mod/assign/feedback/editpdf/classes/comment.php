@@ -27,7 +27,7 @@ namespace assignfeedback_editpdf;
 /**
  * This class represents a comment box on a page of feedback.
  */
-class comment extends stdClass {
+class comment extends \stdClass {
 
     /** @var int unique id for this annotation */
     public $id = 0;

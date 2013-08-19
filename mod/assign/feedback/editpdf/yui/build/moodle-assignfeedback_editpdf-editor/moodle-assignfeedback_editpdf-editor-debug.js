@@ -374,8 +374,10 @@ EDITOR.prototype = {
      */
     edit_start : function(e) {
         var offset = Y.one(SELECTOR.DRAWINGCANVAS).getXY(),
-            point = {x : e.clientX - offset[0],
-                     y : e.clientY - offset[1]};
+            scrolltop = document.body.scrollTop,
+            scrollleft = document.body.scrollLeft,
+            point = {x : e.clientX - offset[0] + scrollleft,
+                     y : e.clientY - offset[1] + scrolltop};
 
         this.currentedit.start = point;
     },
@@ -462,8 +464,11 @@ EDITOR.prototype = {
      */
     edit_move : function(e) {
         var offset = Y.one(SELECTOR.DRAWINGCANVAS).getXY(),
-            point = {x : e.clientX - offset[0],
-                     y : e.clientY - offset[1]};
+            scrolltop = document.body.scrollTop,
+            scrollleft = document.body.scrollLeft,
+            point = {x : e.clientX - offset[0] + scrollleft,
+                     y : e.clientY - offset[1] + scrolltop};
+
         if (this.currentedit.start) {
             this.currentedit.end = point;
             this.redraw_current_edit();

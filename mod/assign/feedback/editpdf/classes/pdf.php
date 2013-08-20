@@ -220,9 +220,6 @@ class pdf extends \FPDI {
         $this->MultiCell($width, 1.0, $text, 0, 'L', 0, 1, $x, $y); /* width, height, text, border, justify, fill, ln, x, y */
         if ($colour != 'clear') {
             $newy = $this->GetY();
-            if (($newy - $y)<(24.0 * $this->scale)) { /* Single line comment (ie less than 2*text height) */
-                $width = $this->GetStringWidth($text) + 4.0; /* Resize box to the length of the text + 2 line widths */
-            }
             // Now we know the final size of the comment, draw a rectangle with the background colour.
             $this->Rect($x, $y, $width, $newy - $y, 'DF');
             // Re-draw the text over the top of the background rectangle.

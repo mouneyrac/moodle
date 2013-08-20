@@ -594,6 +594,8 @@ EDITOR.prototype = {
         node.on('blur', function() {
             // Save the changes back to the comment.
             comment.rawtext = node.get('value');
+            comment.width = parseInt(node.getStyle('width'), 10);
+            debugger;
             if (comment.rawtext === '') {
                 // Delete empty comments.
                 this.delete_comment(comment);

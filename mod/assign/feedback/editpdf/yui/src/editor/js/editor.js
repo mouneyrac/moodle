@@ -34,6 +34,13 @@ var AJAXBASE = M.cfg.wwwroot + '/mod/assign/feedback/editpdf/ajax.php',
         CANCEL : '.' + CSS.DIALOGUE + ' .cancelbutton',
         SAVE : '.' + CSS.DIALOGUE + ' .savebutton',
         DIALOGUE : '.' + CSS.DIALOGUE
+    },
+    COLOUR = {
+        'red' : 'rgb(255,176,176)',
+        'green' : 'rgb(176,255,176)',
+        'blue' : 'rgb(208,208,255)',
+        'white' : 'rgb(255,255,255)',
+        'yellow' : 'rgb(255,255,176)'
     };
 /**
  * Drawable
@@ -131,20 +138,12 @@ EDITOR.prototype = {
     graphic : null,
 
     /**
-     * Foreground colour.
+     * Current colour.
      * @property type
      * @type string
      * @protected
      */
-    currentfgcolour : 'black',
-
-    /**
-     * Background colour.
-     * @property type
-     * @type string
-     * @protected
-     */
-    currentbgcolour : 'yellow',
+    currentcolour : 'yellow',
 
     /**
      * Selected tool
@@ -416,7 +415,7 @@ EDITOR.prototype = {
                 width: width,
                 height: height,
                 fill: {
-                   color: this.currentbgcolour
+                   color: COLOUR[this.currentcolour]
                 },
                 x: x,
                 y: y
@@ -510,8 +509,7 @@ EDITOR.prototype = {
                 width : width,
                 rawtext : '',
                 pageno : this.currentpage,
-                bgcolour : this.currentbgcolour,
-                fgcolour : this.currentfgcolour
+                colour : this.currentcolour
             };
 
             this.pages[this.currentpage].comments.push(data);
@@ -536,6 +534,25 @@ EDITOR.prototype = {
         var drawable = new Drawable();
 
         return drawable;
+    },
+
+    /**
+     * Delete a comment from the current page.
+     * @protected
+     * @method delete_comment
+     * @param comment
+     */
+    delete_comment : function(comment) {
+        var i = 0, comments;
+
+        comments = this.pages[this.currentpage].comments;
+        for (i = 0; i < comments.length; i++) {
+            if (comments[i] === comment) {
+                comments.splice(i, 1);
+                this.change_page();
+                return;
+            }
+        }
     },
 
     /**
@@ -564,22 +581,27 @@ EDITOR.prototype = {
             left: (parseInt(comment.x, 10) + offsetleft) + 'px',
             top: (parseInt(comment.y, 10) + offsettop) + 'px',
             width: comment.width + 'px',
-            backgroundColor: comment.bgcolour,
-            color: comment.fgcolour,
+            backgroundColor: COLOUR[comment.colour],
+            color: 'black',
             border: '2px solid black',
-            fontSize: '16pt',
+            fontSize: '12pt',
+            fontFamily: 'helvetica',
             minHeight: '1.2em'
         });
 
         drawingregion.append(node);
-        node.setHTML(comment.rawtext);
+        drawable.nodes.push(node);
+        node.set('value', comment.rawtext);
         node.focus();
         node.on('blur', function() {
             // Save the changes back to the comment.
             comment.rawtext = node.get('value');
-        });
+            if (comment.rawtext === '') {
+                // Delete empty comments.
+                this.delete_comment(comment);
+            }
+        }, this);
 
-        drawable.nodes.push(node);
         return drawable;
     },
 

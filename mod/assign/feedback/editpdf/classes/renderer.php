@@ -89,22 +89,7 @@ class assignfeedback_editpdf_renderer extends plugin_renderer_base {
 
         $toolbar = '';
         // Foreground colour chooser.
-        $toolbar .= $this->render_toolbar_button('yellowline', 'fgcolour', true);
-
-        $colourlist = html_writer::start_tag('ul');
-        $colourlist .= html_writer::tag('li', $this->render_toolbar_button('redline', 'red'));
-        $colourlist .= html_writer::tag('li', $this->render_toolbar_button('blueline', 'blue'));
-        $colourlist .= html_writer::tag('li', $this->render_toolbar_button('greenline', 'green'));
-        $colourlist .= html_writer::tag('li', $this->render_toolbar_button('yellowline', 'yellow'));
-        $colourlist .= html_writer::tag('li', $this->render_toolbar_button('whiteline', 'white'));
-        $colourlist .= html_writer::tag('li', $this->render_toolbar_button('blackline', 'black'));
-
-        $colourlist .= html_writer::end_tag('ul');
-
-        $toolbar .= $colourlist;
-
-        // Background colour chooser.
-        $toolbar .= $this->render_toolbar_button('yellow', 'bgcolour', true);
+        $toolbar .= $this->render_toolbar_button('yellow', 'colour', true);
 
         $colourlist = html_writer::start_tag('ul');
         $colourlist .= html_writer::tag('li', $this->render_toolbar_button('red', 'red'));
@@ -112,7 +97,6 @@ class assignfeedback_editpdf_renderer extends plugin_renderer_base {
         $colourlist .= html_writer::tag('li', $this->render_toolbar_button('green', 'green'));
         $colourlist .= html_writer::tag('li', $this->render_toolbar_button('yellow', 'yellow'));
         $colourlist .= html_writer::tag('li', $this->render_toolbar_button('white', 'white'));
-        $colourlist .= html_writer::tag('li', $this->render_toolbar_button('black', 'black'));
 
         $colourlist .= html_writer::end_tag('ul');
 

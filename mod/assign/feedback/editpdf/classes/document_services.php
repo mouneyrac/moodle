@@ -380,8 +380,7 @@ class document_services {
                                   $comment->x,
                                   $comment->y,
                                   $comment->width,
-                                  $comment->fgcolour,
-                                  $comment->bgcolour);
+                                  $comment->colour);
             }
 
             foreach ($annotations as $annotation) {
@@ -389,8 +388,7 @@ class document_services {
                                      $annotation->y,
                                      $annotation->endx,
                                      $annotation->endy,
-                                     $annotation->fgcolour,
-                                     $annotation->bgcolour,
+                                     $annotation->colour,
                                      $annotation->type,
                                      $annotation->path);
             }

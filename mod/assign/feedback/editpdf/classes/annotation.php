@@ -53,11 +53,8 @@ class annotation extends \stdClass {
     /** @var string path information for drawing the annotation. */
     public $path = '';
 
-    /** @var string fgcolour - One of red, yellow, green, blue, white, black */
-    public $fgcolour = 'black';
-
-    /** @var string bgcolour - One of red, yellow, green, blue, white, black */
-    public $bgcolour = 'yellow';
+    /** @var string colour - One of red, yellow, green, blue, white */
+    public $colour = 'yellow';
 
     /** @var string type - One of line, oval, rect, etc */
     public $type = 'line';

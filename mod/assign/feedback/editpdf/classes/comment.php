@@ -50,9 +50,7 @@ class comment extends \stdClass {
     /** @var string The comment text. */
     public $rawtext = '';
 
-    /** @var string fgcolour - One of red, yellow, green, blue, white, black */
-    public $fgcolour = 'black';
+    /** @var string colour - One of red, yellow, green, blue, white */
+    public $colour = 'yellow';
 
-    /** @var string bgcolour - One of red, yellow, green, blue, white, black */
-    public $bgcolour = 'yellow';
 }

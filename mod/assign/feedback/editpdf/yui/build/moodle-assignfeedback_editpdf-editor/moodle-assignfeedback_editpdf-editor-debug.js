@@ -557,7 +557,7 @@ EDITOR.prototype = {
             offsettop = offsetcanvas[1] - offsetdialogue[1];
 
         // Lets add a contenteditable div.
-        node = Y.Node.create('<div contenteditable="true"/>');
+        node = Y.Node.create('<textarea/>');
         if (comment.width < 60) {
             comment.width = 60;
         }
@@ -578,7 +578,7 @@ EDITOR.prototype = {
         node.focus();
         node.on('blur', function() {
             // Save the changes back to the comment.
-            comment.rawtext = node.getHTML();
+            comment.rawtext = node.get('value');
         });
 
         drawable.nodes.push(node);

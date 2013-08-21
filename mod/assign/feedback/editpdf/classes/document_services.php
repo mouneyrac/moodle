@@ -136,7 +136,7 @@ class document_services {
             \print_error('nopermission');
         }
 
-        $grade = $assignment->get_user_grade($userid, true);
+        $grade = $assignment->get_user_grade($userid, true, $attemptnumber);
         if ($assignment->get_instance()->teamsubmission) {
             $submission = $assignment->get_group_submission($userid, 0, false);
         } else {
@@ -208,7 +208,7 @@ class document_services {
             }
         }
 
-        $grade = $assignment->get_user_grade($userid, true);
+        $grade = $assignment->get_user_grade($userid, true, $attemptnumber);
         $record = new \stdClass();
 
         $record->contextid = $assignment->get_context()->id;
@@ -272,7 +272,7 @@ class document_services {
         for ($i = 0; $i < $pagecount; $i++) {
             $images[$i] = $pdf->get_image($i);
         }
-        $grade = $assignment->get_user_grade($userid, true);
+        $grade = $assignment->get_user_grade($userid, true, $attemptnumber);
 
         $files = array();
         $record = new \stdClass();
@@ -314,7 +314,7 @@ class document_services {
         } else {
             $submission = $assignment->get_user_submission($userid, false);
         }
-        $grade = $assignment->get_user_grade($userid, true);
+        $grade = $assignment->get_user_grade($userid, true, $attemptnumber);
 
         $contextid = $assignment->get_context()->id;
         $component = 'assignfeedback_editpdf';
@@ -341,17 +341,55 @@ class document_services {
     }
 
     /**
+     * This function returns sensible filename for a feedback file.
+     * @param mixed id or assign class
+     * @param int userid
+     * @param int attemptnumber (-1 means latest attempt)
+     * @return string
+     */
+    protected static function get_downloadable_feedback_filename($assignment, $userid, $attemptnumber) {
+        global $DB;
+
+        $assignment = self::get_assignment_from_param($assignment);
+
+        $groupmode = groups_get_activity_groupmode($assignment->get_course_module());
+        $groupname = '';
+        if ($groupmode) {
+            $groupid = groups_get_activity_group($assignment->get_course_module(), true);
+            $groupname = groups_get_group_name($groupid).'-';
+        }
+        $grade = $assignment->get_user_grade($userid, true, $attemptnumber);
+        $user = $DB->get_record('user', array('id'=>$userid), '*', MUST_EXIST);
+
+        if ($assignment->is_blind_marking()) {
+            $prefix = $groupname . get_string('participant', 'assign');
+            $prefix = str_replace('_', ' ', $prefix);
+            $prefix = clean_filename($prefix . '_' . $assignment->get_uniqueid_for_user($userid) . '_');
+        } else {
+            $prefix = $groupname . fullname($user);
+            $prefix = str_replace('_', ' ', $prefix);
+            $prefix = clean_filename($prefix . '_' . $assignment->get_uniqueid_for_user($userid) . '_');
+        }
+        $prefix .= $grade->attemptnumber;
+
+        return $prefix . '.pdf';
+    }
+
+    /**
      * This function takes the combined pdf and embeds all the comments and annotations.
      * @param mixed id or assign class
      * @param int userid
      * @param int attemptnumber (-1 means latest attempt)
-     * @return array(stored_file)
+     * @return stored_file
      */
     public static function generate_feedback_document($assignment, $userid, $attemptnumber) {
 
         $assignment = self::get_assignment_from_param($assignment);
 
         if (!$assignment->can_view_submission($userid)) {
+            \print_error('nopermission');
+        }
+        if (!$assignment->can_grade()) {
             \print_error('nopermission');
         }
 
@@ -368,7 +406,7 @@ class document_services {
         $pdf = new pdf();
 
         $pagecount = $pdf->set_pdf($combined);
-        $grade = $assignment->get_user_grade($userid, true);
+        $grade = $assignment->get_user_grade($userid, true, $attemptnumber);
 
         for ($i = 0; $i < $pagecount; $i++) {
             $pdf->copy_page();
@@ -396,11 +434,12 @@ class document_services {
 
 
 
+        $filename = self::get_downloadable_feedback_filename($assignment, $userid, $attemptnumber);
+        $filename = clean_param($filename, PARAM_FILE);
 
-        $generatedpdf = $tmpdir . '/' . get_string('downloadablefilename', 'assignfeedback_editpdf');
+        $generatedpdf = $tmpdir . '/' . $filename;
         $pdf->save_pdf($generatedpdf);
 
-        $filename = get_string('downloadablefilename', 'assignfeedback_editpdf');
 
         $record = new \stdClass();
 
@@ -409,14 +448,12 @@ class document_services {
         $record->filearea = self::FINAL_PDF_FILEAREA;
         $record->itemid = $grade->id;
         $record->filepath = '/';
+        $record->filename = $filename;
+
         $fs = \get_file_storage();
 
-        $record->filename = $fs->get_unused_filename($record->contextid,
-                                                     $record->component,
-                                                     $record->filearea,
-                                                     $record->itemid,
-                                                     $record->filepath,
-                                                     $filename);
+        // Only keep one current version of the generated pdf.
+        $fs->delete_area_files($record->contextid, $record->component, $record->filearea, $record->itemid);
 
         $file = $fs->create_file_from_pathname($record, $generatedpdf);
 
@@ -428,15 +465,14 @@ class document_services {
         return $file;
     }
 
-
     /**
      * This function takes the combined pdf and embeds all the comments and annotations.
      * @param mixed id or assign class
      * @param int userid
      * @param int attemptnumber (-1 means latest attempt)
-     * @return array(stored_file)
+     * @return stored_file
      */
-    public static function get_feedback_documents($assignment, $userid, $attemptnumber) {
+    public static function get_feedback_document($assignment, $userid, $attemptnumber) {
 
         $assignment = self::get_assignment_from_param($assignment);
 
@@ -444,7 +480,7 @@ class document_services {
             \print_error('nopermission');
         }
 
-        $grade = $assignment->get_user_grade($userid, true);
+        $grade = $assignment->get_user_grade($userid, true, $attemptnumber);
 
         $contextid = $assignment->get_context()->id;
         $component = 'assignfeedback_editpdf';
@@ -453,12 +489,45 @@ class document_services {
         $filepath = '/';
 
         $fs = \get_file_storage();
-        return $fs->get_area_files($contextid,
-                                   $component,
-                                   $filearea,
-                                   $itemid,
-                                   "itemid, filepath, filename",
-                                   false);
+        $files = $fs->get_area_files($contextid,
+                                     $component,
+                                     $filearea,
+                                     $itemid,
+                                     "itemid, filepath, filename",
+                                     false);
+        if ($files) {
+            return reset($files);
+        }
+        return false;
+    }
+
+    /**
+     * This function deletes the generated pdf for a student.
+     * @param mixed id or assign class
+     * @param int userid
+     * @param int attemptnumber (-1 means latest attempt)
+     * @return bool
+     */
+    public static function delete_feedback_document($assignment, $userid, $attemptnumber) {
+
+        $assignment = self::get_assignment_from_param($assignment);
+
+        if (!$assignment->can_view_submission($userid)) {
+            \print_error('nopermission');
+        }
+        if (!$assignment->can_grade()) {
+            \print_error('nopermission');
+        }
+
+        $grade = $assignment->get_user_grade($userid, true, $attemptnumber);
+
+        $contextid = $assignment->get_context()->id;
+        $component = 'assignfeedback_editpdf';
+        $filearea = self::FINAL_PDF_FILEAREA;
+        $itemid = $grade->id;
+
+        $fs = \get_file_storage();
+        return $fs->delete_area_files($contextid, $component, $filearea, $itemid);
     }
 
 }

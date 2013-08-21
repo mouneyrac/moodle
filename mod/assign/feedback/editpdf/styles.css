@@ -16,6 +16,9 @@
     margin: 0px 0px 10px 5px;
 }
 
+.assignfeedback_editpdf_downloadlink {
+    margin-top: 1em;
+}
 .assignfeedback_editpdf_widget .moodle-dialogue-bd,
 .moodle-dialogue-base .moodle-dialogue.assignfeedback_editpdf_widget .moodle-dialogue-content .moodle-dialogue-ft {
     text-align: center;

@@ -25,6 +25,8 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+use \assignfeedback_editpdf\document_services;
+
 /**
  * library class for editpdf feedback plugin extending feedback plugin base class
  *
@@ -59,7 +61,30 @@ class assign_feedback_editpdf extends assign_feedback_plugin {
             $attempt = $grade->attemptnumber;
         }
 
-        $html = $renderer->render(new assignfeedback_editpdf_widget($this->assignment->get_instance()->id, $userid, $attempt));
+        $feedbackfile = document_services::get_feedback_document($this->assignment->get_instance()->id,
+                                                                 $userid,
+                                                                 $attempt);
+
+        $url = false;
+        $filename = '';
+        if ($feedbackfile && $grade) {
+            $url = moodle_url::make_pluginfile_url($this->assignment->get_context()->id,
+                                                   'assignfeedback_editpdf',
+                                                   document_services::FINAL_PDF_FILEAREA,
+                                                   $grade->id,
+                                                   '/',
+                                                   $feedbackfile->get_filename(),
+                                                   false);
+           $filename = $feedbackfile->get_filename();
+        }
+
+        $widget = new assignfeedback_editpdf_widget($this->assignment->get_instance()->id,
+                                                    $userid,
+                                                    $attempt,
+                                                    $url,
+                                                    $filename);
+
+        $html = $renderer->render($widget);
         $mform->addElement('static', 'editpdf', get_string('editpdf', 'assignfeedback_editpdf'), $html);
         $mform->addHelpButton('editpdf', 'editpdf', 'assignfeedback_editpdf');
     }
@@ -83,7 +108,7 @@ class assign_feedback_editpdf extends assign_feedback_plugin {
      */
     public function view(stdClass $grade) {
         return $this->assignment->render_area_files('assignfeedback_editpdf',
-                                                    \assignfeedback_editpdf\document_services::FINAL_PDF_FILEAREA,
+                                                    document_services::FINAL_PDF_FILEAREA,
                                                     $grade->id);
     }
 }

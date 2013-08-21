@@ -184,12 +184,18 @@ EDITOR.prototype = {
      * @method initializer
      */
     initializer : function() {
+        var link, deletelink;
         Y.log('Initialising M.assignfeedback_editpdf.editor');
-        Y.log(this);
-        var link = Y.one('#' + this.get('linkid'));
+        link = Y.one('#' + this.get('linkid'));
 
         link.on('click', this.link_handler, this);
         link.on('key', this.link_handler, 'down:13', this);
+
+        Y.log(this.get('deletelinkid'));
+        deletelink = Y.one('#' + this.get('deletelinkid'));
+        deletelink.on('click', this.delete_link_handler, this);
+        deletelink.on('key', this.delete_link_handler, 'down:13', this);
+
         this.currentedit.start = false;
         this.currentedit.end = false;
     },
@@ -230,6 +236,49 @@ EDITOR.prototype = {
         }
 
         this.load_all_pages();
+    },
+
+    /**
+     * Called to delete the last generated pdf.
+     * @method link_handler
+     */
+    delete_link_handler : function(e) {
+        var downloadlink,
+            deletelink;
+
+        Y.log('Delete generated pdf');
+        e.preventDefault();
+
+        var ajaxurl = AJAXBASE,
+            config;
+
+        config = {
+            method: 'get',
+            context: this,
+            sync: false,
+            data : {
+                'sesskey' : M.cfg.sesskey,
+                'action' : 'deletefeedbackdocument',
+                'userid' : this.get('userid'),
+                'attemptnumber' : this.get('attemptnumber'),
+                'assignmentid' : this.get('assignmentid')
+            },
+            on: {
+                success: function() {
+                    downloadlink = Y.one('#' + this.get('downloadlinkid'));
+                    deletelink = Y.one('#' + this.get('deletelinkid'));
+
+                    downloadlink.addClass('hidden');
+                    deletelink.addClass('hidden');
+                },
+                failure: function(tid, response) {
+                    return M.core.exception(response.responseText);
+                }
+            }
+        };
+
+        Y.io(ajaxurl, config);
+
     },
 
     /**
@@ -343,13 +392,27 @@ EDITOR.prototype = {
             },
             on: {
                 success: function(tid, response) {
-                    var jsondata;
+                    var jsondata, downloadlink, deletelink, downloadfilename;
                     Y.log(response.responseText);
                     try {
                         jsondata = Y.JSON.parse(response.responseText);
                         if (jsondata.error) {
                             return new M.core.ajaxException(jsondata);
                         } else {
+
+                            if (jsondata.url) {
+                                // We got a valid response with a url and filename for the generated pdf.
+                                downloadlink = Y.one('#' + this.get('downloadlinkid'));
+                                downloadfilename = Y.one('#' + this.get('downloadlinkid') + ' span');
+                                deletelink = Y.one('#' + this.get('deletelinkid'));
+
+                                // Update the filename and show the download and delete links.
+                                downloadfilename.setHTML(jsondata.filename);
+                                downloadlink.setAttribute('href', jsondata.url);
+                                downloadlink.removeClass('hidden');
+                                deletelink.removeClass('hidden');
+
+                            }
                             this.dialogue.hide();
                         }
                     } catch (e) {
@@ -599,7 +662,6 @@ EDITOR.prototype = {
             // Save the changes back to the comment.
             comment.rawtext = node.get('value');
             comment.width = parseInt(node.getStyle('width'), 10);
-            debugger;
             if (comment.rawtext === '') {
                 // Delete empty comments.
                 this.delete_comment(comment);
@@ -708,6 +770,14 @@ Y.extend(EDITOR, Y.Base, EDITOR.prototype, {
             value : ''
         },
         linkid : {
+            validator : Y.Lang.isString,
+            value : ''
+        },
+        deletelinkid : {
+            validator : Y.Lang.isString,
+            value : ''
+        },
+        downloadlinkid : {
             validator : Y.Lang.isString,
             value : ''
         }

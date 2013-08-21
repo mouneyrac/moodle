@@ -39,16 +39,24 @@ class assignfeedback_editpdf_widget implements renderable {
     public $userid = 0;
     /** @var mixed $attemptnumber - The attempt number we are grading */
     public $attemptnumber = 0;
+    /** @var moodle_url $downloadurl */
+    public $downloadurl = null;
+    /** @var string $downloadfilename */
+    public $downloadfilename = null;
 
     /**
      * Constructor
      * @param int $assignment - Assignment instance id
      * @param int $userid - The user id we are grading
-     * @param mixed $attemptnumber - The attempt number we are grading
+     * @param int $attemptnumber - The attempt number we are grading
+     * @param moodle_url $downloadurl - A url to download the current generated pdf.
+     * @param string $downloadfilename - Name of the generated pdf.
      */
-    public function __construct($assignment, $userid, $attemptnumber) {
+    public function __construct($assignment, $userid, $attemptnumber, $downloadurl, $downloadfilename) {
         $this->assignment = $assignment;
         $this->userid = $userid;
         $this->attemptnumber = $attemptnumber;
+        $this->downloadurl = $downloadurl;
+        $this->downloadfilename = $downloadfilename;
     }
 }

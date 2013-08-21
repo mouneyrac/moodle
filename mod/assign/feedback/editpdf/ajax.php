@@ -22,6 +22,9 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+use \assignfeedback_editpdf\document_services;
+use \assignfeedback_editpdf\page_editor;
+
 if (!defined('AJAX_SCRIPT')) {
     define('AJAX_SCRIPT', true);
 }
@@ -47,7 +50,7 @@ if (!$assignment->can_view_submission($userid)) {
 
 if ($action == 'loadallpages') {
 
-    $pages = \assignfeedback_editpdf\document_services::get_page_images_for_attempt($assignment,
+    $pages = document_services::get_page_images_for_attempt($assignment,
                                                                          $userid,
                                                                          $attemptnumber);
 
@@ -60,15 +63,15 @@ if ($action == 'loadallpages') {
     foreach ($pages as $id => $pagefile) {
         $index = count($response->pages);
         $page = new stdClass();
-        $comments = \assignfeedback_editpdf\page_editor::get_comments($grade->id, $index);
+        $comments = page_editor::get_comments($grade->id, $index);
         $page->url = moodle_url::make_pluginfile_url($context->id,
                                                      'assignfeedback_editpdf',
-                                                     \assignfeedback_editpdf\document_services::PAGE_IMAGE_FILEAREA,
+                                                     document_services::PAGE_IMAGE_FILEAREA,
                                                      $grade->id,
                                                      '/',
                                                      $pagefile->get_filename())->out();
         $page->comments = $comments;
-        $annotations = \assignfeedback_editpdf\page_editor::get_annotations($grade->id, $index);
+        $annotations = page_editor::get_annotations($grade->id, $index);
         $page->annotations = $annotations;
         array_push($response->pages, $page);
     }
@@ -79,7 +82,6 @@ if ($action == 'loadallpages') {
     require_capability('mod/assign:grade', $context);
 
     $response = new stdClass();
-    $response->errors = array();
 
     $grade = $assignment->get_user_grade($userid, true);
 
@@ -87,19 +89,39 @@ if ($action == 'loadallpages') {
     $pages = json_decode($pagesjson);
 
     foreach ($pages as $index => $page) {
-        $added = \assignfeedback_editpdf\page_editor::set_comments($grade->id, $index, $page->comments);
+        $added = page_editor::set_comments($grade->id, $index, $page->comments);
         if ($added != count($page->comments)) {
             array_push($response->errors, get_string('couldnotsavepage', 'assignfeedback_editpdf', $index+1));
         }
-        $added = \assignfeedback_editpdf\page_editor::set_annotations($grade->id, $index, $page->annotations);
+        $added = page_editor::set_annotations($grade->id, $index, $page->annotations);
         if ($added != count($page->annotations)) {
             array_push($response->errors, get_string('couldnotsavepage', 'assignfeedback_editpdf', $index+1));
         }
     }
-    \assignfeedback_editpdf\document_services::generate_feedback_document($assignment, $userid, $attemptnumber);
+    $file = document_services::generate_feedback_document($assignment, $userid, $attemptnumber);
+
+    $response->url = '';
+    if ($file) {
+        $url = moodle_url::make_pluginfile_url($assignment->get_context()->id,
+                                               'assignfeedback_editpdf',
+                                               document_services::FINAL_PDF_FILEAREA,
+                                               $grade->id,
+                                               '/',
+                                               $file->get_filename(),
+                                               false);
+        $response->url = $url->out(true);
+        $response->filename = $file->get_filename();
+    }
 
     echo json_encode($response);
     die();
 
+} else if ($action == 'deletefeedbackdocument') {
+    require_capability('mod/assign:grade', $context);
+
+    $result = document_services::delete_feedback_document($assignment, $userid, $attemptnumber);
+
+    echo json_encode($result);
+    die();
 }
 

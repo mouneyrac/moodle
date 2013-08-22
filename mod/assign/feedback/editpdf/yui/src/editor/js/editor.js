@@ -368,6 +368,26 @@ EDITOR.prototype = {
     },
 
     /**
+     * JSON encode the pages data - stripping out drawable references which cannot be encoded.
+     * @protected
+     * @method stringify_pages
+     * @return string
+     */
+    stringify_pages : function() {
+        var page, i;
+        for (page = 0; page < this.pages.length; page++) {
+            for (i = 0; i < this.pages[page].comments.length; i++) {
+                delete this.pages[page].comments[i].drawable;
+            }
+            for (i = 0; i < this.pages[page].annotations.length; i++) {
+                delete this.pages[page].annotations[i].drawable;
+            }
+        }
+
+        return Y.JSON.stringify(this.pages);
+    },
+
+    /**
      * Hide the popup - after saving all the edits.
      * @protected
      * @method handle_save
@@ -388,7 +408,7 @@ EDITOR.prototype = {
                 'userid' : this.get('userid'),
                 'attemptnumber' : this.get('attemptnumber'),
                 'assignmentid' : this.get('assignmentid'),
-                'pages' : Y.JSON.stringify(this.pages)
+                'pages' : this.stringify_pages()
             },
             on: {
                 success: function(tid, response) {
@@ -635,7 +655,7 @@ EDITOR.prototype = {
         for (i = 0; i < comments.length; i++) {
             if (comments[i] === comment) {
                 comments.splice(i, 1);
-                this.redraw();
+                this.erase_drawable(comment.drawable);
                 return;
             }
         }
@@ -690,6 +710,8 @@ EDITOR.prototype = {
             }
 
         }, this);
+
+        comment.drawable = drawable;
 
         return drawable;
     },

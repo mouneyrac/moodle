@@ -43,7 +43,9 @@ var AJAXBASE = M.cfg.wwwroot + '/mod/assign/feedback/editpdf/ajax.php',
         'blue' : 'rgb(208,208,255)',
         'white' : 'rgb(255,255,255)',
         'yellow' : 'rgb(255,255,176)'
-    };
+    },
+    CLICKTIMEOUT = 300;
+
 /**
  * Drawable
  *
@@ -348,11 +350,11 @@ EDITOR.prototype = {
         var cancel = Y.one(SELECTOR.CANCEL),
             save = Y.one(SELECTOR.SAVE);
 
-        cancel.on('click', this.handle_cancel, this);
+        cancel.on('mousedown', this.handle_cancel, this);
         cancel.on('key', this.handle_cancel, 'down:13', this);
         cancel.removeAttribute('disabled');
 
-        save.on('click', this.handle_save, this);
+        save.on('mousedown', this.handle_save, this);
         save.on('key', this.handle_save, 'down:13', this);
         save.removeAttribute('disabled');
     },
@@ -441,7 +443,13 @@ EDITOR.prototype = {
             point = {x : e.clientX - offset[0] + scrollleft,
                      y : e.clientY - offset[1] + scrolltop};
 
+        if (this.currentedit.starttime) {
+            return;
+        }
+
+        this.currentedit.starttime = new Date().getTime();
         this.currentedit.start = point;
+        this.currentedit.end = {x : point.x, y : point.y};
     },
 
     /**
@@ -498,11 +506,15 @@ EDITOR.prototype = {
      * @method erase_drawable
      */
     erase_drawable : function(drawable) {
-        while (drawable.shapes.length > 0) {
-            this.graphic.removeShape(drawable.shapes.pop());
+        if (drawable.shapes) {
+            while (drawable.shapes.length > 0) {
+                this.graphic.removeShape(drawable.shapes.pop());
+            }
         }
-        while (drawable.nodes.length > 0) {
-            drawable.nodes.pop().remove();
+        if (drawable.nodes) {
+            while (drawable.nodes.length > 0) {
+                drawable.nodes.pop().remove();
+            }
         }
     },
 
@@ -548,7 +560,14 @@ EDITOR.prototype = {
             width,
             height,
             x,
-            y;
+            y,
+            duration;
+
+        duration = new Date().getTime() - this.currentedit.start;
+
+        if (duration < CLICKTIMEOUT) {
+            return;
+        }
         // Work out the boundary box.
         x = this.currentedit.start.x;
         if (this.currentedit.end.x > x) {
@@ -564,9 +583,13 @@ EDITOR.prototype = {
             y = this.currentedit.end.y;
             height = this.currentedit.start.y - y;
         }
+
         // Save the current edit to the server and the current page list.
 
         if (this.currenttool === 'comment') {
+            if (width < 100) {
+                width = 100;
+            }
             data = {
                 gradeid : this.get('gradeid'),
                 x : x,
@@ -581,7 +604,7 @@ EDITOR.prototype = {
             this.drawables.push(this.draw_comment(data));
         }
 
-
+        this.currentedit.starttime = 0;
         this.currentedit.start = false;
         this.currentedit.end = false;
         this.erase_drawable(this.currentdrawable);
@@ -614,7 +637,7 @@ EDITOR.prototype = {
         for (i = 0; i < comments.length; i++) {
             if (comments[i] === comment) {
                 comments.splice(i, 1);
-                this.change_page();
+                this.redraw();
                 return;
             }
         }
@@ -662,29 +685,27 @@ EDITOR.prototype = {
             // Save the changes back to the comment.
             comment.rawtext = node.get('value');
             comment.width = parseInt(node.getStyle('width'), 10);
-            if (comment.rawtext === '') {
+            // Trim.
+            if (comment.rawtext.replace(/^\s+|\s+$/g, "") === '') {
                 // Delete empty comments.
                 this.delete_comment(comment);
             }
+
         }, this);
 
         return drawable;
     },
 
     /**
-     * Load the image for this pdf page and remove the loading icon (if there).
+     * Redraw all the comments and annotations.
      * @protected
-     * @method all_pages_loaded
+     * @method redraw
      */
-    change_page : function() {
-        var drawingcanvas = Y.one(SELECTOR.DRAWINGCANVAS),
-            i,
+    redraw : function() {
+        var i,
             page;
 
         page = this.pages[this.currentpage];
-        this.loadingicon.hide();
-        drawingcanvas.setStyle('backgroundImage', 'url("' + page.url + '")');
-
         while (this.drawables.length > 0) {
             this.erase_drawable(this.drawables.pop());
         }
@@ -695,7 +716,22 @@ EDITOR.prototype = {
         for (i = 0; i < page.comments.length; i++) {
             this.drawables.push(this.draw_comment(page.comments[i]));
         }
+    },
 
+    /**
+     * Load the image for this pdf page and remove the loading icon (if there).
+     * @protected
+     * @method all_pages_loaded
+     */
+    change_page : function() {
+        var drawingcanvas = Y.one(SELECTOR.DRAWINGCANVAS),
+            page;
+
+        page = this.pages[this.currentpage];
+        this.loadingicon.hide();
+        drawingcanvas.setStyle('backgroundImage', 'url("' + page.url + '")');
+
+        this.redraw();
     },
 
     /**

@@ -63,6 +63,9 @@ class page_editor {
         foreach ($comments as $record) {
             // Force these.
             $comment = self::comment_from_record($record);
+            if (trim($comment->rawtext) === '') {
+                continue;
+            }
             $comment->gradeid = $gradeid;
             $comment->pageno = $pageno;
             if (self::add_comment($comment)) {

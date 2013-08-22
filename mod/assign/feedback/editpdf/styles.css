@@ -24,4 +24,6 @@
     text-align: center;
 }
 
-
+.assignfeedback_editpdf_downloadlink .hidden {
+    display: none;
+}

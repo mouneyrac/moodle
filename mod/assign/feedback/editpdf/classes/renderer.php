@@ -68,9 +68,9 @@ class assignfeedback_editpdf_renderer extends plugin_renderer_base {
 
         $html .= html_writer::div(get_string('jsrequired', 'assignfeedback_editpdf'), 'hiddenifjs');
         $linkid = html_writer::random_id();
-        $launcheditorlink = html_writer::link('#',
+        $launcheditorlink = html_writer::tag('button',
                                               get_string('launcheditor', 'assignfeedback_editpdf'),
-                                              array('id'=>$linkid, 'role'=>'button', 'class'=>'btn'));
+                                              array('id'=>$linkid, 'class'=>'btn'));
         $html .= html_writer::tag('style', file_get_contents($CFG->dirroot . '/mod/assign/feedback/editpdf/styles.css'));
         $links = $launcheditorlink;
 

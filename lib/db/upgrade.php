@@ -2327,5 +2327,15 @@ function xmldb_main_upgrade($oldversion) {
         upgrade_main_savepoint(true, 2013081200.00);
     }
 
+    if ($oldversion < 2013081500.01) {
+        require_once($CFG->dirroot . '/lib/themelib.php');
+
+        $themehelper = new theme_helper();
+        $themehelper->removecoretheme('mymobile', 'clean');
+
+        // Main savepoint reached.
+        upgrade_main_savepoint(true, 2013081500.01);
+    }
+
     return true;
 }

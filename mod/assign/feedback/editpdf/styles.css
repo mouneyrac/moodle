@@ -27,3 +27,43 @@
 .assignfeedback_editpdf_downloadlink .hidden {
     display: none;
 }
+
+.square {
+	-moz-border-radius: 4px;
+	-webkit-border-radius: 4px;
+	border-radius: 4px;
+	border: 1px solid #000000;
+	display: inline-block;
+	color: #000000;
+	font-family: arial;
+	font-size: 15px;
+	font-weight: normal;
+	padding: 6px 15px;
+	text-decoration: none;
+	height: 32px;
+	width: 19px;
+	margin: 10px;
+	cursor: pointer;
+}
+.yellow {
+	background-color: rgb(255,255,176);
+}
+.red {
+	background-color: rgb(255,176,176);
+}
+.green {
+	background-color: rgb(176,255,176);
+}
+.blue {
+	background-color: rgb(208,208,255);
+}
+.white {
+	background-color: white;
+}
+.moodle-dialogue-base .colourpicker .moodle-dialogue-wrap .moodle-dialogue-hd{
+	display: none;
+}
+
+.selectedbutton {
+	background-color: #ccc;
+}

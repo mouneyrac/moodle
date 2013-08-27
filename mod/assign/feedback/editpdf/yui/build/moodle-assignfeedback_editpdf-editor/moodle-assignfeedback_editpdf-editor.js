@@ -35,6 +35,7 @@ var AJAXBASE = M.cfg.wwwroot + '/mod/assign/feedback/editpdf/ajax.php',
         DRAWINGCANVAS : '.' + CSS.DIALOGUE + ' .drawingcanvas',
         CANCEL : '.' + CSS.DIALOGUE + ' .cancelbutton',
         SAVE : '.' + CSS.DIALOGUE + ' .savebutton',
+        COLOURBUTTON : '.' + CSS.DIALOGUE + ' .pdfbutton_colour',
         DIALOGUE : '.' + CSS.DIALOGUE
     },
     COLOUR = {
@@ -44,7 +45,16 @@ var AJAXBASE = M.cfg.wwwroot + '/mod/assign/feedback/editpdf/ajax.php',
         'white' : 'rgb(255,255,255)',
         'yellow' : 'rgb(255,255,176)'
     },
-    CLICKTIMEOUT = 300;
+    CLICKTIMEOUT = 300,
+    TOOLSELECTOR = {
+        'comment': '.' + CSS.DIALOGUE + ' .pdfbutton_comment',
+        'pen': '.' + CSS.DIALOGUE + ' .pdfbutton_pen',
+        'line': '.' + CSS.DIALOGUE + ' .pdfbutton_line',
+        'rectangle': '.' + CSS.DIALOGUE + ' .pdfbutton_rectangle',
+        'oval': '.' + CSS.DIALOGUE + ' .pdfbutton_oval',
+        'stamp': '.' + CSS.DIALOGUE + ' .pdfbutton_stamp',
+        'eraser': '.' + CSS.DIALOGUE + ' .pdfbutton_eraser'
+    };
 
 /**
  * Drawable
@@ -180,6 +190,11 @@ EDITOR.prototype = {
      * @protected
      */
     drawables : [],
+
+    /**
+     * The colour picker dialogue box.
+     */
+    colourpicker : null,
 
     /**
      * Called during the initialisation process of the object.
@@ -334,7 +349,131 @@ EDITOR.prototype = {
         this.setup_navigation();
         this.change_page();
         this.setup_save_cancel();
+        this.setup_toolbar();
+    },
 
+    /**
+     * Attach listeners and enable the color picker buttons.
+     * @protected
+     * @method setup_save_cancel
+     */
+    setup_toolbar : function() {
+
+        // Setup the tool buttons.
+        Y.each(TOOLSELECTOR, function(selector, tool) {
+            var toolnode = Y.one(selector);
+            toolnode.on('click', this.handle_toolbutton, this, tool);
+            toolnode.on('key', this.handle_toolbutton, 'down:13', this, tool);
+            toolnode.setAttribute('aria-pressed', 'false');
+        }, this);
+
+         // Set the default tool.
+        var currenttoolnode = Y.one(TOOLSELECTOR[this.currenttool]);
+        currenttoolnode.addClass('selectedbutton');
+        currenttoolnode.setAttribute('aria-pressed', 'true');
+
+        // Setup the color button.
+        var colourbutton = Y.one(SELECTOR.COLOURBUTTON);
+        colourbutton.on('click', this.handle_colourbutton, this);
+        colourbutton.on('key', this.handle_colourbutton, 'down:13', this);
+        colourbutton.setAttribute('title', this.currentcolour + 'color');
+
+        // Generate the color picker content.
+        var colordivs = '';
+        Y.each(COLOUR, function(rgb, color) {
+            colordivs = colordivs + '<div class=\"square '+ color +'\" title=\"'+ color +'\" role=\"button\" tabIndex=0></div>';
+        }, this);
+
+        if (!this.colourpicker) {
+            // Create the color picker.
+            this.colourpicker = new M.core.dialogue({
+                width: 307,
+                extraClasses : ['colourpicker'],
+                draggable: false,
+                center: false,
+                lightbox: false,
+                headerContent : M.util.get_string('colourpicker', 'assignfeedback_editpdf'),
+                bodyContent:"<div id=\"colorpicker\" class=\"\" style=\"\">" + colordivs + "</div>",
+                footerContent: '',
+                zIndex:60000,
+            });
+        }
+    },
+
+    /**
+     * Handle a click on the colour button.
+     * @protected
+     * @method handle_colourbutton
+     */
+    handle_colourbutton : function(e) {
+        e.preventDefault();
+
+        // Display the color picker.
+        this.colourpicker.show();
+        this.colourpicker.render();
+
+        // Position the colourpicker at the bottom on the colour button.
+        var colourbuttonxy = Y.one(SELECTOR.COLOURBUTTON).getXY();
+        var colourpickerxy = Y.one('.moodle-dialogue-base .colourpicker').getXY();
+        this.colourpicker.move(colourpickerxy[0],colourbuttonxy[1]+40);
+
+        // Add on click event to all colors.
+        Y.each(COLOUR, function(rgb, color) {
+            Y.one('.'+color).on("click", this.changecolor, null, color, this, this.colourpicker);
+        }, this);
+
+        // Automatically close the color picker when we click something else (except the color button).
+        Y.on("click",  Y.bind(this.colourpicker.show, this.colourpicker) , Y.one(SELECTOR.COLOURBUTTON));
+        Y.one(document).on('click', function(event, colourpicker) {
+            // Below code is causing the dialogue to close as soon as it is open. Need to detect the state of overlay.
+            // When it is already open then the below code should fire.
+            var buttonchildnodes = Y.one(SELECTOR.COLOURBUTTON).get('childNodes');
+            if(event.target.ancestor('#colorpicker')=== null && event.target.get('id') != buttonchildnodes.item(0).get('id') && event.target.get('id') != Y.one(SELECTOR.COLOURBUTTON).get('id') && colourpicker.get('visible') == true)  {
+               console.log('Hidding the colorpicker');
+               colourpicker.hide();
+            }
+        }, null, this.colourpicker);
+
+        // Focus on the dialogue for aria purpose - to set focus by js on a div we set tabIndex to -1.
+        // We'll put the tabindex on the div being set as role=dialog.
+        Y.one('.colourpicker').get('childNodes').item(0).setAttribute('tabIndex', '-1');
+        Y.one('.colourpicker').get('childNodes').item(0).focus();
+    },
+
+    /**
+     * Change the current tool.
+     * @protected
+     * @method handle_toolbutton
+     */
+    handle_toolbutton : function(e, tool) {
+        e.preventDefault();
+
+        // Change style of the pressed button.
+        var currenttoolnode = Y.one(TOOLSELECTOR[this.currenttool]);
+        currenttoolnode.removeClass('selectedbutton');
+        currenttoolnode.setAttribute('aria-pressed', 'false');
+        var newtoolnode = Y.one(TOOLSELECTOR[tool]);
+        newtoolnode.addClass('selectedbutton');
+        newtoolnode.setAttribute('aria-pressed', 'true');
+
+        // Change the rool.
+        this.currenttool = tool;
+    },
+
+    /**
+     * Change the current color.
+     * @protected
+     * @method changecolor
+     */
+    changecolor : function(e, color, editor, colourpicker) {
+        var imgcoloururl = M.cfg.wwwroot + '/theme/image.php?theme=standard&component=assignfeedback_editpdf&image=';
+        Y.one('.pdfbutton_colour').get('childNodes').item(0).setAttribute('src', imgcoloururl+color);
+        editor.currentcolour = color;
+        var colourbutton = Y.one(SELECTOR.COLOURBUTTON);
+        colourbutton.setAttribute('title', color + 'color');
+        colourpicker.hide();
+        // Restoring focus to the color button.
+        colourbutton.focus();
     },
 
     /**
@@ -366,6 +505,26 @@ EDITOR.prototype = {
     },
 
     /**
+     * JSON encode the pages data - stripping out drawable references which cannot be encoded.
+     * @protected
+     * @method stringify_pages
+     * @return string
+     */
+    stringify_pages : function() {
+        var page, i;
+        for (page = 0; page < this.pages.length; page++) {
+            for (i = 0; i < this.pages[page].comments.length; i++) {
+                delete this.pages[page].comments[i].drawable;
+            }
+            for (i = 0; i < this.pages[page].annotations.length; i++) {
+                delete this.pages[page].annotations[i].drawable;
+            }
+        }
+
+        return Y.JSON.stringify(this.pages);
+    },
+
+    /**
      * Hide the popup - after saving all the edits.
      * @protected
      * @method handle_save
@@ -386,7 +545,7 @@ EDITOR.prototype = {
                 'userid' : this.get('userid'),
                 'attemptnumber' : this.get('attemptnumber'),
                 'assignmentid' : this.get('assignmentid'),
-                'pages' : Y.JSON.stringify(this.pages)
+                'pages' : this.stringify_pages()
             },
             on: {
                 success: function(tid, response) {
@@ -632,7 +791,7 @@ EDITOR.prototype = {
         for (i = 0; i < comments.length; i++) {
             if (comments[i] === comment) {
                 comments.splice(i, 1);
-                this.redraw();
+                this.erase_drawable(comment.drawable);
                 return;
             }
         }
@@ -675,7 +834,7 @@ EDITOR.prototype = {
         drawingregion.append(node);
         drawable.nodes.push(node);
         node.set('value', comment.rawtext);
-        node.focus();
+        //node.focus();
         node.on('blur', function() {
             // Save the changes back to the comment.
             comment.rawtext = node.get('value');
@@ -687,6 +846,8 @@ EDITOR.prototype = {
             }
 
         }, this);
+
+        comment.drawable = drawable;
 
         return drawable;
     },

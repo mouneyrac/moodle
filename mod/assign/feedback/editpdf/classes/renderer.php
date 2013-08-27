@@ -45,13 +45,14 @@ class assignfeedback_editpdf_renderer extends plugin_renderer_base {
     private function render_toolbar_button($icon, $colour, $disabled=false, $id='') {
         $iconalt = get_string($colour, 'assignfeedback_editpdf');
         $iconhtml = $this->pix_icon($icon, $iconalt, 'assignfeedback_editpdf');
-        $iconparams = array('data-colour'=>$colour);
+        $iconparams = array('data-colour'=>$colour, 'class'=>'pdfbutton_' . $colour);
         if ($disabled) {
             $iconparams['disabled'] = 'true';
         }
         if ($id) {
             $iconparams['id'] = $id;
         }
+
         return html_writer::tag('button', $iconhtml, $iconparams);
     }
 
@@ -117,35 +118,21 @@ class assignfeedback_editpdf_renderer extends plugin_renderer_base {
         $navigation = html_writer::div($navigation, 'navigation', array('role'=>'navigation'));
 
         $toolbar = '';
-        // Foreground colour chooser.
-        $toolbar .= $this->render_toolbar_button('yellow', 'colour', true);
 
-        $colourlist = html_writer::start_tag('ul');
-        $colourlist .= html_writer::tag('li', $this->render_toolbar_button('red', 'red'));
-        $colourlist .= html_writer::tag('li', $this->render_toolbar_button('blue', 'blue'));
-        $colourlist .= html_writer::tag('li', $this->render_toolbar_button('green', 'green'));
-        $colourlist .= html_writer::tag('li', $this->render_toolbar_button('yellow', 'yellow'));
-        $colourlist .= html_writer::tag('li', $this->render_toolbar_button('white', 'white'));
+        // Colour chooser.
+        $toolbar .= $this->render_toolbar_button('yellow', 'colour');
 
-        $colourlist .= html_writer::end_tag('ul');
-
-        $toolbar .= $colourlist;
-
-        $toolbar .= $this->render_toolbar_button('comment', 'tool', true);
-
-        $toollist = html_writer::start_tag('ul');
-        $toollist .= html_writer::tag('li', $this->render_toolbar_button('comment', 'comment'));
-        $toollist .= html_writer::tag('li', $this->render_toolbar_button('line', 'line'));
-        $toollist .= html_writer::tag('li', $this->render_toolbar_button('rectangle', 'rectangle'));
-        $toollist .= html_writer::tag('li', $this->render_toolbar_button('oval', 'oval'));
-        $toollist .= html_writer::tag('li', $this->render_toolbar_button('pen', 'pen'));
-        $toollist .= html_writer::tag('li', $this->render_toolbar_button('stamp', 'stamp'));
-        $toollist .= html_writer::tag('li', $this->render_toolbar_button('eraser', 'eraser'));
-        $toollist .= html_writer::end_tag('ul');
-
-        $toolbar .= $toollist;
+        // Tools.
+        $toolbar .= $this->render_toolbar_button('comment', 'comment');
+        $toolbar .= $this->render_toolbar_button('pen', 'pen');
+        $toolbar .= $this->render_toolbar_button('line', 'line');
+        $toolbar .= $this->render_toolbar_button('rectangle', 'rectangle');
+        $toolbar .= $this->render_toolbar_button('oval', 'oval');
+        $toolbar .= $this->render_toolbar_button('stamp', 'stamp');
+        $toolbar .= $this->render_toolbar_button('eraser', 'eraser');
 
         $toolbar = html_writer::div($toolbar, 'toolbar', array('role'=>'toolbar'));
+
         $body = $navigation . $toolbar . '<hr/>';
 
         $loading = $this->pix_icon('i/loading', get_string('loadingeditor', 'assignfeedback_editpdf'), 'moodle', array('class'=>'loading'));
@@ -172,7 +159,7 @@ class assignfeedback_editpdf_renderer extends plugin_renderer_base {
                                           'M.assignfeedback_editpdf.editor.init',
                                           $editorparams);
 
-        $this->page->requires->strings_for_js(array('loadingeditor', 'pagexofy'), 'assignfeedback_editpdf');
+        $this->page->requires->strings_for_js(array('colourpicker', 'loadingeditor', 'pagexofy'), 'assignfeedback_editpdf');
 
         return $html;
     }

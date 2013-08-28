@@ -52,7 +52,8 @@ var AJAXBASE = M.cfg.wwwroot + '/mod/assign/feedback/editpdf/ajax.php',
         'oval': '.' + CSS.DIALOGUE + ' .pdfbutton_oval',
         'stamp': '.' + CSS.DIALOGUE + ' .pdfbutton_stamp',
         'eraser': '.' + CSS.DIALOGUE + ' .pdfbutton_eraser'
-    };
+    },
+    STROKEWEIGHT = 4;
 
 /**
  * Drawable
@@ -431,7 +432,6 @@ EDITOR.prototype = {
             // When it is already open then the below code should fire.
             var buttonchildnodes = Y.one(SELECTOR.COLOURBUTTON).get('childNodes');
             if(event.target.ancestor('#colorpicker')=== null && event.target.get('id') != buttonchildnodes.item(0).get('id') && event.target.get('id') != Y.one(SELECTOR.COLOURBUTTON).get('id') && colourpicker.get('visible') == true)  {
-               console.log('Hidding the colorpicker');
                colourpicker.hide();
             }
         }, null, this.colourpicker);
@@ -622,20 +622,22 @@ EDITOR.prototype = {
             return false;
         }
 
-        // Work out the boundary box.
-        x = this.currentedit.start.x;
-        if (this.currentedit.end.x > x) {
-            width = this.currentedit.end.x - x;
-        } else {
-            x = this.currentedit.end.x;
-            width = this.currentedit.start.x - x;
-        }
-        y = this.currentedit.start.y;
-        if (this.currentedit.end.y > y) {
-            height = this.currentedit.end.y - y;
-        } else {
-            y = this.currentedit.end.y;
-            height = this.currentedit.start.y - y;
+        if (this.currenttool === 'comment' || this.currenttool === 'rectangle' || this.currenttool === 'oval' ) {
+            // Work out the boundary box.
+            x = this.currentedit.start.x;
+            if (this.currentedit.end.x > x) {
+                width = this.currentedit.end.x - x;
+            } else {
+                x = this.currentedit.end.x;
+                width = this.currentedit.start.x - x;
+            }
+            y = this.currentedit.start.y;
+            if (this.currentedit.end.y > y) {
+                height = this.currentedit.end.y - y;
+            } else {
+                y = this.currentedit.end.y;
+                height = this.currentedit.start.y - y;
+            }
         }
 
         if (this.currenttool === 'comment') {
@@ -650,9 +652,47 @@ EDITOR.prototype = {
                 x: x,
                 y: y
             });
-
-            drawable.shapes.push(shape);
         }
+
+        if (this.currenttool === 'line') {
+            shape = this.graphic.addShape({
+               type: Y.Path,
+                fill: {
+                    color: COLOUR[this.currentcolour]
+                },
+                stroke: {
+                    weight: STROKEWEIGHT,
+                    color: COLOUR[this.currentcolour]
+                },
+            });
+
+            shape.moveTo(this.currentedit.start.x, this.currentedit.start.y);
+            shape.lineTo(this.currentedit.end.x, this.currentedit.end.y);
+            shape.end();
+        }
+
+        if (this.currenttool === 'rectangle' || this.currenttool === 'oval') {
+
+            if (this.currenttool === 'rectangle') {
+                tooltype = Y.Rect;
+            } if (this.currenttool === 'oval') {
+                tooltype = Y.Ellipse;
+            }
+
+            shape = this.graphic.addShape({
+                type: tooltype,
+                width: width,
+                height: height,
+                stroke: {
+                   weight: STROKEWEIGHT,
+                   color: COLOUR[this.currentcolour]
+                },
+                x: x,
+                y: y
+            });
+        }
+
+        drawable.shapes.push(shape);
 
         return drawable;
     },
@@ -725,28 +765,30 @@ EDITOR.prototype = {
         if (duration < CLICKTIMEOUT) {
             return;
         }
-        // Work out the boundary box.
-        x = this.currentedit.start.x;
-        if (this.currentedit.end.x > x) {
-            width = this.currentedit.end.x - x;
-        } else {
-            x = this.currentedit.end.x;
-            width = this.currentedit.start.x - x;
-        }
-        y = this.currentedit.start.y;
-        if (this.currentedit.end.y > y) {
-            height = this.currentedit.end.y - y;
-        } else {
-            y = this.currentedit.end.y;
-            height = this.currentedit.start.y - y;
-        }
-
-        // Save the current edit to the server and the current page list.
 
         if (this.currenttool === 'comment') {
             if (width < 100) {
                 width = 100;
             }
+
+            // Work out the boundary box.
+            x = this.currentedit.start.x;
+            if (this.currentedit.end.x > x) {
+                width = this.currentedit.end.x - x;
+            } else {
+                x = this.currentedit.end.x;
+                width = this.currentedit.start.x - x;
+            }
+            y = this.currentedit.start.y;
+            if (this.currentedit.end.y > y) {
+                height = this.currentedit.end.y - y;
+            } else {
+                y = this.currentedit.end.y;
+                height = this.currentedit.start.y - y;
+            }
+
+            // Save the current edit to the server and the current page list.
+
             data = {
                 gradeid : this.get('gradeid'),
                 x : x,
@@ -759,12 +801,39 @@ EDITOR.prototype = {
 
             this.pages[this.currentpage].comments.push(data);
             this.drawables.push(this.draw_comment(data));
+
+
+            
+
+            this.erase_drawable(this.currentdrawable);
+        } else {
+
+            if (this.currenttool === 'line') {
+                tooltype = 'line';
+            } else if (this.currenttool === 'rectangle') {
+                tooltype = 'rectangle';
+            } else if (this.currenttool === 'oval') {
+                tooltype = 'oval';
+            }
+
+            data = {
+                    gradeid : this.get('gradeid'),
+                    x : this.currentedit.start.x,
+                    y : this.currentedit.start.y,
+                    endx : this.currentedit.end.x,
+                    endy : this.currentedit.end.y,
+                    type : tooltype,
+                    pageno : this.currentpage,
+                    colour : this.currentcolour
+                };
+
+            this.pages[this.currentpage].annotations.push(data);
+            //this.drawables.push(this.draw_annotation(data));
         }
 
         this.currentedit.starttime = 0;
         this.currentedit.start = false;
         this.currentedit.end = false;
-        this.erase_drawable(this.currentdrawable);
         this.currentdrawable = false;
     },
 
@@ -777,6 +846,75 @@ EDITOR.prototype = {
      */
     draw_annotation : function(annotation) {
         var drawable = new Drawable();
+
+        if (annotation.type === 'line') {
+            shape = this.graphic.addShape({
+               type: Y.Path,
+                fill: {
+                    color: COLOUR[annotation.colour]
+                },
+                stroke: {
+                    weight: STROKEWEIGHT,
+                    color: COLOUR[annotation.colour]
+                },
+            });
+
+            shape.moveTo(annotation.x, annotation.y);
+            shape.lineTo(annotation.endx, annotation.endy);
+            shape.end();
+        }
+
+        if (annotation.type === 'rectangle' || annotation.type === 'oval' ) {
+
+            var width,
+            height,
+            topleftx,
+            toplefty,
+            annotationtype;
+
+            if (annotation.type === 'rectangle') {
+                annotationtype = Y.Rect;
+            } if (annotation.type === 'oval') {
+                annotationtype = Y.Ellipse;
+            }
+
+            // Convert data to integrer to avoid wrong > or < results.
+            annotation.x = parseInt(annotation.x);
+            annotation.y = parseInt(annotation.y);
+            annotation.endx = parseInt(annotation.endx);
+            annotation.endy = parseInt(annotation.endy);
+
+            // Work out the boundary box.
+            topleftx = annotation.x;
+            if (annotation.endx > topleftx) {
+                width = annotation.endx - topleftx;
+            } else {
+                topleftx = annotation.endx;
+                width = annotation.x - topleftx;
+            }
+            toplefty = annotation.y;
+
+            if (annotation.endy > toplefty) {
+                height = annotation.endy - toplefty;
+            } else {
+                toplefty = annotation.endy;
+                height = annotation.y - toplefty;
+            }
+
+            shape = this.graphic.addShape({
+                type: annotationtype,
+                width: width,
+                height: height,
+                stroke: {
+                   weight: STROKEWEIGHT,
+                   color: COLOUR[annotation.colour]
+                },
+                x: topleftx,
+                y: toplefty
+            });
+        }
+
+        drawable.shapes.push(shape);
 
         return drawable;
     },

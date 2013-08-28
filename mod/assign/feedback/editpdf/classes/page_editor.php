@@ -179,7 +179,7 @@ class page_editor {
     public static function annotation_from_record(\stdClass $record) {
         $annotation = new annotation();
         foreach ($annotation as $key => $value) {
-            $annotation->$key = $record->key;
+            $annotation->$key = $record->$key;
         }
         return $annotation;
     }

@@ -196,6 +196,16 @@ EDITOR.prototype = {
     colourpicker : null,
 
     /**
+     * The pen tool position (also known as the mouse position :P).
+     */
+    currentpenposition : {x:null,y:null},
+
+    /**
+     * The pen tool path being drawn.
+     */
+    currentpenpath : [],
+
+    /**
      * Called during the initialisation process of the object.
      * @method initializer
      */
@@ -622,6 +632,47 @@ EDITOR.prototype = {
             return false;
         }
 
+        if (this.currenttool === 'pen') {
+
+            shape = this.graphic.addShape({
+               type: Y.Path,
+                fill: {
+                    color: COLOUR[this.currentcolour]
+                },
+                stroke: {
+                    weight: STROKEWEIGHT,
+                    color: COLOUR[this.currentcolour]
+                },
+            });
+
+            // If position is different from last position
+            if (!this.currentpenposition.x || !this.currentpenposition.y || this.currentpenposition.x != this.currentedit.end.x || this.currentpenposition.y != this.currentedit.end.y) {
+                // save the mouse postion to the list of position
+                if (this.currentpenpath.length == 0) {
+                    this.currentpenpath.push({x:this.currentedit.start.x,y:this.currentedit.start.y});
+                }
+                this.currentpenpath.push({x:this.currentedit.end.x,y:this.currentedit.end.y});
+
+                // redraw all the lines
+                var previousposition = {x:null,y:null};
+                Y.each(this.currentpenpath, function(position, key) {
+                    if (!previousposition.x) {
+                        previousposition.x = this.currentedit.start.x;
+                        previousposition.y = this.currentedit.start.y;
+                    }
+                    shape.moveTo(previousposition.x, previousposition.y);
+                    shape.lineTo(position.x, position.y);
+                    previousposition.x = position.x;
+                    previousposition.y = position.y;
+                }, this);
+                shape.end();
+
+                // save the mouse position as the current one
+                this.currentpenposition.x = this.currentedit.end.x;
+                this.currentpenposition.y = this.currentedit.end.y;
+            }
+        }
+
         if (this.currenttool === 'comment' || this.currenttool === 'rectangle' || this.currenttool === 'oval' ) {
             // Work out the boundary box.
             x = this.currentedit.start.x;
@@ -753,6 +804,7 @@ EDITOR.prototype = {
      * @method edit_end
      */
     edit_end : function() {
+
         var data,
             width,
             height,
@@ -801,11 +853,30 @@ EDITOR.prototype = {
 
             this.pages[this.currentpage].comments.push(data);
             this.drawables.push(this.draw_comment(data));
-
-
-            
-
             this.erase_drawable(this.currentdrawable);
+        } else if (this.currenttool === 'pen') {
+            // Create the path string.
+            var thepath = '';
+                Y.each(this.currentpenpath, function(position, key) {
+                thepath = thepath + position.x + "," + position.y + ":";
+                // Remove the last ":".
+            }, this);
+            thepath = thepath.substring(0, thepath.length - 1);
+
+            data = {
+                gradeid : this.get('gradeid'),
+                path : thepath,
+                type : 'pen',
+                pageno : this.currentpage,
+                colour : this.currentcolour
+            };
+
+            this.pages[this.currentpage].annotations.push(data);
+
+            // reset the mouse position for the pen tool.
+            this.currentpenposition.x = null;
+            this.currentpenposition.y = null;
+            this.currentpenpath = [];
         } else {
 
             if (this.currenttool === 'line') {
@@ -861,6 +932,37 @@ EDITOR.prototype = {
 
             shape.moveTo(annotation.x, annotation.y);
             shape.lineTo(annotation.endx, annotation.endy);
+            shape.end();
+        }
+
+        if (annotation.type === 'pen') {
+            shape = this.graphic.addShape({
+               type: Y.Path,
+                fill: {
+                    color: COLOUR[annotation.colour]
+                },
+                stroke: {
+                    weight: STROKEWEIGHT,
+                    color: COLOUR[annotation.colour]
+                },
+            });
+
+            // Recreate the pen path array
+            var positions = annotation.path.split(':');
+            // redraw all the lines
+            var previousposition = {x:null,y:null};
+            Y.each(positions, function(position, key) {
+                var xy = position.split(',');
+                if (!previousposition.x) {
+                    previousposition.x = xy[0];
+                    previousposition.y = xy[1];
+                }
+                shape.moveTo(previousposition.x, previousposition.y);
+                shape.lineTo(xy[0], xy[1]);
+                previousposition.x = xy[0];
+                previousposition.y = xy[1];
+            }, this);
+
             shape.end();
         }
 

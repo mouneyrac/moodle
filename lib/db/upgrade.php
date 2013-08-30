@@ -85,7 +85,7 @@ defined('MOODLE_INTERNAL') || die();
  * @return bool always true
  */
 function xmldb_main_upgrade($oldversion) {
-    global $CFG, $USER, $DB, $OUTPUT, $SITE;
+    global $CFG, $USER, $DB, $OUTPUT, $SITE, $SESSION;
 
     require_once($CFG->libdir.'/db/upgradelib.php'); // Core Upgrade-related functions
 
@@ -2361,6 +2361,35 @@ function xmldb_main_upgrade($oldversion) {
                  WHERE format = 'scorm'";
         $DB->execute($sql);
         upgrade_main_savepoint(true, 2013082700.00);
+    }
+
+    if ($oldversion < 2013083000.09) {
+        $coretheme = 'mymobile';
+        $replacementtheme = 'clean';
+
+        require_once($CFG->dirroot . "/lib/pluginlib.php");
+        $pluginmanager = plugin_manager::instance();
+
+        //Check that the theme still exists
+        $corethemeinfo = $pluginmanager->get_plugin_info('theme_'.$coretheme);
+        if (!empty($corethemeinfo)) {
+            // Need to uninstall the plugin from the DB.
+            require_once($CFG->dirroot . "/lib/adminlib.php");
+            uninstall_plugin('theme', $coretheme);
+        }
+
+        // Replace all themes extending the core theme by the replacement theme.
+        removemymobilefromdb($coretheme, $replacementtheme);
+
+        $themes = $pluginmanager->get_plugins_of_type('theme');
+        removemymobilesubthemes($themes, $coretheme, $replacementtheme);
+
+        // // ReLoad the user theme.
+        $usertheme = $DB->get_field('user', 'theme', array('id' => $USER->id));
+        $SESSION->theme = $usertheme;
+
+        // Main savepoint reached.
+        upgrade_main_savepoint(true, 2013083000.09);
     }
 
     return true;

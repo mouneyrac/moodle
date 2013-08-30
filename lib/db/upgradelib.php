@@ -270,3 +270,73 @@ function upgrade_mssql_varbinarymax() {
         $pbar->update($i, $tablecount, "Converted IMAGE to VARBINARY(MAX) columns in MS SQL Server database - $i/$tablecount.");
     }
 }
+
+/**
+ * Replace the mymobile theme (or a mymobile extending theme) by the Clean theme in the database.
+ *
+ * WARNING: the code is generic so if you need to remove a different theme you can copy/paste
+ * and just change $coretheme / $clean.
+ * However DO NOT edit this function as it is used by upgrade script for upgrading mymobile theme only.
+ *
+ * @param string $themename the theme to replace in the DB by the replacement theme.
+ * @param string $replacementtheme the replacement theme.
+ */
+function removemymobilefromdb($themename, $replacementtheme) {
+    global $DB;
+
+    $DB->set_field('course', 'theme', $replacementtheme, array('theme' => $themename));
+    $DB->set_field('course_categories', 'theme', $replacementtheme, array('theme' => $themename));
+    $DB->set_field('user', 'theme', $replacementtheme, array('theme' => $themename));
+    $DB->set_field('mnet_host', 'theme', $replacementtheme, array('theme' => $themename));
+
+    // Replace the theme configs.
+    if (get_config('core', 'theme') == $themename) {
+        set_config('theme', $replacementtheme);
+    }
+    if (get_config('core', 'thememobile') == $themename) {
+        set_config('thememobile', $replacementtheme);
+    }
+    if (get_config('core', 'themelegacy') == $themename) {
+        set_config('themelegacy', $replacementtheme);
+    }
+    if (get_config('core', 'themetablet') == $themename) {
+        set_config('themetablet', $replacementtheme);
+    }
+}
+
+/**
+ * Replace all mymobile extending themes by the Clean theme.
+ * The function recursively removes the extending themes.
+ *
+ * WARNING: the code is generic so if you need to remove a different theme you can copy/paste
+ * and just change $coretheme / $clean.
+ * However DO NOT edit this function as it is used by upgrade script for upgrading mymobile theme only.
+ *
+ * @param array $themes array of themes
+ * @param string $themename the theme that need to be removed and all the themes that extend it.
+ * @param string $replacementtheme the replacement theme.
+ */
+function removemymobilesubthemes($themes, $themename, $replacementtheme) {
+
+    // Remove the themes that extend $themename.
+    foreach($themes as $theme) {
+        $themeconfig = theme_config::load($theme->name);
+
+        // If the theme extend $themename, then remove it from the DB (replace it by $replacementtheme).
+        foreach($themeconfig->parents as $parent) {
+            if ($parent == $themename) {
+                removemymobilefromdb($themeconfig->name, $replacementtheme);
+                $extendedmobilethemes[] = $themeconfig->name;
+            }
+            break;
+        }
+    }
+
+    // Remove the themes that extend the themes we just removed.
+    // (i.e. remove the themes that extend the themes that extends $themename).
+    if (!empty($extendedmobilethemes)) {
+        foreach ($extendedmobilethemes as $extendedmobiletheme) {
+            removemymobilesubthemes($themes, $extendedmobiletheme, $replacementtheme);
+        }
+    }
+}

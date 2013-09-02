@@ -917,7 +917,7 @@ EDITOR.prototype = {
 
         if (annotation.type === 'line') {
             shape = this.graphic.addShape({
-               type: Y.Path,
+                type: Y.Path,
                 fill: {
                     color: COLOUR[annotation.colour]
                 },
@@ -966,10 +966,10 @@ EDITOR.prototype = {
         if (annotation.type === 'rectangle' || annotation.type === 'oval' ) {
 
             var width,
-            height,
-            topleftx,
-            toplefty,
-            annotationtype;
+                height,
+                topleftx,
+                toplefty,
+                annotationtype;
 
             if (annotation.type === 'rectangle') {
                 annotationtype = Y.Rect;
@@ -977,7 +977,7 @@ EDITOR.prototype = {
                 annotationtype = Y.Ellipse;
             }
 
-            // Convert data to integrer to avoid wrong > or < results.
+            // Convert data to integer to avoid wrong > or < results.
             annotation.x = parseInt(annotation.x);
             annotation.y = parseInt(annotation.y);
             annotation.endx = parseInt(annotation.endx);

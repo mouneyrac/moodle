@@ -517,13 +517,13 @@ class pdf extends \FPDI {
         }
 
         $testimagefolder = \make_temp_directory('assignfeedback_editpdf_test');
-        @unlink($testimagefolder.'/image_page1.png'); // Delete any previous test images.
+        @unlink($testimagefolder.'/image_page0.png'); // Delete any previous test images.
 
         $pdf = new pdf();
         $pdf->set_pdf($testfile);
         $pdf->set_image_folder($testimagefolder);
         try {
-            $pdf->get_image(1);
+            $pdf->get_image(0);
         } catch (\moodle_exception $e) {
             $ret->status = self::GSPATH_ERROR;
             $ret->message = $e->getMessage();
@@ -538,8 +538,8 @@ class pdf extends \FPDI {
         require_once($CFG->libdir.'/filelib.php');
 
         $testimagefolder = \make_temp_directory('assignfeedback_editpdf_test');
-        $testimage = $testimagefolder.'/image_page1.png';
-        \send_file($testimage, basename($testimage));
+        $testimage = $testimagefolder.'/image_page0.png';
+        send_file($testimage, basename($testimage));
         die();
     }
 

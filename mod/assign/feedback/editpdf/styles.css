@@ -71,3 +71,16 @@
 .assignfeedback_editpdf_selectedbutton {
 	background-color: #ccc;
 }
+
+.selectoroverlay {
+opacity: 0.2 !important;
+background-color: #def !important;
+}
+
+.moodle-dialogue-base .selectoroverlay .moodle-dialogue-wrap{
+background-color: #0029FF;
+}
+
+.moodle-dialogue-base .selectoroverlay .moodle-dialogue-wrap .moodle-dialogue-hd{
+	display: none;
+}

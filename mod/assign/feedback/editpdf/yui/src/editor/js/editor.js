@@ -52,7 +52,8 @@ var AJAXBASE = M.cfg.wwwroot + '/mod/assign/feedback/editpdf/ajax.php',
         'rectangle': '.' + CSS.DIALOGUE + ' .pdfbutton_rectangle',
         'oval': '.' + CSS.DIALOGUE + ' .pdfbutton_oval',
         'stamp': '.' + CSS.DIALOGUE + ' .pdfbutton_stamp',
-        'select': '.' + CSS.DIALOGUE + ' .pdfbutton_select'
+        'select': '.' + CSS.DIALOGUE + ' .pdfbutton_select',
+        'pointer': '.' + CSS.DIALOGUE + ' .pdfbutton_pointer'
     },
     STROKEWEIGHT = 4;
 
@@ -205,6 +206,8 @@ EDITOR.prototype = {
      * The pen tool path being drawn.
      */
     currentpenpath : [],
+
+    selectoroverlays : [],
 
     /**
      * Called during the initialisation process of the object.
@@ -474,6 +477,8 @@ EDITOR.prototype = {
 
         e.preventDefault();
 
+
+
         // Change style of the pressed button.
         currenttoolnode = Y.one(TOOLSELECTOR[this.currenttool]);
         currenttoolnode.removeClass('assignfeedback_editpdf_selectedbutton');
@@ -484,6 +489,53 @@ EDITOR.prototype = {
 
         // Change the rool.
         this.currenttool = tool;
+
+        // If the tool is the  "pointer" then add the overlay.
+        if (tool == "pointer") {
+
+            console.log(this.drawables);
+            Y.each(this.drawables, function(drawable, key) {
+                // only not comment drawables have shapes.
+                if (drawable.shapes.length > 0) {
+
+                    // Get the width and height.
+                    var elementid = drawable.shapes[0].get('node').getAttribute('id');
+                    var el = document.getElementById(elementid);
+                    boundingwidth = el.getBoundingClientRect().width + 6;
+                    boundingheight = el.getBoundingClientRect().height + 6;
+
+                    // Add an overlay on top of the svg
+                    var selectoroverlay = new M.core.dialogue({
+                        width: boundingwidth,
+                        height: boundingheight,
+                        extraClasses : ['selectoroverlay'],
+                        draggable: false,
+                        center: false,
+                        lightbox: false,
+                        headerContent : 'none',
+                        bodyContent:"<div id=\"selecteditem_"+elementid+"\" class=\"\" style=\"\"></div>",
+                        footerContent: '',
+                        zIndex:6000
+                    });
+
+                    // Display the selector overlay.
+                    selectoroverlay.show();
+                    selectoroverlay.render();
+
+                    // Position the selector overlay over the drawing.
+                    var svgnode = Y.one('#'+elementid);
+                    var nodexy = svgnode.getXY();
+                    selectoroverlay.move(nodexy[0],nodexy[1]);
+
+                    // Add a click event
+                    Y.one('#'+selectoroverlay.get('id')).on("click", this.delete_annotation, null, key, this.selectoroverlays);
+                    console.log('adding a selectoroverlay');
+                    this.selectoroverlays[key] = selectoroverlay;
+                }
+            }, this);
+ console.log(this.selectoroverlays);
+        }
+
     },
 
     /**
@@ -634,6 +686,41 @@ EDITOR.prototype = {
             return;
         }
 
+        if (this.currenttool === 'pointer') {
+            var drawable = new Drawable();
+            var shapexy = null;
+            var shape = null;
+            console.log('Click on pointer:');
+            var element = document.elementFromPoint(e.clientX, e.clientY);
+            console.log(element);
+            if (element.tagName == "svg:path") {
+                // Delete the SVG.
+                shape = this.graphic.getShapeById(element.id);
+                shapexy = shape.getBounds();
+
+                console.log(shape);
+                console.log(shapexy);
+
+                // Delete the annotation from the pages.
+                console.log('All my annotations: ');
+                console.log(this.pages[this.currentpage].annotations);
+                Y.each(this.pages[this.currentpage].annotations, function(annotation, key) {
+                        if (annotation.type = 'line') {
+                            if (annotation.x == shapexy.x && annotation.y == shapexy.y) {
+                                console.log('I found an occurence');
+                                 console.log(annotation);
+                                this.pages[this.currentpage].annotations.splice(key, 1);
+                            }
+                        }
+                }, this);
+                console.log('All my annotations after removing: ');
+                console.log(this.pages[this.currentpage].annotations);
+
+            }
+            drawable.shapes.push(shape);
+            this.erase_drawable(drawable);
+        }
+
         this.currentedit.starttime = new Date().getTime();
         this.currentedit.start = point;
         this.currentedit.end = {x : point.x, y : point.y};
@@ -662,7 +749,7 @@ EDITOR.prototype = {
                 stroke: {
                     weight: STROKEWEIGHT,
                     color: COLOUR[this.currentcolour]
-                },
+                }
             });
 
             // If position is different from last position.
@@ -736,7 +823,7 @@ EDITOR.prototype = {
                 stroke: {
                     weight: STROKEWEIGHT,
                     color: COLOUR[this.currentcolour]
-                },
+                }
             });
 
             shape.moveTo(this.currentedit.start.x, this.currentedit.start.y);
@@ -768,6 +855,16 @@ EDITOR.prototype = {
         drawable.shapes.push(shape);
 
         return drawable;
+    },
+
+    /**
+     * Delete the shapes from the drawable.
+     * @protected
+     * @method erase_drawable
+     */
+    delete_annotation : function(event, key, selectoroverlays) {
+        console.log(this.selectoroverlays);
+        selectoroverlays[key].hide();
     },
 
     /**
@@ -813,7 +910,7 @@ EDITOR.prototype = {
             point = {x : e.clientX - offset[0] + scrollleft,
                      y : e.clientY - offset[1] + scrolltop};
 
-        if (this.currentedit.start) {
+        if (this.currentedit.start && this.currenttool !== 'pointer') {
             this.currentedit.end = point;
             this.redraw_current_edit();
         }
@@ -841,7 +938,10 @@ EDITOR.prototype = {
             return;
         }
 
-        if (this.currenttool === 'comment') {
+        if (this.currenttool === 'pointer') {
+
+
+        } else if (this.currenttool === 'comment') {
             if (width < 100) {
                 width = 100;
             }
@@ -895,6 +995,7 @@ EDITOR.prototype = {
             };
 
             this.pages[this.currentpage].annotations.push(data);
+            this.drawables.push(this.draw_annotation(data));
 
             // Reset the mouse position for the pen tool.
             this.currentpenposition.x = null;
@@ -922,6 +1023,7 @@ EDITOR.prototype = {
                 };
 
             this.pages[this.currentpage].annotations.push(data);
+            this.drawables.push(this.draw_annotation(data));
         }
 
         this.currentedit.starttime = 0;
@@ -960,7 +1062,7 @@ EDITOR.prototype = {
                 stroke: {
                     weight: STROKEWEIGHT,
                     color: COLOUR[annotation.colour]
-                },
+                }
             });
 
             shape.moveTo(annotation.x, annotation.y);
@@ -977,7 +1079,7 @@ EDITOR.prototype = {
                 stroke: {
                     weight: STROKEWEIGHT,
                     color: COLOUR[annotation.colour]
-                },
+                }
             });
 
             // Recreate the pen path array.

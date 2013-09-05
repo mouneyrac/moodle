@@ -43,7 +43,8 @@ var AJAXBASE = M.cfg.wwwroot + '/mod/assign/feedback/editpdf/ajax.php',
         'green' : 'rgb(176,255,176)',
         'blue' : 'rgb(208,208,255)',
         'white' : 'rgb(255,255,255)',
-        'yellow' : 'rgb(255,255,176)'
+        'yellow' : 'rgb(255,255,176)',
+        'black' : 'rgb(0,0,0)'
     },
     CLICKTIMEOUT = 300,
     TOOLSELECTOR = {
@@ -53,7 +54,7 @@ var AJAXBASE = M.cfg.wwwroot + '/mod/assign/feedback/editpdf/ajax.php',
         'rectangle': '.' + CSS.DIALOGUE + ' .pdfbutton_rectangle',
         'oval': '.' + CSS.DIALOGUE + ' .pdfbutton_oval',
         'stamp': '.' + CSS.DIALOGUE + ' .pdfbutton_stamp',
-        'eraser': '.' + CSS.DIALOGUE + ' .pdfbutton_eraser'
+        'select': '.' + CSS.DIALOGUE + ' .pdfbutton_select'
     },
     STROKEWEIGHT = 4;
 
@@ -369,30 +370,35 @@ EDITOR.prototype = {
      * @method setup_save_cancel
      */
     setup_toolbar : function() {
+        var toolnode,
+            currenttoolnode,
+            colourbutton,
+            colordivs;
 
         // Setup the tool buttons.
         Y.each(TOOLSELECTOR, function(selector, tool) {
-            var toolnode = Y.one(selector);
+            toolnode = Y.one(selector);
             toolnode.on('click', this.handle_toolbutton, this, tool);
             toolnode.on('key', this.handle_toolbutton, 'down:13', this, tool);
             toolnode.setAttribute('aria-pressed', 'false');
         }, this);
 
          // Set the default tool.
-        var currenttoolnode = Y.one(TOOLSELECTOR[this.currenttool]);
-        currenttoolnode.addClass('selectedbutton');
+        currenttoolnode = Y.one(TOOLSELECTOR[this.currenttool]);
+        currenttoolnode.addClass('assignfeedback_editpdf_selectedbutton');
         currenttoolnode.setAttribute('aria-pressed', 'true');
 
         // Setup the color button.
-        var colourbutton = Y.one(SELECTOR.COLOURBUTTON);
+        colourbutton = Y.one(SELECTOR.COLOURBUTTON);
         colourbutton.on('click', this.handle_colourbutton, this);
         colourbutton.on('key', this.handle_colourbutton, 'down:13', this);
         colourbutton.setAttribute('title', this.currentcolour + 'color');
 
         // Generate the color picker content.
-        var colordivs = '';
+        colordivs = '';
         Y.each(COLOUR, function(rgb, color) {
-            colordivs = colordivs + '<div class=\"square '+ color +'\" title=\"'+ color +'\" role=\"button\" tabIndex=0></div>';
+            colordivs = colordivs + '<div class=\"assignfeedback_editpdf_square assignfeedback_editpdf_'+
+                color +'\" title=\"'+ color +'\" role=\"button\" tabIndex=\"0\"></div>';
         }, this);
 
         if (!this.colourpicker) {
@@ -405,8 +411,7 @@ EDITOR.prototype = {
                 lightbox: false,
                 headerContent : M.util.get_string('colourpicker', 'assignfeedback_editpdf'),
                 bodyContent:"<div id=\"colorpicker\" class=\"\" style=\"\">" + colordivs + "</div>",
-                footerContent: '',
-                zIndex:60000,
+                footerContent: ''
             });
         }
     },
@@ -417,6 +422,9 @@ EDITOR.prototype = {
      * @method handle_colourbutton
      */
     handle_colourbutton : function(e) {
+        var colourbuttonxy,
+            colourpickerxy;
+
         e.preventDefault();
 
         // Display the color picker.
@@ -424,13 +432,13 @@ EDITOR.prototype = {
         this.colourpicker.render();
 
         // Position the colourpicker at the bottom on the colour button.
-        var colourbuttonxy = Y.one(SELECTOR.COLOURBUTTON).getXY();
-        var colourpickerxy = Y.one('.moodle-dialogue-base .colourpicker').getXY();
+        colourbuttonxy = Y.one(SELECTOR.COLOURBUTTON).getXY();
+        colourpickerxy = Y.one('.moodle-dialogue-base .colourpicker').getXY();
         this.colourpicker.move(colourpickerxy[0],colourbuttonxy[1]+40);
 
         // Add on click event to all colors.
         Y.each(COLOUR, function(rgb, color) {
-            Y.one('.'+color).on("click", this.changecolor, null, color, this, this.colourpicker);
+            Y.one('.assignfeedback_editpdf_'+color).on("click", this.changecolor, null, color, this, this.colourpicker);
         }, this);
 
         // Automatically close the color picker when we click something else (except the color button).
@@ -439,7 +447,10 @@ EDITOR.prototype = {
             // Below code is causing the dialogue to close as soon as it is open. Need to detect the state of overlay.
             // When it is already open then the below code should fire.
             var buttonchildnodes = Y.one(SELECTOR.COLOURBUTTON).get('childNodes');
-            if(event.target.ancestor('#colorpicker')=== null && event.target.get('id') != buttonchildnodes.item(0).get('id') && event.target.get('id') != Y.one(SELECTOR.COLOURBUTTON).get('id') && colourpicker.get('visible') == true)  {
+            if(event.target.ancestor('#colorpicker') === null &&
+                event.target.get('id') != buttonchildnodes.item(0).get('id') &&
+                event.target.get('id') != Y.one(SELECTOR.COLOURBUTTON).get('id') &&
+                colourpicker.get('visible') == true)  {
                colourpicker.hide();
             }
         }, null, this.colourpicker);
@@ -456,14 +467,17 @@ EDITOR.prototype = {
      * @method handle_toolbutton
      */
     handle_toolbutton : function(e, tool) {
+        var currenttoolnode,
+            newtoolnode;
+
         e.preventDefault();
 
         // Change style of the pressed button.
-        var currenttoolnode = Y.one(TOOLSELECTOR[this.currenttool]);
-        currenttoolnode.removeClass('selectedbutton');
+        currenttoolnode = Y.one(TOOLSELECTOR[this.currenttool]);
+        currenttoolnode.removeClass('assignfeedback_editpdf_selectedbutton');
         currenttoolnode.setAttribute('aria-pressed', 'false');
-        var newtoolnode = Y.one(TOOLSELECTOR[tool]);
-        newtoolnode.addClass('selectedbutton');
+        newtoolnode = Y.one(TOOLSELECTOR[tool]);
+        newtoolnode.addClass('assignfeedback_editpdf_selectedbutton');
         newtoolnode.setAttribute('aria-pressed', 'true');
 
         // Change the rool.
@@ -476,11 +490,14 @@ EDITOR.prototype = {
      * @method changecolor
      */
     changecolor : function(e, color, editor, colourpicker) {
-        var imgcoloururl = M.cfg.wwwroot + '/theme/image.php?theme=standard&component=assignfeedback_editpdf&image=';
+        var imgcoloururl,
+            colourbutton;
+
+        imgcoloururl = M.cfg.wwwroot + '/theme/image.php?theme=standard&component=assignfeedback_editpdf&image=';
         Y.one('.pdfbutton_colour').get('childNodes').item(0).setAttribute('src', imgcoloururl+color);
         editor.currentcolour = color;
-        var colourbutton = Y.one(SELECTOR.COLOURBUTTON);
-        colourbutton.setAttribute('title', color + 'color');
+        colourbutton = Y.one(SELECTOR.COLOURBUTTON);
+        colourbutton.setAttribute('title', M.util.get_string(color, 'assignfeedback_editpdf'));
         colourpicker.hide();
         // Restoring focus to the color button.
         colourbutton.focus();
@@ -492,8 +509,11 @@ EDITOR.prototype = {
      * @method setup_save_cancel
      */
     setup_save_cancel : function() {
-        var cancel = Y.one(SELECTOR.CANCEL),
-            save = Y.one(SELECTOR.SAVE);
+        var cancel,
+            save;
+
+        cancel = Y.one(SELECTOR.CANCEL),
+        save = Y.one(SELECTOR.SAVE);
 
         cancel.on('mousedown', this.handle_cancel, this);
         cancel.on('key', this.handle_cancel, 'down:13', this);
@@ -643,7 +663,9 @@ EDITOR.prototype = {
             });
 
             // If position is different from last position
-            if (!this.currentpenposition.x || !this.currentpenposition.y || this.currentpenposition.x != this.currentedit.end.x || this.currentpenposition.y != this.currentedit.end.y) {
+            if (!this.currentpenposition.x || !this.currentpenposition.y ||
+                this.currentpenposition.x != this.currentedit.end.x ||
+                this.currentpenposition.y != this.currentedit.end.y) {
                 // save the mouse postion to the list of position
                 if (this.currentpenpath.length == 0) {
                     this.currentpenpath.push({x:this.currentedit.start.x,y:this.currentedit.start.y});
@@ -807,7 +829,8 @@ EDITOR.prototype = {
             height,
             x,
             y,
-            duration;
+            duration,
+            thepath;
 
         duration = new Date().getTime() - this.currentedit.start;
 
@@ -853,10 +876,10 @@ EDITOR.prototype = {
             this.erase_drawable(this.currentdrawable);
         } else if (this.currenttool === 'pen') {
             // Create the path string.
-            var thepath = '';
-                Y.each(this.currentpenpath, function(position, key) {
-                thepath = thepath + position.x + "," + position.y + ":";
-                // Remove the last ":".
+            thepath = '';
+            Y.each(this.currentpenpath, function(position, key) {
+            thepath = thepath + position.x + "," + position.y + ":";
+            // Remove the last ":".
             }, this);
             thepath = thepath.substring(0, thepath.length - 1);
 
@@ -913,7 +936,18 @@ EDITOR.prototype = {
      * @return Drawable
      */
     draw_annotation : function(annotation) {
-        var drawable = new Drawable();
+        var drawable,
+            positions,
+            previousposition,
+            xy,
+            width,
+            height,
+            topleftx,
+            toplefty,
+            annotationtype;
+
+
+        drawable = new Drawable();
 
         if (annotation.type === 'line') {
             shape = this.graphic.addShape({
@@ -945,11 +979,11 @@ EDITOR.prototype = {
             });
 
             // Recreate the pen path array
-            var positions = annotation.path.split(':');
+            positions = annotation.path.split(':');
             // redraw all the lines
-            var previousposition = {x:null,y:null};
+            previousposition = {x:null,y:null};
             Y.each(positions, function(position, key) {
-                var xy = position.split(',');
+                xy = position.split(',');
                 if (!previousposition.x) {
                     previousposition.x = xy[0];
                     previousposition.y = xy[1];
@@ -964,13 +998,6 @@ EDITOR.prototype = {
         }
 
         if (annotation.type === 'rectangle' || annotation.type === 'oval' ) {
-
-            var width,
-                height,
-                topleftx,
-                toplefty,
-                annotationtype;
-
             if (annotation.type === 'rectangle') {
                 annotationtype = Y.Rect;
             } if (annotation.type === 'oval') {

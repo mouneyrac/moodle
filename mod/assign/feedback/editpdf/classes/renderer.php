@@ -129,7 +129,7 @@ class assignfeedback_editpdf_renderer extends plugin_renderer_base {
         $toolbar .= $this->render_toolbar_button('rectangle', 'rectangle');
         $toolbar .= $this->render_toolbar_button('oval', 'oval');
         $toolbar .= $this->render_toolbar_button('stamp', 'stamp');
-        $toolbar .= $this->render_toolbar_button('eraser', 'eraser');
+        $toolbar .= $this->render_toolbar_button('select', 'select');
 
         $toolbar = html_writer::div($toolbar, 'toolbar', array('role'=>'toolbar'));
 
@@ -159,7 +159,8 @@ class assignfeedback_editpdf_renderer extends plugin_renderer_base {
                                           'M.assignfeedback_editpdf.editor.init',
                                           $editorparams);
 
-        $this->page->requires->strings_for_js(array('colourpicker', 'loadingeditor', 'pagexofy'), 'assignfeedback_editpdf');
+        $this->page->requires->strings_for_js(array('yellow', 'white', 'red', 'blue', 'green', 'black',
+            'colourpicker', 'loadingeditor', 'pagexofy'), 'assignfeedback_editpdf');
 
         return $html;
     }

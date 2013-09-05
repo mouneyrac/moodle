@@ -525,7 +525,7 @@ EDITOR.prototype = {
     },
 
     /**
-     * Hide the popup - but don't save anything anyqhere.
+     * Hide the popup - but don't save anything anywhere.
      * @protected
      * @method handle_cancel
      */
@@ -615,7 +615,7 @@ EDITOR.prototype = {
     },
 
     /**
-     * Event handler for mousedown or touchstart
+     * Event handler for mousedown or touchstart.
      * @protected
      * @param Event
      * @method edit_start
@@ -662,17 +662,17 @@ EDITOR.prototype = {
                 },
             });
 
-            // If position is different from last position
+            // If position is different from last position.
             if (!this.currentpenposition.x || !this.currentpenposition.y ||
                 this.currentpenposition.x != this.currentedit.end.x ||
                 this.currentpenposition.y != this.currentedit.end.y) {
-                // save the mouse postion to the list of position
+                // save the mouse postion to the list of position.
                 if (this.currentpenpath.length == 0) {
                     this.currentpenpath.push({x:this.currentedit.start.x,y:this.currentedit.start.y});
                 }
                 this.currentpenpath.push({x:this.currentedit.end.x,y:this.currentedit.end.y});
 
-                // redraw all the lines
+                // Redraw all the lines.
                 var previousposition = {x:null,y:null};
                 Y.each(this.currentpenpath, function(position, key) {
                     if (!previousposition.x) {
@@ -686,7 +686,7 @@ EDITOR.prototype = {
                 }, this);
                 shape.end();
 
-                // save the mouse position as the current one
+                // Save the mouse position as the current one.
                 this.currentpenposition.x = this.currentedit.end.x;
                 this.currentpenposition.y = this.currentedit.end.y;
             }
@@ -798,7 +798,7 @@ EDITOR.prototype = {
     },
 
     /**
-     * Event handler for mousemove
+     * Event handler for mousemove.
      * @protected
      * @param Event
      * @method edit_move
@@ -817,7 +817,7 @@ EDITOR.prototype = {
     },
 
     /**
-     * Event handler for mouseup or touchend
+     * Event handler for mouseup or touchend.
      * @protected
      * @param Event
      * @method edit_end
@@ -893,7 +893,7 @@ EDITOR.prototype = {
 
             this.pages[this.currentpage].annotations.push(data);
 
-            // reset the mouse position for the pen tool.
+            // Reset the mouse position for the pen tool.
             this.currentpenposition.x = null;
             this.currentpenposition.y = null;
             this.currentpenpath = [];
@@ -919,7 +919,6 @@ EDITOR.prototype = {
                 };
 
             this.pages[this.currentpage].annotations.push(data);
-            //this.drawables.push(this.draw_annotation(data));
         }
 
         this.currentedit.starttime = 0;
@@ -978,9 +977,9 @@ EDITOR.prototype = {
                 },
             });
 
-            // Recreate the pen path array
+            // Recreate the pen path array.
             positions = annotation.path.split(':');
-            // redraw all the lines
+            // Redraw all the lines.
             previousposition = {x:null,y:null};
             Y.each(positions, function(position, key) {
                 xy = position.split(',');
@@ -1005,10 +1004,10 @@ EDITOR.prototype = {
             }
 
             // Convert data to integer to avoid wrong > or < results.
-            annotation.x = parseInt(annotation.x);
-            annotation.y = parseInt(annotation.y);
-            annotation.endx = parseInt(annotation.endx);
-            annotation.endy = parseInt(annotation.endy);
+            annotation.x = parseInt(annotation.x, 10);
+            annotation.y = parseInt(annotation.y, 10);
+            annotation.endx = parseInt(annotation.endx, 10);
+            annotation.endy = parseInt(annotation.endy, 10);
 
             // Work out the boundary box.
             topleftx = annotation.x;
@@ -1065,7 +1064,7 @@ EDITOR.prototype = {
     },
 
     /**
-     * Draw a comment
+     * Draw a comment.
      * @protected
      * @method draw_comment
      * @param comment

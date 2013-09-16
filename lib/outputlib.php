@@ -1420,9 +1420,10 @@ class theme_config {
      *
      * @param string $themename
      * @param stdClass $settings from config_plugins table
+     * @param boolean $parentcheck true if we are checking a parent theme       .
      * @return stdClass The theme configuration
      */
-    private static function find_theme_config($themename, $settings) {
+    private static function find_theme_config($themename, $settings, $parentcheck = false) {
         // We have to use the variable name $THEME (upper case) because that
         // is what is used in theme config.php files.
 
@@ -1442,6 +1443,15 @@ class theme_config {
         if (!is_array($THEME->parents)) {
             // parents option is mandatory now
             return null;
+        } else {
+            // Verify the parents are valid themes too.
+            foreach ($THEME->parents as $parent) {
+                // We use $parentcheck to only check the direct parents (avoid infinite loop).
+                if (!$parentcheck and
+                    !$dir = theme_config::find_theme_config($parent, $settings, true)) {
+                    return null;
+                }
+            }
         }
 
         return $THEME;

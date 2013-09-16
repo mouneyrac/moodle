@@ -1513,7 +1513,7 @@ class moodle_page {
             switch ($themetype) {
                 case 'course':
                     if (!empty($CFG->allowcoursethemes) && !empty($this->_course->theme) && $this->devicetypeinuse == 'default') {
-                        return $this->_course->theme;
+                        return $this->is_theme_valid($this->_course->theme);
                     }
                 break;
 
@@ -1522,7 +1522,7 @@ class moodle_page {
                         $categories = $this->categories;
                         foreach ($categories as $category) {
                             if (!empty($category->theme)) {
-                                return $category->theme;
+                                return $this->is_theme_valid($category->theme);
                             }
                         }
                     }
@@ -1530,33 +1530,33 @@ class moodle_page {
 
                 case 'session':
                     if (!empty($SESSION->theme)) {
-                        return $SESSION->theme;
+                        return $this->is_theme_valid($SESSION->theme);
                     }
                 break;
 
                 case 'user':
                     if (!empty($CFG->allowuserthemes) && !empty($USER->theme) && $this->devicetypeinuse == 'default') {
                         if ($mnetpeertheme) {
-                            return $mnetpeertheme;
+                            return $this->is_theme_valid($mnetpeertheme);
                         } else {
-                            return $USER->theme;
+                            return $this->is_theme_valid($USER->theme);
                         }
                     }
                 break;
 
                 case 'site':
                     if ($mnetpeertheme) {
-                        return $mnetpeertheme;
+                        return $this->is_theme_valid($mnetpeertheme);
                     }
                     // First try for the device the user is using.
                     $devicetheme = core_useragent::get_device_type_theme($this->devicetypeinuse);
                     if (!empty($devicetheme)) {
-                        return $devicetheme;
+                        return $this->is_theme_valid($devicetheme);
                     }
                     // Next try for the default device (as a fallback).
                     $devicetheme = core_useragent::get_device_type_theme('default');
                     if (!empty($devicetheme)) {
-                        return $devicetheme;
+                        return $this->is_theme_valid($devicetheme);
                     }
                     // The default device theme isn't set up - use the overall default theme.
                     return theme_config::DEFAULT_THEME;
@@ -1566,6 +1566,21 @@ class moodle_page {
         // We should most certainly have resolved a theme by now. Something has gone wrong.
         debugging('Error resolving the theme to use for this page.', DEBUG_DEVELOPER);
         return theme_config::DEFAULT_THEME;
+    }
+
+    /**
+     * Check if the theme is valid.
+     *
+     * @param $theme the theme to check for existing parents.
+     * @return string theme name.
+     */
+    private function is_theme_valid($theme) {
+        $themeconfig = theme_config::load($theme);
+        if (!empty($themeconfig))) {
+            return $theme;
+        } else {
+            return theme_config::DEFAULT_THEME;
+        }
     }
 
 

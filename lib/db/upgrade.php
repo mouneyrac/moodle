@@ -2550,9 +2550,35 @@ function xmldb_main_upgrade($oldversion) {
 
             $dbman->drop_field($table, $field);
         }
+    }
 
+    if ($oldversion < 2013092700.01) {
         // Main savepoint reached.
         upgrade_main_savepoint(true, 2013092001.02);
+
+        // Check that none use My Mobile theme.
+        $coursetheme = $DB->get_field('course', 'theme', array('theme' => 'mymobile'));
+        $cattheme = $DB->get_field('course_categories', 'theme', array('theme' => 'mymobile'));
+        $usertheme = $DB->get_field('user', 'theme', array('theme' => 'mymobile'));
+        $mnettheme = $DB->get_field('mnet_host', 'theme', array('theme' => 'mymobile'));
+
+        // Check some fields that could be annoying to lose: custom css and showmymobileintro.
+        $customcss = $DB->get_field('config_plugins', 'value',
+            array('plugin' => 'theme_mymobile', 'name' => 'customcss'));
+        $showmobileintro = $DB->get_field('config_plugins', 'value',
+            array('plugin' => 'theme_mymobile', 'name' => 'showmymobileintro'));
+
+        // Uninstall My Mobile theme if nothing to lose.
+        if (!$coursetheme and !$cattheme and !$usertheme and !$mnettheme and
+            !$customcss and !$showmobileintro) {
+            // Delete from config_plugins.
+            $DB->delete_records('config_plugins', array('plugin' => 'theme_mymobile'));
+            // Delete the config logs.
+            $DB->delete_records('config_log', array('plugin' => 'theme_mymobile'));
+        }
+
+        // Main savepoint reached.
+        upgrade_main_savepoint(true, 2013092700.01);
     }
 
     return true;

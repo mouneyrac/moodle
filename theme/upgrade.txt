@@ -3,6 +3,10 @@ information provided here is intended especially for theme designer.
 
 === 2.6 ===
 
+Removed themes:
+* "My Mobile" theme has been removed (see MDL-40874). Any setting set to the "My Mobile" theme and its extending themes will
+  fallback to the Standard theme. You can reinstall the "My Mobile" theme from the Moodle.org plugins repository, see MDLSITE-2494.
+
 Notes:
 * The parameters value for the following functions have been modified: core_renderer::heading() and core_renderer::heading_with_help().
   This means that headings using the default options will no longer have the class "main" which was the previous default.

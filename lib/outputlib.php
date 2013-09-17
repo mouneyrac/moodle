@@ -436,7 +436,7 @@ class theme_config {
         foreach ($this->parents as $parent) {
             if ($parent == 'base') {
                 $parent_config = $baseconfig;
-            } else if (!$parent_config = theme_config::find_theme_config($parent, $this->settings)) {
+            } else if (!$parent_config = $config->parentconfigs[$parent]) {
                 // this is not good - better exclude faulty parents
                 continue;
             }
@@ -1420,9 +1420,10 @@ class theme_config {
      *
      * @param string $themename
      * @param stdClass $settings from config_plugins table
+     * @param boolean $parentscheck true to also check the parents.    .
      * @return stdClass The theme configuration
      */
-    private static function find_theme_config($themename, $settings) {
+    private static function find_theme_config($themename, $settings, $parentscheck = true) {
         // We have to use the variable name $THEME (upper case) because that
         // is what is used in theme config.php files.
 
@@ -1434,6 +1435,7 @@ class theme_config {
         $THEME->name     = $themename;
         $THEME->dir      = $dir;
         $THEME->settings = $settings;
+        $THEME->parentconfigs = array();
 
         global $CFG; // just in case somebody tries to use $CFG in theme config
         include("$THEME->dir/config.php");
@@ -1442,9 +1444,34 @@ class theme_config {
         if (!is_array($THEME->parents)) {
             // parents option is mandatory now
             return null;
+        } else {
+            // We use $parentscheck to only check the direct parents (avoid infinite loop).
+            if ($parentscheck) {
+                // Save the initial $THEME variable so it doesn't get overwritten by recursive calls with include().
+                $MAINTHEME = $THEME;
+                // Find all parent theme configs.
+                $invalidparent = false;
+                foreach ($MAINTHEME->parents as $parent) {
+                        $parentconfig = theme_config::find_theme_config($parent, $settings, false);
+                        $MAINTHEME->parentconfigs[$parent] = $parentconfig;
+                        if (empty($parentconfig)) {
+                            $invalidparent = true;
+                        }
+                }
+                // If one parent is invalid then the theme itself is invalid.
+                if ($invalidparent) {
+                    return null;
+                }
+            }
         }
 
-        return $THEME;
+        if ($parentscheck) {
+            // Return the theme config.
+            return $MAINTHEME;
+        } else {
+            // Return the parent config.
+            return $THEME;
+        }
     }
 
     /**

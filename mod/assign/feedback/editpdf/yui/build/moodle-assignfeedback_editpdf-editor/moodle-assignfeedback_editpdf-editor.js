@@ -54,8 +54,7 @@ var AJAXBASE = M.cfg.wwwroot + '/mod/assign/feedback/editpdf/ajax.php',
         'rectangle': '.' + CSS.DIALOGUE + ' .pdfbutton_rectangle',
         'oval': '.' + CSS.DIALOGUE + ' .pdfbutton_oval',
         'stamp': '.' + CSS.DIALOGUE + ' .pdfbutton_stamp',
-        'select': '.' + CSS.DIALOGUE + ' .pdfbutton_select',
-        'pointer': '.' + CSS.DIALOGUE + ' .pdfbutton_pointer'
+        'select': '.' + CSS.DIALOGUE + ' .pdfbutton_select'
     },
     STROKEWEIGHT = 4;
 
@@ -381,6 +380,7 @@ EDITOR.prototype = {
         // Setup the tool buttons.
         Y.each(TOOLSELECTOR, function(selector, tool) {
             toolnode = Y.one(selector);
+            console.log(selector);
             toolnode.on('click', this.handle_toolbutton, this, tool);
             toolnode.on('key', this.handle_toolbutton, 'down:13', this, tool);
             toolnode.setAttribute('aria-pressed', 'false');
@@ -488,8 +488,8 @@ EDITOR.prototype = {
         // Change the rool.
         this.currenttool = tool;
 
-        // If the tool is the  "pointer" then add the overlay.
-        if (tool == "pointer") {
+        // If the tool is the  "select" then add the overlay.
+        if (tool == "select") {
 
             console.log(this.drawables);
             Y.each(this.drawables, function(drawable, key) {
@@ -507,13 +507,13 @@ EDITOR.prototype = {
                         width: boundingwidth,
                         height: boundingheight,
                         extraClasses : ['selectoroverlay'],
-                        draggable: false,
+                        draggable: true,
+                        draggablecontent: true,
                         center: false,
                         lightbox: false,
-                        headerContent : 'none',
+                        headerContent : '',
                         bodyContent:"<div id=\"selecteditem_"+elementid+"\" class=\"\" style=\"\"></div>",
-                        footerContent: '',
-                        zIndex:6000
+                        footerContent: ''
                     });
 
                     // Display the selector overlay.
@@ -526,7 +526,7 @@ EDITOR.prototype = {
                     selectoroverlay.move(nodexy[0],nodexy[1]);
 
                     // Add a click event
-                    Y.one('#'+selectoroverlay.get('id')).on("click", this.delete_annotation, null, key, this.selectoroverlays);
+                    Y.one('#'+selectoroverlay.get('id')).on("click", this.select_annotation, null, key, this.selectoroverlays);
                     console.log('adding a selectoroverlay');
                     this.selectoroverlays[key] = selectoroverlay;
                 }
@@ -683,11 +683,11 @@ EDITOR.prototype = {
             return;
         }
 
-        if (this.currenttool === 'pointer') {
+        if (this.currenttool === 'select') {
             var drawable = new Drawable();
             var shapexy = null;
             var shape = null;
-            console.log('Click on pointer:');
+            console.log('Click on select:');
             var element = document.elementFromPoint(e.clientX, e.clientY);
             console.log(element);
             if (element.tagName == "svg:path") {
@@ -859,9 +859,10 @@ EDITOR.prototype = {
      * @protected
      * @method erase_drawable
      */
-    delete_annotation : function(event, key, selectoroverlays) {
-        console.log(this.selectoroverlays);
-        selectoroverlays[key].hide();
+    select_annotation : function(event, key, selectoroverlays) {
+        console.log(selectoroverlays[key].get('id'));
+        Y.one('#'+selectoroverlays[key].get('id')).addClass('assignfeedback_editpdf_displayoverlay');
+        selectoroverlays[key].show();
     },
 
     /**
@@ -907,7 +908,7 @@ EDITOR.prototype = {
             point = {x : e.clientX - offset[0] + scrollleft,
                      y : e.clientY - offset[1] + scrolltop};
 
-        if (this.currentedit.start && this.currenttool !== 'pointer') {
+        if (this.currentedit.start && this.currenttool !== 'select') {
             this.currentedit.end = point;
             this.redraw_current_edit();
         }
@@ -935,7 +936,7 @@ EDITOR.prototype = {
             return;
         }
 
-        if (this.currenttool === 'pointer') {
+        if (this.currenttool === 'select') {
 
 
         } else if (this.currenttool === 'comment') {

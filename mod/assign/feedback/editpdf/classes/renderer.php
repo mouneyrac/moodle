@@ -63,7 +63,7 @@ class assignfeedback_editpdf_renderer extends plugin_renderer_base {
      * @return string
      */
     public function render_assignfeedback_editpdf_widget(assignfeedback_editpdf_widget $widget) {
-        global $CFG;
+        global $CFG, $USER;
 
         $html = '';
 
@@ -72,7 +72,8 @@ class assignfeedback_editpdf_renderer extends plugin_renderer_base {
         $launcheditorlink = html_writer::tag('button',
                                               get_string('launcheditor', 'assignfeedback_editpdf'),
                                               array('id'=>$linkid, 'class'=>'btn'));
-        $html .= html_writer::tag('style', file_get_contents($CFG->dirroot . '/mod/assign/feedback/editpdf/styles.css'));
+       // $themeconfig = theme_config::load($USER->theme);
+       //$html .= html_writer::tag('style', $themeconfig->css_files_get_contents($CFG->dirroot . '/mod/assign/feedback/editpdf/styles.css', array()));
         $links = $launcheditorlink;
 
         $linkclass = '';

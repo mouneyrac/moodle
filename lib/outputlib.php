@@ -853,7 +853,7 @@ class theme_config {
      * @param css_optimiser|null $optimiser A CSS optimiser to use during on the content. Null = don't optimise
      * @return The converted array or the contents of the single file ($file type)
      */
-    protected function css_files_get_contents($file, array $keys, css_optimiser $optimiser = null) {
+    public function css_files_get_contents($file, array $keys, css_optimiser $optimiser = null) {
         global $CFG;
         if (is_array($file)) {
             // We use a separate array to keep everything in the exact same order.

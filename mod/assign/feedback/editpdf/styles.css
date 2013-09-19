@@ -148,3 +148,33 @@ ul.assignfeedback_editpdf_menu {
     padding-right: 4px;
 }
 
+.selectoroverlay {
+    opacity: 0.0 !important;
+    background-color: #def !important;
+}
+
+.moodle-dialogue-base .selectoroverlay .moodle-dialogue-wrap{
+    background-color: #0029FF;
+}
+
+.moodle-dialogue-base .selectoroverlay .moodle-dialogue-wrap .moodle-dialogue-hd{
+    /*display: none;*/
+    background-color: #0029FF;
+    opacity: 1 !important;
+    background-image: none;
+    border-bottom: 0px;
+}
+
+.assignfeedback_editpdf_displayoverlay {
+     opacity: 0.2 !important;
+ }
+
+.moodle-dialogue-base .selectoroverlay .moodle-dialogue-wrap .moodle-dialogue-hd .closebutton {
+     width:25px;
+     height:19px;
+     background-image: url([[pix:assignfeedback_editpdf|trash]]);
+     box-shadow: 0px 0px 0px 0px;
+     background-color: #0029FF;
+}
+
+

@@ -90,6 +90,25 @@ Drawable = function() {
      * @public
      */
     this.nodes = [];
+
+    /**
+     * Selector is the node ID of the dialog box overlaying the drawable.
+     * The dialog box is displayed when the Select tool is clicked.
+     * The user can move the selector and delete the selector,
+     * then the move/deletion action applies to the drawable too.
+     * @property type
+     * @type integer
+     * @public
+     */
+    this.selector = 0;
+
+    /**
+     * The annotation id of this drawable in the page
+     * @property type
+     * @type integer
+     * @public
+     */
+    this.annotationid = 0;
 };
 
 /**
@@ -601,6 +620,57 @@ EDITOR.prototype = {
         currenttoolnode.removeClass('assignfeedback_editpdf_selectedbutton');
         currenttoolnode.setAttribute('aria-pressed', 'false');
         this.currenttool = tool;
+        // If the tool is the  "select" then add the overlay.
+        if (tool === "select") {
+
+             console.log(this.drawables);
+             Y.each(this.drawables, function(drawable) {
+
+                 // ignore comment and undefined.
+                 if (drawable.shapes.length > 0 && typeof drawable.shapes[0] !== "undefined") {
+                      console.log(drawable.shapes[0]);
+                      // Get the width and height.
+                      var elementid = drawable.shapes[0].get('node').getAttribute('id');
+                      var el = document.getElementById(elementid);
+                      boundingwidth = el.getBoundingClientRect().width + 6;
+                      boundingheight = el.getBoundingClientRect().height + 6;
+
+                      // Add an overlay on top of the svg
+                       var selectoroverlay = new M.core.dialogue({
+                            width: boundingwidth,
+                            height: boundingheight,
+                            extraClasses : ['selectoroverlay'],
+                            draggable: true,
+                            draggablecontent: true,
+                            center: false,
+                            lightbox: false,
+                            headerContent : '',
+                            bodyContent:"<div id=\"selecteditem_"+elementid+"\" class=\"\" style=\"\"></div>",
+                            footerContent: ''
+                       });
+
+                     console.log('#' +selectoroverlay.get('id')+ ' .closebutton');
+                     Y.one('#' +selectoroverlay.get('id')+ ' .closebutton').on('click',
+                        this.delete_selection, this, selectoroverlay);
+
+                     // Display the selector overlay.
+                     selectoroverlay.show();
+                     selectoroverlay.render();
+
+                     // Position the selector overlay over the drawing.
+                     var svgnode = Y.one('#'+elementid);
+                     var nodexy = svgnode.getXY();
+                     selectoroverlay.move(nodexy[0],nodexy[1]);
+
+                     // Add a click event
+                     Y.one('#'+selectoroverlay.get('id')).on("click", this.select_annotation, null, selectoroverlay);
+                     console.log('adding a selectoroverlay');
+
+                     drawable.selector = selectoroverlay.get('id');
+                 }
+             }, this);
+        }
+
         this.refresh_button_state();
     },
 
@@ -748,6 +818,41 @@ EDITOR.prototype = {
             return;
         }
 
+        if (this.currenttool === 'select') {
+            var drawable = new Drawable();
+            var shapexy = null;
+            var shape = null;
+            console.log('Click on select:');
+            var element = document.elementFromPoint(e.clientX, e.clientY);
+            console.log(element);
+            if (element.tagName === "svg:path") {
+                // Delete the SVG.
+                shape = this.graphic.getShapeById(element.id);
+                shapexy = shape.getBounds();
+
+                console.log(shape);
+                console.log(shapexy);
+
+                // Delete the annotation from the pages.
+                console.log('All my annotations: ');
+                console.log(this.pages[this.currentpage].annotations);
+                Y.each(this.pages[this.currentpage].annotations, function(annotation, key) {
+                    if (annotation.type === 'line') {
+                        if (annotation.x === shapexy.x && annotation.y === shapexy.y) {
+                            console.log('I found an occurence');
+                            console.log(annotation);
+                            this.pages[this.currentpage].annotations.splice(key, 1);
+                        }
+                    }
+                }, this);
+                console.log('All my annotations after removing: ');
+                console.log(this.pages[this.currentpage].annotations);
+
+            }
+            drawable.shapes.push(shape);
+            this.erase_drawable(drawable);
+        }
+
         this.currentedit.starttime = new Date().getTime();
         this.currentedit.start = point;
         this.currentedit.end = {x : point.x, y : point.y};
@@ -884,6 +989,13 @@ EDITOR.prototype = {
         return drawable;
     },
 
+    select_annotation : function(event, selectoroverlay) {
+        console.log('I select the annotation: ' + '#'+selectoroverlay.get('id'));
+        Y.one('#'+selectoroverlay.get('id')).addClass('assignfeedback_editpdf_displayoverlay');
+        selectoroverlay.show();
+    },
+
+
     /**
      * Delete the shapes from the drawable.
      * @protected
@@ -930,7 +1042,7 @@ EDITOR.prototype = {
             point = {x : e.clientX - offset[0] + scrollleft,
                      y : e.clientY - offset[1] + scrolltop};
 
-        if (this.currentedit.start) {
+        if (this.currentedit.start && this.currenttool !== 'select') {
             this.currentedit.end = point;
             this.redraw_current_edit();
         }
@@ -956,7 +1068,7 @@ EDITOR.prototype = {
     },
 
     /**
-     * Clean a annotation record, returning an oject with only fields that are valid.
+     * Clean an annotation record, returning an object with only fields that are valid.
      * @protected
      * @method clean_annotation_data
      * @param annotation
@@ -998,7 +1110,12 @@ EDITOR.prototype = {
             return;
         }
 
-        if (this.currenttool === 'comment') {
+        if (this.currenttool === 'select') {
+            // do nothing and trick shifter.
+            if (x === y) {
+                x = y;
+            }
+        } else if (this.currenttool === 'comment') {
             // Work out the boundary box.
             x = this.currentedit.start.x;
             if (this.currentedit.end.x > x) {
@@ -1051,6 +1168,8 @@ EDITOR.prototype = {
             };
 
             this.pages[this.currentpage].annotations.push(data);
+            // We'll default the annotation id to 0. We'll reset it after.
+            this.drawables.push(this.draw_annotation(data, 0));
 
             // Reset the mouse position for the pen tool.
             this.currentpenposition.x = null;
@@ -1069,9 +1188,14 @@ EDITOR.prototype = {
                 };
 
             this.pages[this.currentpage].annotations.push(data);
+            this.drawables.push(this.draw_annotation(data, 0));
         }
 
         this.save_current_page();
+
+        // We need to set the new annotation id as it has been generated by the save_current_page().
+        // TODO. (there should be only one drawable with a annotationid set to 0)
+
 
         this.currentedit.starttime = 0;
         this.currentedit.start = false;
@@ -1119,8 +1243,14 @@ EDITOR.prototype = {
             }
         };
 
+        console.log('Doing the ajax call');
+        function onComplete(transactionId, responseObject, context) {
+            console.log('The ajax call is complete');
+            console.log(responseObject);
+            console.log(context.pages[context.currentpage].annotations);
+        }
+        Y.on('io:complete', onComplete, Y, this);
         Y.io(ajaxurl, config);
-
     },
 
     /**
@@ -1130,7 +1260,7 @@ EDITOR.prototype = {
      * @param annotation
      * @return Drawable
      */
-    draw_annotation : function(annotation) {
+    draw_annotation : function(annotation, pageannotationid) {
         var drawable,
             positions,
             previousposition,
@@ -1139,10 +1269,13 @@ EDITOR.prototype = {
             height,
             topleftx,
             toplefty,
-            annotationtype;
+            annotationtype,
+            shape;
 
 
         drawable = new Drawable();
+
+        drawable.annotationid = pageannotationid;
 
         if (annotation.type === 'line') {
             shape = this.graphic.addShape({
@@ -1258,6 +1391,35 @@ EDITOR.prototype = {
                 return;
             }
         }
+    },
+
+    /**
+     * Delete a selected item from the current page.
+     * @protected
+     * @method delete_selection
+     * @param comment
+     */
+    delete_selection : function(e, selectoroverlay) {
+
+        // Delete the drawable.
+        Y.each(this.drawables, function(drawable) {
+            if (drawable.selector === selectoroverlay.get('id')) {
+                // Remove the matching object from the page annotations (so save_current_page() will remove it from the DB).
+                var i = 0, annotations;
+                annotations = this.pages[this.currentpage].annotations;
+                for (i = 0; i < annotations.length; i++) {
+                    if (annotations[i].id === drawable.annotationid) {
+                        this.pages[this.currentpage].annotations.splice(i, 1);
+                    }
+                }
+
+                this.erase_drawable(drawable);
+                this.save_current_page();
+            }
+        }, this);
+
+        // Delete the overlay.
+        selectoroverlay.destroy();
     },
 
     /**
@@ -1699,7 +1861,7 @@ EDITOR.prototype = {
         }
 
         for (i = 0; i < page.annotations.length; i++) {
-            this.drawables.push(this.draw_annotation(page.annotations[i]));
+            this.drawables.push(this.draw_annotation(page.annotations[i], page.annotations[i].id));
         }
         for (i = 0; i < page.comments.length; i++) {
             this.drawables.push(this.draw_comment(page.comments[i], false));

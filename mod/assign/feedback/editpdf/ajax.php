@@ -98,6 +98,12 @@ if ($action == 'loadallpages') {
     if ($added != count($page->annotations)) {
         array_push($response->errors, get_string('couldnotsavepage', 'assignfeedback_editpdf', $index+1));
     }
+
+    // Send the annotations, so the js script can find out the id of the new annotation.
+    $annotations = page_editor::get_annotations($grade->id, $index);
+    error_log(print_r($annotations, true));
+    $response->annotations = $annotations;
+
     echo json_encode($response);
     die();
 

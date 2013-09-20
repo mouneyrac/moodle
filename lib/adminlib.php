@@ -8267,6 +8267,15 @@ class admin_setting_configstoredfile extends admin_setting {
         file_save_draft_area_files($data, $options['context']->id, $component, $this->filearea, $this->itemid, $options);
         $files = $fs->get_area_files($options['context']->id, $component, $this->filearea, $this->itemid, 'sortorder,filepath,filename', false);
 
+        // Save multiple file names into a json string.
+        if (count($files) > 1) {
+            $filepaths = array();
+            foreach($files as $file) {
+                $filepaths[] = $file->get_filepath().$file->get_filename();
+            }
+            $this->config_write($this->name.'_jsonfilenames', json_encode($filepaths));
+        }
+
         $filepath = '';
         if ($files) {
             /** @var stored_file $file */

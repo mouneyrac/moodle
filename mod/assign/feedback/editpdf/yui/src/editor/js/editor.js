@@ -95,6 +95,38 @@ Drawable = function() {
 };
 
 /**
+ * Stamp
+ *
+ * @namespace M.assignfeedback_editpdf.editor
+ * @class Stamp
+ */
+Stamp = function() {
+    /**
+     * Stamp pluginfile url (without wwwroot)
+     * @property type
+     * @type String
+     * @public
+     */
+    this.url = '';
+
+    /**
+     * Stamp width
+     * @property type
+     * @type Integer
+     * @public
+     */
+    this.width = 0;
+
+    /**
+     * Stamp height
+     * @property type
+     * @type Integer
+     * @public
+     */
+    this.height = 0;
+};
+
+/**
  * EDITOR
  * This is an in browser PDF editor.
  *
@@ -276,6 +308,39 @@ EDITOR.prototype = {
      * @protected
      */
     searchcommentswindow : null,
+
+
+    /**
+     * The selected stamp picture.
+     * @property currentstamp
+     * @type String
+     * @protected
+     */
+    currentstamp : null,
+
+    /**
+     * The stamps.
+     * @property stamps
+     * @type Array
+     * @protected
+     */
+    stamps : [],
+
+    /**
+     * The current stamp node id.
+     * @property currentstampnodeid
+     * @type Integer
+     * @protected
+     */
+    currentstampnodeid : null,
+
+    /**
+     * The current stamp picker.
+     * @property currentstamppicker
+     * @type M.core.dialogue
+     * @protected
+     */
+    currentstamppicker: null,
 
     /**
      * Called during the initialisation process of the object.
@@ -467,9 +532,9 @@ EDITOR.prototype = {
         // Update the ui.
         this.load_quicklist();
         this.setup_navigation();
+        this.setup_toolbar();
         this.change_page();
         this.setup_save_cancel();
-        this.setup_toolbar();
     },
 
     /**
@@ -547,6 +612,74 @@ EDITOR.prototype = {
     },
 
     /**
+     * Setup stamp picker
+     * @protected
+     * @method setup_stamp_picker
+     * @param Y.Node button - The button to open the picker
+     * @param stamps - List of stamps (from this.stamps)
+     * @param {function} callback when a new stamp is chosen.
+     */
+    setup_stamp_picker : function(node, stamps, callback) {
+        var stamplist = Y.Node.create('<ul role="menu" class="assignfeedback_editpdf_menu"/>'),
+            stamppicker,
+            body,
+            headertext,
+            showhandler;
+
+        Y.each(stamps, function(stamp, stampindex) {
+            var button, listitem;
+
+            button = Y.Node.create('<button/>');
+            button.setAttribute('title', M.util.get_string('stamp', 'assignfeedback_editpdf', stampindex));
+            button.setAttribute('stampindex', stampindex);
+            button.setStyle('backgroundImage', 'url(\'' + stamp.url + '\')');
+            button.setStyle('backgroundSize', '100% 100%');
+            button.setStyle('backgroundRepeat', 'no-repeat');
+            button.setStyle('borderStyle', 'solid');
+            listitem = Y.Node.create('<li/>');
+            listitem.append(button);
+            stamplist.append(listitem);
+        }, this);
+
+        body = Y.Node.create('<div/>');
+
+        stamplist.delegate('click', callback, 'button', this);
+        stamplist.delegate('key', callback, 'down:13', 'button', this);
+        headertext = Y.Node.create('<h3/>');
+        headertext.addClass('accesshide');
+        headertext.setHTML(M.util.get_string('stamppicker', 'assignfeedback_editpdf'));
+        body.append(headertext);
+        body.append(stamplist);
+
+        stamppicker = new M.core.dialogue({
+            extraClasses : ['assignfeedback_editpdf_colourpicker'],
+            draggable: false,
+            centered: false,
+            width: 'auto',
+            lightbox: false,
+            visible: false,
+            bodyContent: body,
+            footerContent: '',
+            align: {node: node, points: [Y.WidgetPositionAlign.TL, Y.WidgetPositionAlign.BL]}
+        });
+
+        body.on('clickoutside', function(e) {
+            if (e.target !== node && e.target.ancestor() !== node) {
+                e.preventDefault();
+                stamppicker.hide();
+            }
+        });
+
+        showhandler = function() {
+            this.currentstamppicker = stamppicker;
+            stamppicker.show();
+        };
+        node.on('click', showhandler, this);
+        node.on('key', showhandler, 'down:13', this);
+
+    },
+
+    /**
      * Attach listeners and enable the color picker buttons.
      * @protected
      * @method setup_toolbar
@@ -582,6 +715,40 @@ EDITOR.prototype = {
             this.currentannotationcolour = e.target.getAttribute('data-colour');
             this.refresh_button_state();
             this.currentcolourpicker.hide();
+        });
+
+        // Save all stamps into the stamps variable.
+        var i =0;
+        Y.each(this.get('stampfileurls'), function(stampfileurl) {
+
+            var stamp = new Stamp();
+            stamp.url = M.cfg.wwwroot + stampfileurl;
+            this.stamps[i] = stamp;
+            // Find out the image height/width.
+            var img = new Image();
+            img.src = M.cfg.wwwroot + stampfileurl;
+            img.stampindex = i;
+            img.rootcontext = this;
+            img.onload = function() {
+                this.rootcontext.stamps[this.stampindex].height = this.height;
+                this.rootcontext.stamps[this.stampindex].width = this.width;
+            };
+            i=i+1;
+        }, this);
+        // Setup the stamp picker
+        this.currentstamp = 0;
+        //Y.one(".currentstampbutton .smallicon").setAttribute('src', this.stamps[0].url);
+        stampsbutton = Y.one(SELECTOR.STAMPSBUTTON);
+        stampsbutton.setStyle('backgroundImage', 'url(\'' + this.stamps[this.currentstamp].url + '\')');
+        stampsbutton.setStyle('backgroundSize', '100% 100%');
+        stampsbutton.setStyle('backgroundRepeat', 'no-repeat');
+        this.setup_stamp_picker(stampsbutton, this.stamps, function (e) {
+            this.currentstamp = e.target.getAttribute('stampindex');
+            button = Y.one(SELECTOR.STAMPSBUTTON);
+            button.setStyle('backgroundImage', 'url(\'' + this.stamps[this.currentstamp].url + '\')');
+            button.setStyle('backgroundSize', '100% 100%');
+            button.setStyle('backgroundRepeat', 'no-repeat');
+            this.currentstamppicker.hide();
         });
     },
 
@@ -751,6 +918,11 @@ EDITOR.prototype = {
         this.currentedit.starttime = new Date().getTime();
         this.currentedit.start = point;
         this.currentedit.end = {x : point.x, y : point.y};
+
+        if (this.currenttool === 'stamp') {
+            this.redraw_current_edit();
+        }
+
     },
 
     /**
@@ -823,6 +995,28 @@ EDITOR.prototype = {
         } else {
             y = this.currentedit.end.y;
             height = this.currentedit.start.y - y;
+        }
+
+        if (this.currenttool === 'stamp') {
+            // Delete previous stamp if it exists.
+
+            // Redraw stamp.
+            this.currentstampnodeid = (Math.random()*10000000000000000)+1;
+            // We need to put the image as background otherwise the browser will try to drag the image.
+            // We don't want to disable the on dragstart event.
+            stampnode = Y.Node.create('<div id="'+this.currentstampnodeid+
+                '" class="stamp" style="background-image:url(\'' + this.stamps[this.currentstamp].url + '\')"/>');
+            Y.one('.drawingcanvas').append(stampnode);
+            stampnode.setStyles({
+                position: "absolute",
+                left: this.currentedit.end.x,
+                top: this.currentedit.end.y,
+                height: this.stamps[this.currentstamp].height,
+                width: this.stamps[this.currentstamp].width
+            });
+
+            drawable.nodes.push(stampnode);
+            return drawable;
         }
 
         if (this.currenttool === 'comment') {
@@ -1101,17 +1295,32 @@ EDITOR.prototype = {
 
             Y.log(data);
             this.pages[this.currentpage].annotations.push(data);
+        } else if (this.currenttool === 'stamp') {
+            // In path we will save the file name.
+            data = {
+                gradeid : this.get('gradeid'),
+                x : this.currentedit.start.x,
+                y : this.currentedit.start.y,
+                endx : this.currentedit.end.x,
+                endy : this.currentedit.end.y,
+                type : this.currenttool,
+                pageno : this.currentpage,
+                colour : this.currentannotationcolour,
+                path : this.stamps[this.currentstamp].url.replace(/^.*[\\\/]/, '')
+            };
+
+            this.pages[this.currentpage].annotations.push(data);
         } else {
             data = {
-                    gradeid : this.get('gradeid'),
-                    x : this.currentedit.start.x,
-                    y : this.currentedit.start.y,
-                    endx : this.currentedit.end.x,
-                    endy : this.currentedit.end.y,
-                    type : this.currenttool,
-                    pageno : this.currentpage,
-                    colour : this.currentannotationcolour
-                };
+                gradeid : this.get('gradeid'),
+                x : this.currentedit.start.x,
+                y : this.currentedit.start.y,
+                endx : this.currentedit.end.x,
+                endy : this.currentedit.end.y,
+                type : this.currenttool,
+                pageno : this.currentpage,
+                colour : this.currentannotationcolour
+            };
 
             this.pages[this.currentpage].annotations.push(data);
         }
@@ -1189,6 +1398,42 @@ EDITOR.prototype = {
 
 
         drawable = new Drawable();
+
+        if (annotation.type === 'stamp') {
+            // Find the matching stamp
+            Y.each(this.stamps, function(stamp) {
+                if (annotation.path === stamp.url.replace(/^.*[\\\/]/, '')) {
+                    // Redraw stamp.
+                    this.currentstampnodeid = (Math.random()*10000000000000000)+1;
+                    // We need to put the image as background otherwise the browser will try to drag the image.
+                    // Also we don't want to disable the image drag event (dragstart event), so we use background image.
+                    stampnode = Y.Node.create('<div id="'+this.currentstampnodeid+
+                        '" class="stamp" style="background-image:url(\'' + stamp.url + '\')"/>');
+                    Y.one('.drawingcanvas').append(stampnode);
+                    stampnode.setStyles({
+                        position: "absolute",
+                        left: annotation.x,
+                        top: annotation.y,
+                        height: stamp.height,
+                        width: stamp.width
+                    });
+
+                    // Resize the stamp to the correct heigth/width.
+                    var img = new Image();
+                    img.src = stamp.url;
+                    img.stampnode = stampnode;
+                    img.onload = function() {
+                        this.stampnode.setStyles({
+                            height: this.height,
+                            width: this.width
+                        });
+                    };
+
+                    drawable.nodes.push(stampnode);
+                    return drawable;
+                }
+            }, this);
+        }
 
         if (annotation.type === 'line') {
             shape = this.graphic.addShape({
@@ -2045,6 +2290,10 @@ Y.extend(EDITOR, Y.Base, EDITOR.prototype, {
         },
         menuicon : {
             validator : Y.Lang.isString,
+            value : ''
+        },
+        stampfileurls : {
+            validator : Y.Lang.isArray,
             value : ''
         }
     }

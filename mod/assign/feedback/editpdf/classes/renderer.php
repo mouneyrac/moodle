@@ -166,6 +166,18 @@ class assignfeedback_editpdf_renderer extends plugin_renderer_base {
         $body .= '<hr/>';
 
         $footer = '';
+
+        // Retrieve the stamp image file urls.
+        $stampfilenames = get_config('assignfeedback_editpdf', 'stamps_jsonfilenames');
+        $stampfilenames = json_decode($stampfilenames);
+        $fileurls = array();
+        foreach ($stampfilenames as $stampfilename) {
+            $stampfileurl = moodle_url::make_pluginfile_url(context_system::instance()->id,
+                'assignfeedback_editpdf', 'stamps', 0, '/', $stampfilename)->out(false);
+            // Strip the wwwroot.
+            $fileurls[] = str_replace($CFG->wwwroot,"",$stampfileurl);;
+        }
+
         $editorparams = array(array('header'=>$header,
                                     'body'=>$body,
                                     'footer'=>$footer,
@@ -175,6 +187,7 @@ class assignfeedback_editpdf_renderer extends plugin_renderer_base {
                                     'assignmentid'=>$widget->assignment,
                                     'userid'=>$widget->userid,
                                     'attemptnumber'=>$widget->attemptnumber,
+                                    'stampfileurls'=>$fileurls,
                                     'menuicon'=>$this->pix_url('t/contextmenu')->out(true)));
 
         $this->page->requires->yui_module('moodle-assignfeedback_editpdf-editor',

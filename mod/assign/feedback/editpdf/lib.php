@@ -41,38 +41,68 @@ function assignfeedback_editpdf_pluginfile($course,
                                            $filearea,
                                            $args,
                                            $forcedownload) {
-    global $USER, $DB;
+    global $USER, $DB, $CFG;
 
-    if ($context->contextlevel != CONTEXT_MODULE) {
+    if ($context->contextlevel == CONTEXT_MODULE) {
+
+        require_login($course, false, $cm);
+        $itemid = (int)array_shift($args);
+        $record = $DB->get_record('assign_grades', array('id'=>$itemid), 'userid,assignment', MUST_EXIST);
+        $userid = $record->userid;
+
+        if (!$assign = $DB->get_record('assign', array('id'=>$cm->instance))) {
+            return false;
+        }
+
+        if ($assign->id != $record->assignment) {
+            return false;
+        }
+
+        // Check is users feedback or has grading permission.
+        if ($USER->id != $userid and !has_capability('mod/assign:grade', $context)) {
+            return false;
+        }
+
+        $relativepath = implode('/', $args);
+
+        $fullpath = "/{$context->id}/assignfeedback_editpdf/$filearea/$itemid/$relativepath";
+
+        $fs = get_file_storage();
+        if (!$file = $fs->get_file_by_hash(sha1($fullpath)) or $file->is_directory()) {
+            return false;
+        }
+        // Download MUST be forced - security!
+        send_stored_file($file, 0, 0, true);// Check if we want to retrieve the stamps.
+
+    } else {
+        if ($context->contextlevel ==  CONTEXT_SYSTEM
+            and $filearea == 'stamps') {
+
+            $component = 'assignfeedback_editpdf';
+
+            $revision = array_shift($args);
+            if ($revision < 0) {
+                $lifetime = 0;
+            } else {
+                $lifetime = 60*60*24*60;
+            }
+
+            $fs = get_file_storage();
+            $relativepath = implode('/', $args);
+
+            $fullpath = "/{$context->id}/{$component}/{$filearea}/0/{$relativepath}";
+
+            $fullpath = rtrim($fullpath, '/');
+            error_log(print_r($fullpath, true));
+            if ($file = $fs->get_file_by_hash(sha1($fullpath))) {
+                send_stored_file($file, $lifetime, 0, $forcedownload);
+                return true;
+            } else {
+                send_file_not_found();
+            }
+        }
+
         return false;
     }
 
-    require_login($course, false, $cm);
-    $itemid = (int)array_shift($args);
-    $record = $DB->get_record('assign_grades', array('id'=>$itemid), 'userid,assignment', MUST_EXIST);
-    $userid = $record->userid;
-
-    if (!$assign = $DB->get_record('assign', array('id'=>$cm->instance))) {
-        return false;
-    }
-
-    if ($assign->id != $record->assignment) {
-        return false;
-    }
-
-    // Check is users feedback or has grading permission.
-    if ($USER->id != $userid and !has_capability('mod/assign:grade', $context)) {
-        return false;
-    }
-
-    $relativepath = implode('/', $args);
-
-    $fullpath = "/{$context->id}/assignfeedback_editpdf/$filearea/$itemid/$relativepath";
-
-    $fs = get_file_storage();
-    if (!$file = $fs->get_file_by_hash(sha1($fullpath)) or $file->is_directory()) {
-        return false;
-    }
-    // Download MUST be forced - security!
-    send_stored_file($file, 0, 0, true);
 }

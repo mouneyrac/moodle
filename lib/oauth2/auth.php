@@ -278,26 +278,26 @@ abstract class auth_plugin_oauth2 extends auth_plugin_base {
                     $user = $DB->get_record('user', array('email' => $this->oauth2client->oauth2user->email,
                         'deleted' => 0, 'confirmed' => 1, 'mnethostid' => $CFG->mnet_localhost_id));
 
-                    // If an existing user acount with matching email is found, we display a form to request the user to link his account.
-                    // OR If the user didn't confirm creation, then redirect to confirmation page.
-                    $confirmcreate = optional_param('confirmcreate', false, PARAM_BOOL);
-                    if (!empty($user) or !$confirmcreate) {
+                    if (empty($user)) {
+                        $confirmcreate = optional_param('confirmcreate', false, PARAM_BOOL);
+                        // User creation not confirmed, redirect to confirmation page.
+                        if (!$confirmcreate) {
 
-                        // Commit the transaction.
-                        // Actually we have nothing yet to commit but it does hurt o do it properly.
-                        $DB->commit_delegated_transaction($transaction);
+                            // Commit the transaction.
+                            // Actually we have nothing yet to commit but it does hurt o do it properly.
+                            $DB->commit_delegated_transaction($transaction);
 
-                        $confirmationpage = $this->get_returnurl(); //login page
-                        $confirmationpage->param('createorlinkrequest', true);
-                        $confirmationpage->param('oauth2code', $authorizationcode);
-                        $confirmationpage->param('authprovider', $authprovider);
-                        if (!empty($user)) {
-                            $confirmationpage->param('useremailexists', true);
+                            $confirmationpage = $this->get_returnurl(); //login page
+                            $confirmationpage->param('createorlinkrequest', true);
+                            $confirmationpage->param('oauth2code', $authorizationcode);
+                            $confirmationpage->param('authprovider', $authprovider);
+
+                            redirect($confirmationpage);
                         }
-                        redirect($confirmationpage);
-                    }
 
-                    $user = $this->create_user();
+                        // Not matching account found
+                        $user = $this->create_user();
+                    }
 
                     $this->link_account($this->oauth2client->oauth2user->id, $user->id);
                 }

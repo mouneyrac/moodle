@@ -38,7 +38,6 @@ $testsession = optional_param('testsession', 0, PARAM_INT); // test session work
 $cancel      = optional_param('cancel', 0, PARAM_BOOL);      // redirect to frontpage, needed for loginhttps
 $accounttolink = optional_param('accounttolink', '', PARAM_PLUGIN);
 $createorlinkrequest = optional_param('createorlinkrequest', false, PARAM_BOOL);
-$useremailexists = optional_param('useremailexists', false, PARAM_BOOL);
 
 if ($cancel) {
     redirect(new moodle_url('/'));
@@ -404,8 +403,7 @@ if (isloggedin() and !isguestuser()) {
         $provider->oauth2client->returnurl->param('confirmcreate', true);
         $output = $PAGE->get_renderer('core', 'auth');
         if (get_config('auth/' . $provider->shortname, 'createuser')
-                and empty($CFG->authpreventaccountcreation)
-                and !$useremailexists) {
+                and empty($CFG->authpreventaccountcreation)) {
             if (get_config('auth/' . $provider->shortname, 'createuserconfirm')) {
                 // Ask the user if (s)he wants to create a new account or link an existing account.
                 echo $OUTPUT->header();

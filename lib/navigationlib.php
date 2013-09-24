@@ -4074,6 +4074,15 @@ class settings_navigation extends navigation_node {
             }
         }
 
+        // Add the my authentication link.
+        if (isloggedin() && !isguestuser($user) && !is_mnet_remote_user($user)) {
+            if ($currentuser || is_siteadmin($USER)) {
+                $url = new moodle_url('/user/editauth.php', array('id'=>$user->id));
+                $usersetting->add(get_string('editmyauthentication', 'auth'), $url, self::TYPE_SETTING);
+
+            }
+        }
+
         // Change password link
         if ($userauthplugin && $currentuser && !session_is_loggedinas() && !isguestuser() && has_capability('moodle/user:changeownpassword', $systemcontext) && $userauthplugin->can_change_password()) {
             $passwordchangeurl = $userauthplugin->change_password_url();

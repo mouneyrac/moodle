@@ -201,6 +201,11 @@ abstract class auth_plugin_oauth2 extends auth_plugin_base {
         $authprovider = optional_param('authprovider', '', PARAM_ALPHANUMEXT);
         if (!empty($authorizationcode) and ($authprovider == $this->shortname)) {
 
+            // Going to check if the state token is valid.
+            if (required_param('oauth2statetoken', PARAM_ALPHANUM) !== $_SESSION['oauth2statetoken']) {
+                throw new moodle_exception('invalidoauth2statetoken');
+            }
+
             if ($this->oauth2client->upgrade_token($authorizationcode)) {
 
                 // Load the authenticated user info.
@@ -237,7 +242,7 @@ abstract class auth_plugin_oauth2 extends auth_plugin_base {
                         redirect(new moodle_url('/login/index.php?testsession='.$testsession));
                     } else {
                         // Redirect back to edit profile page.
-                        redirect(new moodle_url('/user/edit.php?id='.$USER->id.'&course=1'));
+                        redirect(new moodle_url('/user/editauth.php?id='.$USER->id));
                     }
                 }
 
@@ -494,6 +499,9 @@ abstract class auth_plugin_oauth2 extends auth_plugin_base {
         if (!isset($config->createuser)) {
             $config->createuser = '';
         }
+        if (!isset($config->createuserconfirm)) {
+            $config->createuserconfirm = '';
+        }
         if (!isset($config->nomailrestriction)) {
             $config->nomailrestriction = '';
         }
@@ -548,6 +556,18 @@ abstract class auth_plugin_oauth2 extends auth_plugin_base {
             html_writer::tag('span', $createuserinput, array('class' => 'oauth2settingrow2')) .
             html_writer::tag('span', get_string('auth_createuser_help', 'auth'), array('class' => 'oauth2settingrow3')), array('class' => 'oauth2setting'));
 
+        // Display user creation confirmation page.
+        $createuserconfirmlabel = html_writer::tag('label', get_string('auth_createuserconfirm', 'auth'), array('class' => 'createuserconfirmlabel'));
+        $checkboxparams = array('type' => 'checkbox', 'id' => 'createuserconfirm', 'name' => 'createuserconfirm',
+            'class' => 'createuserconfirm', 'value' => 1);
+        if ($config->createuserconfirm) {
+            $checkboxparams['checked'] = 'yes';
+        }
+        $createuserconfirminput = html_writer::empty_tag('input', $checkboxparams);
+        $createuserconfirm = html_writer::tag('div', html_writer::tag('span', $createuserconfirmlabel, array('class' => 'oauth2settingrow1')) .
+            html_writer::tag('span', $createuserconfirminput, array('class' => 'oauth2settingrow2')) .
+            html_writer::tag('span', get_string('auth_createuserconfirm_help', 'auth'), array('class' => 'oauth2settingrow3')), array('class' => 'oauth2setting'));
+
         // By pass deny email address global option.
         $nomailrestrictionlabel = html_writer::tag('label', get_string('auth_nomailrestriction', 'auth'), array('class' => 'nomailrestrictionlabel'));
         $checkboxparams = array('type' => 'checkbox', 'id' => 'nomailrestriction', 'name' => 'nomailrestriction',
@@ -565,6 +585,7 @@ abstract class auth_plugin_oauth2 extends auth_plugin_base {
         echo $clientsecret;
         echo $userprefix;
         echo $createuser;
+        echo $createuserconfirm;
         echo $nomailrestriction;
 
         // Display the fields clock.
@@ -606,15 +627,21 @@ abstract class auth_plugin_oauth2 extends auth_plugin_base {
         if (!isset($config->createuser)) {
             $config->createuser = 0;
         }
+        if (!isset($config->createuserconfirm)) {
+            $config->createuserconfirm = 0;
+        }
         if (!isset($config->nomailrestriction)) {
             $config->nomailrestriction = 0;
         }
+
+
 
         // Save settings.
         set_config('clientid', $config->clientid, 'auth/' . $this->shortname);
         set_config('clientsecret', $config->clientsecret, 'auth/' . $this->shortname);
         set_config('userprefix', $config->userprefix, 'auth/' . $this->shortname);
         set_config('createuser', $config->createuser, 'auth/' . $this->shortname);
+        set_config('createuserconfirm', $config->createuserconfirm, 'auth/' . $this->shortname);
         set_config('nomailrestriction', $config->nomailrestriction, 'auth/' . $this->shortname);
 
         return true;

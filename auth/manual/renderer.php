@@ -52,7 +52,7 @@ class auth_manual_renderer extends auth_plugin_renderer_base {
                 array('class' => ''));
 
         // Description div.
-        $description = get_string("loginusing") . html_writer::empty_tag('br') .
+        $description = html_writer::empty_tag('br') .
                 '('.get_string("cookiesenabled").')' . $this->help_icon('cookiesenabled');
         $description = html_writer::tag('div', $description, array('class' => 'desc'));
 
@@ -99,7 +99,7 @@ class auth_manual_renderer extends auth_plugin_renderer_base {
 
         // Form content div.
         $formcontentdiv = html_writer::tag('div',
-                $usernamelabeldiv . $usernameinputdiv . $clearerdiv . $passwordinputdiv , array('class' => 'loginform'));
+                $usernamelabeldiv . $usernameinputdiv . $clearerdiv . $passwordlabeldiv. $passwordinputdiv , array('class' => 'loginform'));
 
         // Remember password div.
         $rememberpassdiv = '';

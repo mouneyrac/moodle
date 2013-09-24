@@ -67,12 +67,6 @@ if ($testsession) {
     if ($testsession == $USER->id) {
 
         if ($accounttolink) {
-            $PAGE->navbar->add(get_string('linkingaccount', 'auth'));
-            $PAGE->set_title("$site->fullname: $loginsite");
-            $PAGE->set_heading("$site->fullname");
-
-            // Testsession to be passed in login.php.
-            echo $OUTPUT->header();
 
             $provider = get_auth_plugin($accounttolink);
 
@@ -84,10 +78,10 @@ if ($testsession) {
             $provider->oauth2client->returnurl->param('throwtestsession', $testsession);
             $provider->oauth2client->returnurl->param('profilelinking', true);
             $provider->oauth2client->returnurl->param('sesskey', sesskey());
-            $output = $PAGE->get_renderer('core', 'auth');
-            echo $output->linkaccount($provider);
 
-            echo $OUTPUT->footer();
+            // Trigger oauth2 authentication.
+            redirect($provider->oauth2client->get_login_url());
+
             die();
         } else {
             if (isset($SESSION->wantsurl)) {
@@ -389,9 +383,8 @@ if (!empty($SESSION->loginerrormsg)) {
 $PAGE->set_title("$site->fullname: $loginsite");
 $PAGE->set_heading("$site->fullname");
 
-echo $OUTPUT->header();
-
 if (isloggedin() and !isguestuser()) {
+    echo $OUTPUT->header();
     // prevent logging when already logged in, we do not want them to relogin by accident because sesskey would be changed
     echo $OUTPUT->box_start();
     $logout = new single_button(new moodle_url($CFG->httpswwwroot.'/login/logout.php', array('sesskey'=>sesskey(),'loginpage'=>1)), get_string('logout'), 'post');
@@ -413,11 +406,21 @@ if (isloggedin() and !isguestuser()) {
         if (get_config('auth/' . $provider->shortname, 'createuser')
                 and empty($CFG->authpreventaccountcreation)
                 and !$useremailexists) {
-             echo $output->linkingaccountlink($provider, $frm->username, $errormsg);
+            if (get_config('auth/' . $provider->shortname, 'createuserconfirm')) {
+                // Ask the user if (s)he wants to create a new account or link an existing account.
+                echo $OUTPUT->header();
+                echo $output->linkingaccountlink($provider, $frm->username, $errormsg);
+            } else {
+                // User creation is automatic for unmatched email.
+                redirect($provider->oauth2client->get_login_url());
+            }
         } else {
-             echo $output->forceaccountlink($provider, $frm->username, $errormsg);
+            // User creation is not allowed.
+            echo $OUTPUT->header();
+            echo $output->forceaccountlink($provider, $frm->username, $errormsg);
         }
     } else {
+        echo $OUTPUT->header();
         include("index_form.html");
         if ($errormsg) {
             $PAGE->requires->js_init_call('M.util.focus_login_error', null, true);

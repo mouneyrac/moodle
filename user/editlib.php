@@ -291,38 +291,6 @@ function useredit_shared_definition(&$mform, $editoroptions = null, $filemanager
     $oauth2manager = new auth_oauth2_manager();
     $providers = $oauth2manager->get_linkable_providers(true);
 
-    // Retrieve all oauth2 providers.
-    $oauth2boxhtml = '';
-    foreach ($providers as $provider) {
-        if ($provider->linked) {
-            $linkedproviders[] = $provider;
-        }
-
-        require_once($CFG->dirroot . '/auth/' . $provider->shortname . '/renderer.php');
-        $authrendererclass = 'auth_'. $provider->shortname .'_renderer';
-        $authrenderer = new $authrendererclass($PAGE, 'auth');
-        $oauth2boxhtml .= $authrenderer->link($provider);
-    }
-
-    // Display the linked oauth2 provider text information.
-    if (empty($linkedproviders)) {
-        $linkedprovidershtml = html_writer::tag('div', get_string('nolinkedproviders', 'auth'),
-                array('class' => 'linkedprovidertext'));
-    } else {
-        $providernames = array();
-        foreach ($linkedproviders as $provider) {
-            $providernames[] = $provider->name;
-        }
-        $providernames = implode(',', $providernames);
-        $linkedprovidershtml = html_writer::tag('div', get_string('linkedproviders', 'auth', $providernames),
-                array('class' => 'linkedprovidertext'));
-    }
-
-    // Display the oauth2 providers box.
-    $mform->addElement('static', 'oauth2linking',
-            get_string('oauth2linking', 'auth'), $oauth2boxhtml . $linkedprovidershtml);
-    $mform->addHelpButton('oauth2linking', 'oauth2linking', 'auth');
-
     if (empty($USER->newadminuser)) {
         $mform->addElement('header', 'moodle_picture', get_string('pictureofuser'));
 

@@ -717,12 +717,20 @@ abstract class oauth2_auth_plugin_client extends oauth2_client {
      * @param moodle_url $returnurl
      */
     public function __construct($clientid, $clientsecret, moodle_url $returnurl) {
-
         // Check that the scope has been set.
         if (!isset($this->authscope)) {
             throw new coding_exception("You forgot to set the scope (\$authscope)
                 - it can be set to '' (i.e empty), but it must be set.");
         }
+
+        // Add a state token to protect against cross-site request forgery attacks.
+        if (empty($_SESSION['oauth2statetoken'])) {
+            $statetoken = md5(rand());
+
+            // Save the token into the session so we can verify it during the authentication process.
+            $_SESSION['oauth2statetoken'] = $statetoken;
+        }
+        $returnurl->param('oauth2statetoken', $_SESSION['oauth2statetoken']);
 
         parent::__construct($clientid, $clientsecret, $returnurl, $this->authscope);
 

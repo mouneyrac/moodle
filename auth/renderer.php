@@ -67,16 +67,15 @@ class core_auth_renderer extends plugin_renderer_base {
         $title = html_writer::tag('h4',
                 get_string('newaccount', 'auth'),
                 array('class' => ''));
-        $htmlprovider = html_writer::empty_tag('img', array('src' => $provider->logourl));
+        $htmlprovider = html_writer::tag('button', get_string('create'), array('src' => $provider->logourl));
         $htmlprovider = html_writer::tag('a', $htmlprovider, array('href' => $provider->oauth2client->get_login_url()));
         $htmlnoaccount = html_writer::tag('div', $title . $htmlprovider, array('class' => 'confirmnoaccount'));
 
         $htmlalreadyregistered = $this->loginforms($username,
                 array('accounttolink' => $provider->shortname), $errormsg);
 
-        return $pagetitle .
-                html_writer::tag('div', $htmlnoaccount . $htmlalreadyregistered,
-                        array('class' => 'confirmlinking'));
+        return $pagetitle . html_writer::tag('div', $htmlalreadyregistered . $htmlnoaccount,
+                array('class' => 'confirmlinking'));
 
     }
 
@@ -126,6 +125,9 @@ class core_auth_renderer extends plugin_renderer_base {
             }
         }
 
-        return $loginformshtml;
+        // Add the original div to get loginbox css
+        $loginbox = html_writer::tag('div', $loginformshtml, array('class' => 'oauth2loginconfirm clearfix loginbox onecolumn loginpanel'));
+
+        return $loginbox;
     }
 }

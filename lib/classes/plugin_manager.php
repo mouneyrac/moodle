@@ -671,11 +671,15 @@ class core_plugin_manager {
         foreach ($dependencies as $component => $requiredversion) {
             $otherplugin = $this->get_plugin_info($component);
             if (is_null($otherplugin)) {
-                return false;
-            }
-
-            if ($requiredversion != ANY_VERSION and $otherplugin->versiondisk < $requiredversion) {
-                return false;
+                // MDL-40874: skipping theme_mymobile check as we removed the theme in 2.6.
+                if ($component != 'theme_mymobile') {
+                    return false;
+                }
+            } else if ($requiredversion != ANY_VERSION and $otherplugin->versiondisk < $requiredversion) {
+                // MDL-40874: skipping theme_mymobile check as we removed the theme in 2.6.
+                if ($component != 'theme_mymobile') {
+                    return false;
+                }
             }
         }
 

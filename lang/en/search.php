@@ -27,6 +27,7 @@ $string['advancedsearch'] = 'Advanced search';
 $string['all'] = 'All';
 $string['author'] = 'Author';
 $string['authorname'] = 'Author name';
+$string['autocompleteuserinit'] = 'Search for username, email, firstname or lastname';
 $string['back'] = 'Back';
 $string['beadmin'] = 'You need to be an admin user to use this page.';
 $string['commenton'] = 'Comment on';

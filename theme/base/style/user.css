@@ -64,3 +64,12 @@
 .dir-rtl .userprofile dl dt {float:right; width:110px; margin-left:10px;}
 .dir-rtl .userprofile dl dd {margin-right: 120px;}
 #page-my-index.dir-rtl .block h3 { text-align: right;}
+
+/** User auto-completion form element. **/
+.autocompletionresultuser { color: black; clear: both}
+.autocompletionresultuserimg {float: left; padding-right: 9px;}
+.autocompletionresultuserimage {}
+.autocompletionresultuserinfo {}
+.autocompletionresultuserfullname {}
+.autocompletionresultuserusername {font-size: 80%}
+.autocompletedisplayedresult {padding-top: 6px;}

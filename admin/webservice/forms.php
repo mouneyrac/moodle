@@ -198,36 +198,13 @@ class web_service_token_form extends moodleform {
         $data = $this->_customdata;
 
         $mform->addElement('header', 'token', get_string('token', 'webservice'));
-
-        if (empty($data->nouserselection)) {
-
-            //check if the number of user is reasonable to be displayed in a select box
-            $usertotal = $DB->count_records('user',
-                    array('deleted' => 0, 'suspended' => 0, 'confirmed' => 1));
-
-            if ($usertotal < 500) {
-                list($sort, $params) = users_order_by_sql('u');
-                //user searchable selector - get all users (admin and guest included)
-                //user must be confirmed, not deleted, not suspended, not guest
-                $sql = "SELECT u.id, u.firstname, u.lastname
-                            FROM {user} u
-                            WHERE u.deleted = 0 AND u.confirmed = 1 AND u.suspended = 0 AND u.id != :siteguestid
-                            ORDER BY $sort";
-                $params['siteguestid'] = $CFG->siteguest;
-                $users = $DB->get_records_sql($sql, $params);
-                $options = array();
-                foreach ($users as $userid => $user) {
-                    $options[$userid] = fullname($user);
-                }
-                $mform->addElement('searchableselector', 'user', get_string('user'), $options);
-                $mform->setType('user', PARAM_INT);
-            } else {
-                //simple text box for username or user id (if two username exists, a form error is displayed)
-                $mform->addElement('text', 'user', get_string('usernameorid', 'webservice'));
-                $mform->setType('user', PARAM_RAW_TRIMMED);
-            }
-            $mform->addRule('user', get_string('required'), 'required', null, 'client');
-        }
+        $autocompleteoptions = array('source' => $CFG->wwwroot . '/user/user_ajax.php?sesskey='
+            .  sesskey().'&action=get&q={query}&usermax=10', 'setelementid' => 'user');
+        $mform->addElement('autocompletetext', 'selecteduser', get_string('user'), array('size' => 50), $autocompleteoptions);
+        $mform->addRule('selecteduser', get_string('required'), 'required', null, 'client');
+        $mform->setType('selecteduser', PARAM_RAW);
+        $mform->addElement('hidden', 'user', 'toto', 'id="user"'); //the set element of the auto-complete text
+        $mform->setType('user', PARAM_INT);
 
         //service selector
         $services = $DB->get_records('external_services');

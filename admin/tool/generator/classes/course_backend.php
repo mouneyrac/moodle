@@ -291,6 +291,8 @@ class tool_generator_course_backend extends tool_generator_backend {
     private function create_user_accounts($first, $last) {
         global $CFG;
 
+        require_once($CFG->dirroot . '/admin/tool/generator/classes/generateduser.php');
+
         $this->log('createaccounts', (object)array('from' => $first, 'to' => $last), true);
         $count = $last - $first + 1;
         $done = 0;
@@ -303,8 +305,10 @@ class tool_generator_course_backend extends tool_generator_backend {
             $username = 'tool_generator_' . $textnumber;
 
             // Create user account.
-            $record = array('firstname' => get_string('firstname', 'tool_generator'),
-                    'lastname' => $number, 'username' => $username);
+            $userinfo = new tool_generator_generated_user($username);
+            error_log(print_r($userinfo, true));
+            $record = array('firstname' => $userinfo->firstname,
+                    'lastname' => $userinfo->lastname, 'username' => $username, 'email' => $userinfo->email);
 
             // We add a user password if it has been specified.
             if (!empty($CFG->tool_generator_users_password)) {
@@ -312,6 +316,8 @@ class tool_generator_course_backend extends tool_generator_backend {
             }
 
             $user = $this->generator->create_user($record);
+            $userinfo->download_picture($user->id);
+
             $this->userids[$number] = (int)$user->id;
             $this->dot($done, $count);
         }

@@ -19,6 +19,7 @@
  * @module moodle-assignfeedback_editpdf-editor
  */
 var AJAXBASE = M.cfg.wwwroot + '/mod/assign/feedback/editpdf/ajax.php',
+    AJAXBASEPROGRESS = M.cfg.wwwroot + '/mod/assign/feedback/editpdf/ajax_progress.php',
     CSS = {
         DIALOGUE : 'assignfeedback_editpdf_widget'
     },

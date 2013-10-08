@@ -21,6 +21,7 @@ YUI.add('moodle-assignfeedback_editpdf-editor', function (Y, NAME) {
  * @module moodle-assignfeedback_editpdf-editor
  */
 var AJAXBASE = M.cfg.wwwroot + '/mod/assign/feedback/editpdf/ajax.php',
+    AJAXBASEPROGRESS = M.cfg.wwwroot + '/mod/assign/feedback/editpdf/ajax_progress.php',
     CSS = {
         DIALOGUE : 'assignfeedback_editpdf_widget'
     },
@@ -3122,7 +3123,8 @@ EDITOR.prototype = {
      */
     load_all_pages : function() {
         var ajaxurl = AJAXBASE,
-            config;
+            config,
+            checkconversionstatus;
 
         config = {
             method: 'get',
@@ -3146,6 +3148,46 @@ EDITOR.prototype = {
         };
 
         Y.io(ajaxurl, config);
+
+        // If pages are not loaded, check PDF conversion status for the progress bar.
+        if (this.pagecount <= 0) {
+            checkconversionstatus = {
+                method: 'get',
+                context: this,
+                sync: false,
+                data : {
+                    'sesskey' : M.cfg.sesskey,
+                    'action' : 'conversionstatus',
+                    'userid' : this.get('userid'),
+                    'attemptnumber' : this.get('attemptnumber'),
+                    'assignmentid' : this.get('assignmentid')
+                },
+                on: {
+                    success: function(tid, response) {
+                        // Update the progress bar.
+                        var progressbar = Y.one('.progress-info.progress-striped .bar');
+                        if (progressbar) {
+                            // Calculate progress.
+                            var progress = (response.response / this.get('pagetotal')) * 100;
+                            progressbar.setStyle('width', progress + '%');
+                            Y.one('.progress-info.progress-striped').setAttribute('aria-valuenow', progress);
+                        }
+                    },
+                    failure: function(tid, response) {
+                        return M.core.exception(response.responseText);
+                    }
+                }
+            };
+
+            // Check for the progess every second.
+            var thiscontext = this;
+            var refreshIntervalId = setInterval(function() {
+                    Y.io(AJAXBASEPROGRESS, checkconversionstatus);
+                    if (thiscontext.pagecount > 0) {
+                        clearInterval(refreshIntervalId);
+                    }
+            }, 1000);
+        }
     },
 
     /**
@@ -3804,6 +3846,10 @@ Y.extend(EDITOR, Y.Base, EDITOR.prototype, {
         stampfiles : {
             validator : Y.Lang.isArray,
             value : ''
+        },
+        pagetotal : {
+            validator : Y.Lang.isInteger,
+            value : 0
         }
     }
 });

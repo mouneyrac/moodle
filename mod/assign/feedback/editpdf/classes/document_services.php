@@ -242,6 +242,49 @@ class document_services {
         return $file;
     }
 
+
+
+    /**
+     * This function will return the number of pages of a pdf.
+     * @param int|\assign $assignment
+     * @param int $userid
+     * @param int $attemptnumber (-1 means latest attempt)
+     * @return int number of pages
+     */
+    public static function page_number_for_attempt($assignment, $userid, $attemptnumber) {
+        global $CFG;
+
+        require_once($CFG->libdir . '/pdflib.php');
+
+        $assignment = self::get_assignment_from_param($assignment);
+
+        if (!$assignment->can_view_submission($userid)) {
+            \print_error('nopermission');
+        }
+
+        // Get a combined pdf file from all submitted pdf files.
+        $file = self::get_combined_pdf_for_attempt($assignment, $userid, $attemptnumber);
+        if (!$file) {
+            throw \moodle_exception('Could not generate combined pdf.');
+        }
+
+        // Store the combined pdf file somewhere to be opened by tcpdf.
+        $tmpdir = \make_temp_directory('assignfeedback_editpdf/pagetotal/'
+            . self::hash($assignment, $userid, $attemptnumber));
+        $combined = $tmpdir . '/' . self::COMBINED_PDF_FILENAME;
+        $file->copy_content_to($combined); // Copy the file.
+
+        // Get the total number of pages.
+        $pdf = new pdf();
+        $pagecount = $pdf->set_pdf($combined);
+
+        // Delete temporary folders and files.
+        @unlink($combined);
+        @rmdir($tmpdir);
+
+        return $pagecount;
+    }
+
     /**
      * This function will generate and return a list of the page images from a pdf.
      * @param int|\assign $assignment

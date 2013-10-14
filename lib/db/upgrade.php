@@ -2692,15 +2692,15 @@ function xmldb_main_upgrade($oldversion) {
     if ($oldversion < 2013101100.01) {
 
         // Check that none use My Mobile theme.
-        $coursetheme = $DB->get_field('course', 'theme', array('theme' => 'mymobile'));
-        $cattheme = $DB->get_field('course_categories', 'theme', array('theme' => 'mymobile'));
-        $usertheme = $DB->get_field('user', 'theme', array('theme' => 'mymobile'));
-        $mnettheme = $DB->get_field('mnet_host', 'theme', array('theme' => 'mymobile'));
+        $coursetheme = $DB->record_exists('course', array('theme' => 'mymobile'));
+        $cattheme = $DB->record_exists('course_categories', 'theme', array('theme' => 'mymobile'));
+        $usertheme = $DB->record_exists('user', array('theme' => 'mymobile'));
+        $mnettheme = $DB->record_exists('mnet_host', array('theme' => 'mymobile'));
 
         // Check some fields that could be annoying to lose: custom css and showmymobileintro.
-        $customcss = $DB->get_field('config_plugins', 'value',
+        $customcss = $DB->record_exists('config_plugins',
             array('plugin' => 'theme_mymobile', 'name' => 'customcss'));
-        $showmobileintro = $DB->get_field('config_plugins', 'value',
+        $showmobileintro = $DB->record_exists('config_plugins',
             array('plugin' => 'theme_mymobile', 'name' => 'showmymobileintro'));
 
         // Uninstall My Mobile theme if nothing to lose.

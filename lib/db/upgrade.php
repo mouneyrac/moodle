@@ -2689,5 +2689,38 @@ function xmldb_main_upgrade($oldversion) {
         upgrade_main_savepoint(true, 2013100901.00);
     }
 
+    if ($oldversion < 2013101100.01) {
+
+        if (!check_dir_exists($CFG->dirroot . '/theme/mymobile', false)) {
+            // Delete from config_plugins.
+            $DB->delete_records('config_plugins', array('plugin' => 'theme_mymobile'));
+            // Delete the config logs.
+            $DB->delete_records('config_log', array('plugin' => 'theme_mymobile'));
+
+            // Replace the mymobile settings.
+            $DB->set_field('course', 'theme', 'clean', array('theme' => 'mymobile'));
+            $DB->set_field('course_categories', 'theme', 'clean', array('theme' => 'mymobile'));
+            $DB->set_field('user', 'theme', 'clean', array('theme' => 'mymobile'));
+            $DB->set_field('mnet_host', 'theme', 'clean', array('theme' => 'mymobile'));
+
+            // Replace the theme configs.
+            if (get_config('core', 'theme') == 'mymobile') {
+                set_config('theme', 'clean');
+            }
+            if (get_config('core', 'thememobile') == 'mymobile') {
+                set_config('thememobile', 'clean');
+            }
+            if (get_config('core', 'themelegacy') == 'mymobile') {
+                set_config('themelegacy', 'clean');
+            }
+            if (get_config('core', 'themetablet') == 'mymobile') {
+                set_config('themetablet', 'clean');
+            }
+        }
+
+        // Main savepoint reached.
+        upgrade_main_savepoint(true, 2013101100.01);
+    }
+
     return true;
 }

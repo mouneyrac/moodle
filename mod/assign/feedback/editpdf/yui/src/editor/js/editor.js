@@ -311,30 +311,80 @@ EDITOR.prototype = {
      */
     load_all_pages : function() {
         var ajaxurl = AJAXBASE,
-            config;
+            config,
+            checkconversionstatus;
 
         config = {
             method: 'get',
             context: this,
             sync: false,
             data : {
-                'sesskey' : M.cfg.sesskey,
-                'action' : 'loadallpages',
-                'userid' : this.get('userid'),
-                'attemptnumber' : this.get('attemptnumber'),
-                'assignmentid' : this.get('assignmentid')
+                sesskey : M.cfg.sesskey,
+                action : 'loadallpages',
+                userid : this.get('userid'),
+                attemptnumber : this.get('attemptnumber'),
+                assignmentid : this.get('assignmentid')
             },
             on: {
                 success: function(tid, response) {
                     this.all_pages_loaded(response.responseText);
                 },
                 failure: function(tid, response) {
-                    return M.core.exception(response.responseText);
+                    return new M.core.exception(response.responseText);
                 }
             }
         };
 
         Y.io(ajaxurl, config);
+
+        // If pages are not loaded, check PDF conversion status for the progress bar.
+        if (this.pagecount <= 0) {
+            checkconversionstatus = {
+                method: 'get',
+                context: this,
+                sync: false,
+                data : {
+                    sesskey : M.cfg.sesskey,
+                    action : 'conversionstatus',
+                    userid : this.get('userid'),
+                    attemptnumber : this.get('attemptnumber'),
+                    assignmentid : this.get('assignmentid')
+                },
+                on: {
+                    success: function(tid, response) {
+                        if (this.pagecount === 0) {
+                            var pagetotal = this.get('pagetotal');
+
+                            // Update the progress bar.
+                            var progressbarcontainer = Y.one(SELECTOR.PROGRESSBARCONTAINER);
+                            var progressbar = progressbarcontainer.one('.bar');
+                            if (progressbar) {
+                                // Calculate progress.
+                                var progress = (response.response / pagetotal) * 100;
+                                progressbar.setStyle('width', progress + '%');
+                                progressbarcontainer.setAttribute('aria-valuenow', progress);
+                            }
+
+                            // New ajax request delayed of a second.
+                            Y.later(1000, this, function () {
+                                Y.io(AJAXBASEPROGRESS, checkconversionstatus);
+                            });
+                        }
+                    },
+                    failure: function(tid, response) {
+                        if (this.pagecount === 0) {
+                            Y.io(AJAXBASEPROGRESS, checkconversionstatus);
+                        }
+                        return new M.core.exception(response.responseText);
+                    }
+                }
+            };
+            // We start the AJAX "generated page total number" call a second later to give a chance to
+            // the AJAX "combined pdf generation" call to clean the previous submission images.
+            Y.later(1000, this, function () {
+                Y.io(AJAXBASEPROGRESS, checkconversionstatus);
+            });
+        }
     },
 
     /**
@@ -801,7 +851,7 @@ EDITOR.prototype = {
                     }
                 },
                 failure: function(tid, response) {
-                    return M.core.exception(response.responseText);
+                    return new M.core.exception(response.responseText);
                 }
             }
         };
@@ -996,6 +1046,10 @@ Y.extend(EDITOR, Y.Base, EDITOR.prototype, {
         stampfiles : {
             validator : Y.Lang.isArray,
             value : ''
+        },
+        pagetotal : {
+            validator : Y.Lang.isInteger,
+            value : 0
         }
     }
 });

@@ -62,6 +62,7 @@ $string['oval'] = 'Oval';
 $string['pagexofy'] = 'Page {$a->page} of {$a->total}';
 $string['pen'] = 'Pen';
 $string['pluginname'] = 'Annotate PDF';
+$string['generatingpdf'] = 'Generating the PDF...';
 $string['rectangle'] = 'Rectangle';
 $string['red'] = 'Red';
 $string['searchcomments'] = 'Search comments';

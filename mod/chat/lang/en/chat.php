@@ -137,12 +137,4 @@ $string['talk'] = 'Talk';
 $string['updatemethod'] = 'Update method';
 $string['updaterate'] = 'Update rate:';
 $string['userlist'] = 'User list';
-$string['usingchat'] = 'Using chat';
-$string['usingchat_help'] = 'The chat module contains some features to make chatting a little nicer.
-
-* Smilies - Any smiley faces (emoticons) that you can type elsewhere in Moodle can also be typed here, for example :-)
-* Links - Website addresses will be turned into links automatically
-* Emoting - You can start a line with "/me" or ":" to emote, for example if your name is Kim and you type ":laughs!" or "/me laughs!" then everyone will see "Kim laughs!"
-* Beeps - You can send a sound to other participants by clicking the "beep" link next to their name. A useful shortcut to beep all the people in the chat at once is to type "beep all".
-* HTML - If you know some HTML code, you can use it in your text to do things like insert images, play sounds or create different coloured text';
 $string['viewreport'] = 'View past chat sessions';

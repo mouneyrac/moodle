@@ -60,6 +60,10 @@ if (!$user = $DB->get_record('user', array('id'=>$chatuser->userid, 'deleted'=>0
 }
 \core\session\manager::set_user($user);
 
+if ($USER->lang) {
+    $SESSION->lang = $USER->lang;
+}
+
 //Setup course, lang and theme
 $PAGE->set_course($course);
 

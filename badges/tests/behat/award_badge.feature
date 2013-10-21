@@ -56,3 +56,38 @@ Feature: Award badges
     When I follow "My badges"
     Then I should see "Profile Badge"
     And I should not see "There are no badges available."
+
+  @javascript
+  Scenario: Award site badge
+    Given the following "users" exists:
+      | username | firstname | lastname | email |
+      | teacher | teacher | 1 | teacher1@asd.com |
+      | student | student | 1 | student1@asd.com |
+    And I expand "Site administration" node
+    And I expand "Badges" node
+    And I follow "Add a new badge"
+    And I fill the moodle form with:
+      | Name | Site Badge |
+      | Description | Site badge description |
+      | issuername | Tester of site badge |
+    And I upload "badges/tests/behat/badge.png" file to "Image" filepicker
+    And I press "Create badge"
+    And I select "Manual issue by role" from "type"
+    And I wait "5" seconds
+    And I check "Teacher"
+    And I press "Save"
+    And I press "Enable access"
+    And I press "Continue"
+    And I follow "Recipients (0)"
+    And I press "Award badge"
+    And I select "teacher 1 (teacher1@asd.com)" from "potentialrecipients[]"
+    And I press "Award badge"
+    And I select "student 1 (student1@asd.com)" from "potentialrecipients[]"
+    And I press "Award badge"
+    And I follow "Site Badge"
+    Then I should see "Recipients (2)"
+    And I log out
+    And I log in as "student"
+    And I expand "My profile" node
+    And I follow "My badges"
+    Then I follow "Site Badge"

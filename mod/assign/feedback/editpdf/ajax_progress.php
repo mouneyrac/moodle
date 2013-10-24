@@ -30,25 +30,37 @@ define('NO_MOODLE_COOKIES', true);
 use \assignfeedback_editpdf\document_services;
 require_once('../../../../config.php');
 
-$action = optional_param('action', '', PARAM_ALPHANUM);
-$assignmentid = required_param('assignmentid', PARAM_INT);
-$userid = required_param('userid', PARAM_INT);
-$attemptnumber = required_param('attemptnumber', PARAM_INT);
+try {
+    $assignmentid = required_param('assignmentid', PARAM_INT);
+    $userid = required_param('userid', PARAM_INT);
+    $attemptnumber = required_param('attemptnumber', PARAM_INT);
 
-// Retrieve the assignments.
-require_once($CFG->dirroot . '/mod/assign/locallib.php');
-$cm = \get_coursemodule_from_instance('assign', $assignmentid, 0, false, MUST_EXIST);
-$context = \context_module::instance($cm->id);
-$assignment = new \assign($context, null, null);
+    // Retrieve the assignments.
+    require_once($CFG->dirroot . '/mod/assign/locallib.php');
+    $cm = get_coursemodule_from_instance('assign', $assignmentid, 0, false, MUST_EXIST);
+    $context = context_module::instance($cm->id);
+    $assignment = new assign($context, null, null);
 
-// Get the generated images from file API call.
-$grade = $assignment->get_user_grade($userid, true, $attemptnumber);
-$contextid = $assignment->get_context()->id;
-$component = 'assignfeedback_editpdf';
-$filearea = document_services::PAGE_IMAGE_FILEAREA;
-$filepath = '/';
-$fs = \get_file_storage();
-$files = $fs->get_directory_files($contextid, $component, $filearea, $grade->id, $filepath);
+    // Get the generated images from file API call.
+    $grade = $assignment->get_user_grade($userid, false, $attemptnumber);
 
-// The important security part: we ONLY RETURN the total NUMBER of generated images.
-echo json_encode(count($files));
+    // Check we found a grade.
+    if (empty($grade)) {
+        throw new coding_exception('grade not found');
+    }
+
+    $component = 'assignfeedback_editpdf';
+    $filearea = document_services::PAGE_IMAGE_FILEAREA;
+    $filepath = '/';
+    $fs = get_file_storage();
+    $files = $fs->get_directory_files($context->id, $component, $filearea, $grade->id, $filepath);
+
+    // The important security part: we ONLY RETURN the total NUMBER of generated images.
+    echo $OUTPUT->header();
+    echo json_encode(count($files));
+    echo $OUTPUT->footer();
+} catch (Exception $e) {
+    // This should never happened.
+    echo 'An exception was caught but can not be returned for security purpose.
+        To easily debug, comment the try catch.';
+}

@@ -263,7 +263,7 @@ class document_services {
         // Get a combined pdf file from all submitted pdf files.
         $file = self::get_combined_pdf_for_attempt($assignment, $userid, $attemptnumber);
         if (!$file) {
-            throw new \moodle_exception('Could not generate combined pdf.');
+            \print_error('Could not generate combined pdf.');
         }
 
         // Store the combined pdf file somewhere to be opened by tcpdf.
@@ -326,7 +326,6 @@ class document_services {
         $record->filepath = '/';
         $fs = \get_file_storage();
 
-        $i = 0;
         $files = array();
         for ($i = 0; $i < $pagecount; $i++) {
             $image = $pdf->get_image($i);

@@ -161,12 +161,46 @@ class core_admin_renderer extends plugin_renderer_base {
      * @return string HTML to output.
      */
     public function upgrade_environment_page($release, $envstatus, $environment_results) {
-        global $CFG;
+        global $CFG, $DB;
         $output = '';
 
         $output .= $this->header();
         $output .= $this->heading("Moodle $release");
         $output .= $this->release_notes_link();
+
+        // Display an alert when removing mymobile theme.
+        // It only concerns the update of version lower than Moodle 2.6.
+        if ($CFG->version < 2013102203.01 and !check_dir_exists($CFG->dirroot . '/theme/mymobile', false)) {
+            // Check if there is any usage of My Mobile theme by users, courses or categories.
+            $coursetheme = $DB->record_exists('course', array('theme' => 'mymobile'));
+            $cattheme = $DB->record_exists('course_categories', array('theme' => 'mymobile'));
+            $usertheme = $DB->record_exists('user', array('theme' => 'mymobile'));
+            $mnettheme = $DB->record_exists('mnet_host', array('theme' => 'mymobile'));
+
+            // Check some fields that could be annoying to lose: custom css and showmymobileintro.
+            // If they contain '' they are considered empty.
+            $customcss = $DB->get_field('config_plugins', 'value',
+                array('plugin' => 'theme_mymobile', 'name' => 'customcss'));
+            $showmobileintro = $DB->get_field('config_plugins', 'value',
+                array('plugin' => 'theme_mymobile', 'name' => 'showmymobileintro'));
+
+            // Check if MyMobile is set as theme.
+            $themeused = false;
+            if ((get_config('core', 'theme') == 'mymobile') or
+                (get_config('core', 'thememobile') == 'mymobile') or
+                (get_config('core', 'themelegacy') == 'mymobile') or
+                (get_config('core', 'themetablet') == 'mymobile')) {
+                $themeused = true;
+            }
+
+            // Display a warning if mymobile is set anywhere.
+            if ($coursetheme or $cattheme or $usertheme or $mnettheme or
+                !empty($customcss) or !empty($showmobileintro) or $themeused) {
+                $output .= $this->remove_mymobile_warning();
+            }
+
+        }
+
         $output .= $this->environment_check_table($envstatus, $environment_results);
 
         if (!$envstatus) {
@@ -795,6 +829,16 @@ class core_admin_renderer extends plugin_renderer_base {
         $releasenoteslink = get_string('releasenoteslink', 'admin', 'http://docs.moodle.org/dev/Releases');
         $releasenoteslink = str_replace('target="_blank"', 'onclick="this.target=\'_blank\'"', $releasenoteslink); // extremely ugly validation hack
         return $this->box($releasenoteslink, 'generalbox releasenoteslink');
+    }
+
+    /**
+     * Display a warning about mymobile being removed.
+     * @return string HTML to output.
+     */
+    protected function remove_mymobile_warning() {
+        $removemymobilewarning = get_string('removemymobilewarning', 'install');
+        return $this->box($removemymobilewarning,
+            'releasenoteslink generalbox adminwarning maturityinfo maturity150');
     }
 
     /**

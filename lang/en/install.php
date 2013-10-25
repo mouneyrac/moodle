@@ -226,10 +226,6 @@ $string['phpversionhelp'] = '<p>Moodle requires a PHP version of at least 4.3.0 
 <p>You must upgrade PHP or move to a host with a newer version of PHP!<br />
 (In case of 5.0.x you could also downgrade to 4.4.x version)</p>';
 $string['releasenoteslink'] = 'For information about this version of Moodle, please see the release notes at {$a}';
-$string['removemymobilewarning']= '"My Mobile" theme files have been removed. "My Mobile" theme will be uninstalled and all "My Mobile"
-theme settings will be deleted. "My Mobile" theme will fallback to the mobile friendly "Clean" theme.
-If you wish to keep "My Mobile" theme, you can copy back the files from the
-<a href="https://moodle.org/plugins/pluginversion.php?id=4563">unmaintained plugin (located on Moodle.org plugins repository)</a>.';
 $string['safemode'] = 'Safe mode';
 $string['safemodeerror'] = 'Moodle may have trouble with safe mode on';
 $string['safemodehelp'] = '<p>Moodle may have a variety of problems with safe mode on, not least is that 

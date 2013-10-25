@@ -2739,7 +2739,7 @@ function xmldb_main_upgrade($oldversion) {
         upgrade_main_savepoint(true, 2013102201.00);
     }
 
-    if ($oldversion < 2013102203.01) {
+    if ($oldversion < 2013102400.01) {
 
         if (!check_dir_exists($CFG->dirroot . '/theme/mymobile', false)) {
             // Delete from config_plugins.
@@ -2769,7 +2769,7 @@ function xmldb_main_upgrade($oldversion) {
         }
 
         // Main savepoint reached.
-        upgrade_main_savepoint(true, 2013102203.01);
+        upgrade_main_savepoint(true, 2013102400.01);
     }
 
     return true;

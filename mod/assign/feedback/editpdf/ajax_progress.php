@@ -60,7 +60,13 @@ try {
     echo json_encode(count($files));
     echo $OUTPUT->footer();
 } catch (Exception $e) {
-    // This should never happened.
-    echo 'An exception was caught but can not be returned for security purpose.
-        To easily debug, comment the try catch.';
+    // This should never happened!
+    // Return a 500 HTTP header so Y.io gets it as a failure.
+    if (substr(php_sapi_name(), 0, 3) == 'cgi') {
+        header("Status: 500 Internal Server Error");
+    } else {
+        header('HTTP/1.0 500 Internal Server Error');
+    }
+    throw new moodle_exception('An exception was caught but can not be returned for security purpose.
+        To easily debug, comment the try catch.');
 }

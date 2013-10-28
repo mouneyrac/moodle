@@ -312,7 +312,8 @@ EDITOR.prototype = {
     load_all_pages : function() {
         var ajaxurl = AJAXBASE,
             config,
-            checkconversionstatus;
+            checkconversionstatus,
+            ajax_error_total;
 
         config = {
             method: 'get',
@@ -352,6 +353,7 @@ EDITOR.prototype = {
                 },
                 on: {
                     success: function(tid, response) {
+                        ajax_error_total = 0;
                         if (this.pagecount === 0) {
                             var pagetotal = this.get('pagetotal');
 
@@ -372,8 +374,13 @@ EDITOR.prototype = {
                         }
                     },
                     failure: function(tid, response) {
-                        if (this.pagecount === 0) {
-                            Y.io(AJAXBASEPROGRESS, checkconversionstatus);
+                        ajax_error_total = ajax_error_total + 1;
+                        // We only continue on error if the all pages were not generated,
+                        // and if the ajax call did not produce 5 errors in the row.
+                        if (this.pagecount === 0 && ajax_error_total < 5) {
+                            Y.later(1000, this, function () {
+                                Y.io(AJAXBASEPROGRESS, checkconversionstatus);
+                            });
                         }
                         return new M.core.exception(response.responseText);
                     }
@@ -382,6 +389,7 @@ EDITOR.prototype = {
             // We start the AJAX "generated page total number" call a second later to give a chance to
             // the AJAX "combined pdf generation" call to clean the previous submission images.
             Y.later(1000, this, function () {
+                ajax_error_total = 0;
                 Y.io(AJAXBASEPROGRESS, checkconversionstatus);
             });
         }

@@ -16,6 +16,12 @@
 
 // Get the HTML for the settings bits.
 $html = theme_clean_get_html_for_settings($OUTPUT, $PAGE);
+$hasheader = (empty($PAGE->layout_options['noheader']));
+if ($hasheader) {
+    $bodyclasses = '';
+} else {
+    $bodyclasses = 'noheaderfooter';
+}
 
 echo $OUTPUT->doctype() ?>
 <html <?php echo $OUTPUT->htmlattributes(); ?>>
@@ -26,10 +32,11 @@ echo $OUTPUT->doctype() ?>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 
-<body <?php echo $OUTPUT->body_attributes(); ?>>
+<body <?php echo $OUTPUT->body_attributes($bodyclasses); ?>>
 
 <?php echo $OUTPUT->standard_top_of_body_html() ?>
 
+<?php if ($hasheader) { ?>
 <header role="banner" class="navbar navbar-fixed-top<?php echo $html->navbarclass ?>">
     <nav role="navigation" class="navbar-inner">
         <div class="container-fluid">
@@ -49,6 +56,7 @@ echo $OUTPUT->doctype() ?>
         </div>
     </nav>
 </header>
+<?php } ?>
 
 <div id="page" class="container-fluid">
 

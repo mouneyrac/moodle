@@ -380,7 +380,21 @@ class document_services {
                 // Image files are stale - regenerate them.
                 $files = array();
             } else {
-                return $files;
+
+                // Need to reorder the files following their name.
+                // because get_directory_files() return a different order than generate_page_images_for_attempt().
+                $orderedfiles = array();
+                foreach($files as $file) {
+                    // Extract the page number from the file name image_pageXXXX.png.
+                    if (preg_match('/page([\d]+)\./', $file->get_filename(), $matches)) {
+                        $pagenumber = (int)$matches[1];
+                    }
+                    // Save the page in the ordered array.
+                    $orderedfiles[$pagenumber] = $file;
+                }
+                ksort($orderedfiles);
+
+                return $orderedfiles;
             }
         }
         return self::generate_page_images_for_attempt($assignment, $userid, $attemptnumber);

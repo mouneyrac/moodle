@@ -8,6 +8,8 @@
         "graphics",
         "json",
         "event-move",
+        "resize-plugin",
+        "resize-constrain",
         "querystring-stringify-simple",
         "moodle-core-notification-dialog",
         "moodle-core-notification-exception",

@@ -2330,6 +2330,13 @@ COMMENT = function(editor, gradeid, pageno, x, y, width, colour, rawtext) {
             'height' : scrollheight + 'px',
             'overflow': 'hidden'
         });
+
+        // Position menu.
+        menu.setStyles({
+            top: '-' + (scrollheight + 10) + 'px',
+            left: '-2px'
+        });
+
         if (!this.editor.get('readonly')) {
             this.attach_events(node, menu);
         }
@@ -2362,6 +2369,19 @@ COMMENT = function(editor, gradeid, pageno, x, y, width, colour, rawtext) {
      * @param menu - The Y.Node representing the menu.
      */
     this.attach_events = function(node, menu) {
+
+        // Make the comment resizable.
+        node.plug(Y.Plugin.Resize, {
+            handles: 'r'
+        });
+        // Calculate the comment size max width.
+        var bounds = this.editor.get_canvas_bounds();
+        var nodexy = node.getXY();
+        var commentwidth = (bounds.x + bounds.width) - 30 - nodexy[0];
+        node.resize.plug(Y.Plugin.ResizeConstrained, {
+            maxWidth: commentwidth
+        });
+
         // Save the text on blur.
         node.on('blur', function() {
             // Save the changes back to the comment.
@@ -2382,6 +2402,12 @@ COMMENT = function(editor, gradeid, pageno, x, y, width, colour, rawtext) {
         menu.setData('comment', this);
 
         node.on('keyup', function() {
+
+            // ScrollHeight doesn't get updated on textarea height decrease.
+            // So we set the height of the comment to 0 before calculating it.
+            node.setStyle('height', '0px');
+            node.ancestor().setStyle('height', '0px');
+
             var scrollheight = node.get('scrollHeight'),
                 height = parseInt(node.getStyle('height'), 10);
 
@@ -2389,8 +2415,15 @@ COMMENT = function(editor, gradeid, pageno, x, y, width, colour, rawtext) {
             if (scrollheight === height + 8) {
                 scrollheight -= 8;
             }
+
+            // Fix the resize div wrapper height.
+            node.ancestor().setStyle('height', (scrollheight + 8) + 'px');
+
             node.setStyle('height', scrollheight + 'px');
 
+            node.ancestor().ancestor().one('a').setStyles({
+                top: '-' + (scrollheight + 10) + 'px'
+            });
         });
 
         node.on('gesturemovestart', function(e) {
@@ -2401,6 +2434,15 @@ COMMENT = function(editor, gradeid, pageno, x, y, width, colour, rawtext) {
         node.on('gesturemoveend', function() {
             node.setData('dragging', false);
             this.editor.save_current_page();
+
+            // Recalculate the new max size for resize event.
+            var bounds = this.editor.get_canvas_bounds();
+            var nodexy = node.getXY();
+            var commentwidth = (bounds.x + bounds.width) - 30 - nodexy[0];
+            node.resize.plug(Y.Plugin.ResizeConstrained, {
+                maxWidth: commentwidth
+            });
+
         }, null, this);
         node.on('gesturemove', function(e) {
             var x = e.clientX - node.getData('offsetx'),
@@ -2428,13 +2470,28 @@ COMMENT = function(editor, gradeid, pageno, x, y, width, colour, rawtext) {
             this.y = newlocation.y;
 
             windowlocation = this.editor.get_window_coordinates(newlocation);
-            node.ancestor().setX(windowlocation.x);
-            node.ancestor().setY(windowlocation.y);
+            node.ancestor().ancestor().setX(windowlocation.x);
+            node.ancestor().ancestor().setY(windowlocation.y);
         }, null, this);
 
         this.menu = new M.assignfeedback_editpdf.commentmenu({
             buttonNode: this.menulink,
             comment: this
+        });
+
+        // on resize we need to reposition the menu.
+        node.resize.on('resize:start', function(){
+            // Position menu.
+            node.ancestor().ancestor().one('a').setStyles({
+                visibility: 'hidden'
+            });
+        });
+        node.resize.on('resize:end', function(){
+            // Position menu.
+            node.ancestor().ancestor().one('a').setStyles({
+                top: '-' + (node.ancestor().get('scrollHeight') - 7) + 'px',
+                visibility: 'visible'
+            });
         });
     };
 
@@ -3945,6 +4002,8 @@ M.assignfeedback_editpdf.editor.init = M.assignfeedback_editpdf.editor.init || f
         "graphics",
         "json",
         "event-move",
+        "resize-plugin",
+        "resize-constrain",
         "querystring-stringify-simple",
         "moodle-core-notification-dialog",
         "moodle-core-notification-exception",

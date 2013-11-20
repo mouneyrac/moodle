@@ -23,7 +23,19 @@ echo $OUTPUT->doctype() ?>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 
-<body <?php echo $OUTPUT->body_attributes(); ?>>
+<?php
+// If on desktop, then hide the header/footer.
+$hideclass = '';
+$bodynoheader = '';
+$devicetype = core_useragent::get_device_type();
+if($devicetype !== 'mobile' and $devicetype !== 'tablet') {
+    // We can not use the Bootstrap responsive css classes because popups are phone sized on desktop.
+    $hideclass = 'hide';
+    $bodynoheader = 'bodynoheader';
+}
+?>
+
+<body <?php echo $OUTPUT->body_attributes(array($bodynoheader)); ?>>
 
 <?php echo $OUTPUT->standard_top_of_body_html() ?>
 

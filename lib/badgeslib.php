@@ -1102,9 +1102,9 @@ function profile_display_badges($userid, $courseid = 0) {
 
         // Print local badges.
         if ($records) {
-            $left = get_string('localbadgesp', 'badges', format_string($SITE->fullname));
+            // $left = get_string('localbadgesp', 'badges', format_string($SITE->fullname));
             $right = $renderer->print_badges_list($records, $userid, true);
-            echo html_writer::tag('dt', $left);
+            echo html_writer::tag('dt', '');
             echo html_writer::tag('dd', $right);
         }
 

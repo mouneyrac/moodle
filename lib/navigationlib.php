@@ -1102,7 +1102,7 @@ class global_navigation extends navigation_node {
             }
         }
         $this->rootnodes['site'] = $this->add_course($SITE);
-        $this->rootnodes['myprofile'] = $this->add(get_string('myprofile'), null, self::TYPE_USER, null, 'myprofile');
+        $this->rootnodes['myprofile'] = $this->add(get_string('myprofile'), new moodle_url('/user/profile.php'), self::TYPE_USER, null, 'myprofile');
         $this->rootnodes['currentcourse'] = $this->add(get_string('currentcourse'), null, self::TYPE_ROOTNODE, null, 'currentcourse');
         $this->rootnodes['mycourses'] = $this->add(get_string('mycourses'), new moodle_url('/my/'), self::TYPE_ROOTNODE, null, 'mycourses');
         $this->rootnodes['courses'] = $this->add(get_string('courses'), new moodle_url('/course/index.php'), self::TYPE_ROOTNODE, null, 'courses');
@@ -4068,7 +4068,7 @@ class settings_navigation extends navigation_node {
         }
 
         // Add a user setting branch
-        $usersetting = $this->add(get_string($gstitle, 'moodle', $fullname), null, self::TYPE_CONTAINER, null, $key);
+        $usersetting = $this->add(get_string($gstitle, 'moodle', $fullname), new moodle_url('/user/preferences.php', array('userid' => $userid)), self::TYPE_CONTAINER, null, $key);
         $usersetting->id = 'usersettings';
         if ($this->page->context->contextlevel == CONTEXT_USER && $this->page->context->instanceid == $user->id) {
             // Automatically start by making it active
@@ -4092,6 +4092,7 @@ class settings_navigation extends navigation_node {
             return true;
         }
 
+        $useraccount = $usersetting->add('User account', null, '#', self::TYPE_SETTING);
         $userauthplugin = false;
         if (!empty($user->auth)) {
             $userauthplugin = get_auth_plugin($user->auth);
@@ -4101,14 +4102,14 @@ class settings_navigation extends navigation_node {
         if (isloggedin() && !isguestuser($user) && !is_mnet_remote_user($user)) {
             if (($currentuser || is_siteadmin($USER) || !is_siteadmin($user)) && has_capability('moodle/user:update', $systemcontext)) {
                 $url = new moodle_url('/user/editadvanced.php', array('id'=>$user->id, 'course'=>$course->id));
-                $usersetting->add(get_string('editmyprofile'), $url, self::TYPE_SETTING);
+                $useraccount->add(get_string('editmyprofile'), $url, self::TYPE_SETTING);
             } else if ((has_capability('moodle/user:editprofile', $usercontext) && !is_siteadmin($user)) || ($currentuser && has_capability('moodle/user:editownprofile', $systemcontext))) {
                 if ($userauthplugin && $userauthplugin->can_edit_profile()) {
                     $url = $userauthplugin->edit_profile_url();
                     if (empty($url)) {
                         $url = new moodle_url('/user/edit.php', array('id'=>$user->id, 'course'=>$course->id));
                     }
-                    $usersetting->add(get_string('editmyprofile'), $url, self::TYPE_SETTING);
+                    $useraccount->add(get_string('editmyprofile'), $url, self::TYPE_SETTING);
                 }
             }
         }
@@ -4119,7 +4120,7 @@ class settings_navigation extends navigation_node {
             if (empty($passwordchangeurl)) {
                 $passwordchangeurl = new moodle_url('/login/change_password.php', array('id'=>$course->id));
             }
-            $usersetting->add(get_string("changepassword"), $passwordchangeurl, self::TYPE_SETTING);
+            $useraccount->add(get_string("changepassword"), $passwordchangeurl, self::TYPE_SETTING);
         }
 
         // View the roles settings
@@ -4167,16 +4168,17 @@ class settings_navigation extends navigation_node {
              && has_capability('moodle/webservice:createtoken', context_system::instance()) ) {
             $enablemanagetokens = true;
         }
+
         // Security keys
         if ($currentuser && $enablemanagetokens) {
             $url = new moodle_url('/user/managetoken.php', array('sesskey'=>sesskey()));
-            $usersetting->add(get_string('securitykeys', 'webservice'), $url, self::TYPE_SETTING);
+            $useraccount->add(get_string('securitykeys', 'webservice'), $url, self::TYPE_SETTING);
         }
 
         // Messaging
         if (($currentuser && has_capability('moodle/user:editownmessageprofile', $systemcontext)) || (!isguestuser($user) && has_capability('moodle/user:editmessageprofile', $usercontext) && !is_primary_admin($user->id))) {
             $url = new moodle_url('/message/edit.php', array('id'=>$user->id));
-            $usersetting->add(get_string('messaging', 'message'), $url, self::TYPE_SETTING);
+            $useraccount->add(get_string('messaging', 'message'), $url, self::TYPE_SETTING);
         }
 
         // Blogs
@@ -4232,10 +4234,10 @@ class settings_navigation extends navigation_node {
         $reporttab->trim_if_empty();
 
         // Login as ...
-        if (!$user->deleted and !$currentuser && !\core\session\manager::is_loggedinas() && has_capability('moodle/user:loginas', $coursecontext) && !is_siteadmin($user->id)) {
-            $url = new moodle_url('/course/loginas.php', array('id'=>$course->id, 'user'=>$user->id, 'sesskey'=>sesskey()));
-            $usersetting->add(get_string('loginas'), $url, self::TYPE_SETTING);
-        }
+        // if (!$user->deleted and !$currentuser && !\core\session\manager::is_loggedinas() && has_capability('moodle/user:loginas', $coursecontext) && !is_siteadmin($user->id)) {
+        //     $url = new moodle_url('/course/loginas.php', array('id'=>$course->id, 'user'=>$user->id, 'sesskey'=>sesskey()));
+        //     $usersetting->add(get_string('loginas'), $url, self::TYPE_SETTING);
+        // }
 
         return $usersetting;
     }

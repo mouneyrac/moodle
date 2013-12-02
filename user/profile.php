@@ -41,6 +41,7 @@ require_once($CFG->dirroot . '/user/profile/lib.php');
 require_once($CFG->libdir.'/filelib.php');
 
 $userid = optional_param('id', 0, PARAM_INT);
+$courseid = optional_param('courseid', 0, PARAM_INT);
 $edit   = optional_param('edit', null, PARAM_BOOL);    // Turn editing on and off
 
 $PAGE->set_url('/user/profile.php', array('id'=>$userid));
@@ -240,8 +241,14 @@ $forumpostsurl = $forumpostsurl->out();
 <div>
     <div style="display: inline-block; margin-right: 1em; "><?php echo $OUTPUT->user_picture($user, array('size'=>100)); ?></div>
     <div style="display: inline-block; vertical-align: top;">
-        <h2 style="margin: 0;"><?php echo fullname($user); ?></h2>
-        <div><?php echo s($user->city); ?>, <?php echo get_string($user->country, 'countries'); ?></div>
+        <h2 style="margin: 0;"><?php echo fullname($user); echo $courseid ? " <span class='badge badge-default'>Course profile</span>" : ''; ?></h2>
+        <div>
+            <?php
+            if (!empty($user->city) && !empty($user->country)):
+                echo s($user->city); ?>, <?php echo get_string($user->country, 'countries');
+            endif;
+            ?>
+        </div>
         <div>
             <?php
             echo $OUTPUT->pix_icon('t/cohort', '') . ' <a href="'.$CFG->wwwroot.'/blog/index.php?userid='.$user->id.'">Blog</a>';
@@ -259,16 +266,44 @@ $forumpostsurl = $forumpostsurl->out();
         ?></div>
     </div>
     <div style='display: block; float: right'>
+        <div>
+            <?php
+                $courselisting = array('0' => 'Full profile');
+                if (!isset($hiddenfields['mycourses'])) {
+                    if ($mycourses = enrol_get_all_users_courses($user->id, true, NULL, 'visible DESC, sortorder ASC')) {
+                        foreach ($mycourses as $mycourse) {
+                            if ($mycourse->category) {
+                                context_helper::preload_from_record($mycourse);
+                                $ccontext = context_course::instance($mycourse->id);
+                                $class = '';
+                                if ($mycourse->visible == 0) {
+                                    if (!has_capability('moodle/course:viewhiddencourses', $ccontext)) {
+                                        continue;
+                                    }
+                                }
+                                $courselisting[$mycourse->id] = $ccontext->get_context_name(false);
+                            }
+                        }
+                    }
+                }
+                echo $OUTPUT->single_select($PAGE->url, 'courseid', $courselisting, $courseid);
+            ?>
+        </div>
         <ul style='list-style: none;'>
             <li>
-                <?php echo $OUTPUT->pix_icon('t/edit', '') . ' ' . html_writer::link('/user/editadvanced.php?id=' . $userid, 'Edit profile'); ?>
+                <?php echo $OUTPUT->pix_icon('t/edit', '') . ' ' . html_writer::link(new moodle_url('/user/edit.php?id=' . $userid), 'Edit profile'); ?>
             </li>
             <li>
-                <?php echo $OUTPUT->pix_icon('t/edit', '') . ' ' . html_writer::link('/user/preferences.php?userid=' . $userid, 'Preferences'); ?>
+                <?php echo $OUTPUT->pix_icon('t/edit', '') . ' ' . html_writer::link(new moodle_url('/user/preferences.php?userid=' . $userid), 'Preferences'); ?>
             </li>
+            <?php
+            if (!$user->deleted and !$currentuser && !\core\session\manager::is_loggedinas() && has_capability('moodle/user:loginas', $context) && !is_siteadmin($user->id)) {
+                $loginasurl = new moodle_url('/course/loginas.php', array('user'=>$user->id, 'sesskey'=>sesskey()));
+                ?>
             <li>
-                <?php echo $OUTPUT->pix_icon('t/edit', '') . ' ' . html_writer::link(new moodle_url('/course/loginas.php', array('user' => $userid, 'sesskey' => sesskey())), 'Log in as'); ?>
+                <?php echo $OUTPUT->pix_icon('t/edit', '') . ' ' . html_writer::link($loginasurl, 'Log in as'); ?>
             </li>
+            <?php } ?>
         </ul>
     </div>
 </div>
@@ -385,14 +420,14 @@ if ($user->description && !isset($hiddenfields['description'])) {
 
     ?>
     </dl>
-    <h3>Interests</h3><?php
+    <?php:
+    if ($CFG->usetags && $interests = tag_get_tags_csv('user', $user->id)):
+    ?>
+        <h3>Interests</h3><?php
 
-    /// Printing tagged interests
-    if (!empty($CFG->usetags)) {
-        if ($interests = tag_get_tags_csv('user', $user->id) ) {
-            echo html_writer::tag('div', $interests);
-        }
-    }
+        /// Printing tagged interests
+        echo html_writer::tag('div', $interests);
+    endif;
     ?>
 
     <h3>Miscellaneous</h3>
@@ -425,10 +460,68 @@ if ($user->description && !isset($hiddenfields['description'])) {
         }
     ?>
     <dl>
+
+    <?php if ($courseid): ?>
+
+    <h3>Course information</h3>
+    <dl>
+    <?php
+        $course = $DB->get_record('course', array('id' => $courseid));
+        $coursecontext = context_course::instance($courseid);
+        // Show last time this user accessed this course
+        if (!isset($hiddenfields['lastaccess'])) {
+            if ($lastaccess = $DB->get_record('user_lastaccess', array('userid'=>$user->id, 'courseid'=>$course->id))) {
+                $datestring = userdate($lastaccess->timeaccess)."&nbsp; (".format_time(time() - $lastaccess->timeaccess).")";
+            } else {
+                $datestring = get_string("never");
+            }
+            echo html_writer::tag('dt', get_string('lastaccess'));
+            echo html_writer::tag('dd', $datestring);
+        }
+
+        // Show roles in this course
+        if ($rolestring = get_user_roles_in_course($userid, $course->id)) {
+            echo html_writer::tag('dt', get_string('roles'));
+            echo html_writer::tag('dd', $rolestring);
+        }
+
+        // Show groups this user is in
+        if (!isset($hiddenfields['groups'])) {
+            $accessallgroups = has_capability('moodle/site:accessallgroups', $coursecontext);
+            if ($usergroups = groups_get_all_groups($course->id, $user->id)) {
+                $groupstr = '';
+                foreach ($usergroups as $group){
+                    if ($course->groupmode == SEPARATEGROUPS and !$accessallgroups and $user->id != $USER->id) {
+                        if (!groups_is_member($group->id, $user->id)) {
+                            continue;
+                        }
+                    }
+
+                    $groupstr .= '<span class="badge badge-default">';
+                    if ($course->groupmode != NOGROUPS) {
+                        $groupstr .= ' <a href="'.$CFG->wwwroot.'/user/index.php?id='.$course->id.'&amp;group='.$group->id.'">'.format_string($group->name).'</a>,';
+                    } else {
+                        $groupstr .= ' '.format_string($group->name); // the user/index.php shows groups only when course in group mode
+                    }
+                    $groupstr .= '</span> ';
+                }
+                if ($groupstr !== '') {
+                    echo html_writer::tag('dt', get_string('group'));
+                    echo html_writer::tag('dd', rtrim($groupstr, ', '));
+                }
+            }
+        }
+    ?>
+    </dl>
+
+    <?php endif; ?>
+
     </div>
 
     <div class="span8">
-        <h3>Badges</h3>
+        <h3>Badges
+            <?php echo $userid == $USER->id ? '<a href="'.$CFG->wwwroot.'/badges/mybadges.php">' . $OUTPUT->pix_icon('t/edit', '') . '</a>' : '';?>
+        </h3>
 
         <?php
         if (!empty($CFG->enablebadges)) {

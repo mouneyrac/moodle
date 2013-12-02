@@ -102,15 +102,15 @@ class user_editadvanced_form extends moodleform {
             $user = false;
         }
 
-        // if language does not exist, use site default lang
-        if ($langsel = $mform->getElementValue('lang')) {
-            $lang = reset($langsel);
-            // check lang exists
-            if (!get_string_manager()->translation_exists($lang, false)) {
-                $lang_el =& $mform->getElement('lang');
-                $lang_el->setValue($CFG->lang);
-            }
-        }
+        // // if language does not exist, use site default lang
+        // if ($langsel = $mform->getElementValue('lang')) {
+        //     $lang = reset($langsel);
+        //     // check lang exists
+        //     if (!get_string_manager()->translation_exists($lang, false)) {
+        //         $lang_el =& $mform->getElement('lang');
+        //         $lang_el->setValue($CFG->lang);
+        //     }
+        // }
 
         // user can not change own auth method
         if ($userid == $USER->id) {

@@ -365,6 +365,9 @@ class core_message_renderer extends plugin_renderer_base {
         $output .= html_writer::nonempty_tag('div', $disableallcheckbox, array('class'=>'disableall'));
 
         $output .= html_writer::end_tag('fieldset');
+
+        $formtest = new digestsettings_form();
+        $output .= $formtest->render();
         $output .= html_writer::start_tag('div', array('class' => 'mdl-align'));
         $output .= html_writer::empty_tag('input', array('type' => 'submit', 'value' => get_string('updatemyprofile'), 'class' => 'form-submit'));
         $output .= html_writer::end_tag('div');
@@ -374,3 +377,55 @@ class core_message_renderer extends plugin_renderer_base {
     }
 
 }
+
+        require_once($CFG->libdir . '/formslib.php');
+        class digestsettings_form extends moodleform {
+            public function definition() {
+                global $CFG;
+
+                $mform = $this->_form;
+                $mform->addElement('header', 'digesthdr', 'Email');
+
+                $choices = array();
+                $choices['0'] = get_string('textformat');
+                $choices['1'] = get_string('htmlformat');
+                $mform->addElement('select', 'mailformat', get_string('emailformat'), $choices);
+                $mform->setDefault('mailformat', 1);
+
+                if (!empty($CFG->allowusermailcharset)) {
+                    $choices = array();
+                    $charsets = get_list_of_charsets();
+                    if (!empty($CFG->sitemailcharset)) {
+                        $choices['0'] = get_string('site').' ('.$CFG->sitemailcharset.')';
+                    } else {
+                        $choices['0'] = get_string('site').' (UTF-8)';
+                    }
+                    $choices = array_merge($choices, $charsets);
+                    $mform->addElement('select', 'preference_mailcharset', get_string('emailcharset'), $choices);
+                }
+
+                $mform->addElement('header', 'digesthdr', 'Digest');
+
+                $choices = array();
+                $choices['0'] = get_string('emaildigestoff');
+                $choices['1'] = get_string('emaildigestcomplete');
+                $choices['2'] = get_string('emaildigestsubjects');
+                $mform->addElement('select', 'maildigest', get_string('emaildigest'), $choices);
+                $mform->setDefault('maildigest', 0);
+                $mform->addHelpButton('maildigest', 'emaildigest');
+
+                $choices = array();
+                $choices['1'] = get_string('autosubscribeyes');
+                $choices['0'] = get_string('autosubscribeno');
+                $mform->addElement('select', 'autosubscribe', get_string('autosubscribe'), $choices);
+                $mform->setDefault('autosubscribe', 1);
+
+                if (!empty($CFG->forum_trackreadposts)) {
+                    $choices = array();
+                    $choices['0'] = get_string('trackforumsno');
+                    $choices['1'] = get_string('trackforumsyes');
+                    $mform->addElement('select', 'trackforums', get_string('trackforums'), $choices);
+                    $mform->setDefault('trackforums', 0);
+                }
+            }
+        }

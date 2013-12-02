@@ -4114,6 +4114,8 @@ class settings_navigation extends navigation_node {
             }
         }
 
+        $useraccount->add('Account settings', new moodle_url('/user/accountsettings.php', array('userid' => $user->id)), self::TYPE_SETTING);
+
         // Change password link
         if ($userauthplugin && $currentuser && !\core\session\manager::is_loggedinas() && !isguestuser() && has_capability('moodle/user:changeownpassword', $systemcontext) && $userauthplugin->can_change_password()) {
             $passwordchangeurl = $userauthplugin->change_password_url();

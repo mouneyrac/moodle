@@ -63,15 +63,15 @@ class user_edit_form extends moodleform {
         $mform =& $this->_form;
         $userid = $mform->getElementValue('id');
 
-        // if language does not exist, use site default lang
-        if ($langsel = $mform->getElementValue('lang')) {
-            $lang = reset($langsel);
-            // check lang exists
-            if (!get_string_manager()->translation_exists($lang, false)) {
-                $lang_el =& $mform->getElement('lang');
-                $lang_el->setValue($CFG->lang);
-            }
-        }
+        // // if language does not exist, use site default lang
+        // if ($langsel = $mform->getElementValue('lang')) {
+        //     $lang = reset($langsel);
+        //     // check lang exists
+        //     if (!get_string_manager()->translation_exists($lang, false)) {
+        //         $lang_el =& $mform->getElement('lang');
+        //         $lang_el->setValue($CFG->lang);
+        //     }
+        // }
 
 
         if ($user = $DB->get_record('user', array('id'=>$userid))) {

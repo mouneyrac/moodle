@@ -99,7 +99,14 @@ if (!$currentpage->userid) {
     $context = context_system::instance();  // A trick so that we even see non-sticky blocks
 }
 
-$PAGE->set_context($context);
+$pagecontext = $context;
+if ($courseid && $courseid !== SITEID) {
+    $course = $DB->get_record('course', array('id' => $courseid));
+    $pagecontext = context_course::instance($courseid);
+    $PAGE->set_course($course);
+}
+
+$PAGE->set_context($pagecontext);
 $PAGE->set_pagelayout('mypublic');
 $PAGE->set_pagetype('user-profile');
 

@@ -68,6 +68,12 @@ class block_navigation_renderer extends plugin_renderer_base {
         // array of nested li elements
         $lis = array();
         foreach ($items as $item) {
+            if ($item->parent && $item->parent->type == navigation_node::TYPE_USER ||
+                    in_array($item->key, array('myprofile'))) {
+                continue;
+            }
+
+
             if (!$item->display && !$item->contains_active_node()) {
                 continue;
             }

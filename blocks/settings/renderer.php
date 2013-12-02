@@ -26,6 +26,12 @@ class block_settings_renderer extends plugin_renderer_base {
         // array of nested li elements
         $lis = array();
         foreach ($items as $item) {
+
+            if (strpos($item->key, 'userviewingsettings') === 0 ||
+                    strpos($item->key, 'usercurrentsettings') === 0) {
+                continue;
+            }
+
             if (!$item->display) {
                 continue;
             }

@@ -31,6 +31,8 @@ require_once($CFG->libdir . '/filelib.php');
 $id        = optional_param('id', 0, PARAM_INT);   // user id
 $courseid  = optional_param('course', SITEID, PARAM_INT);   // course id (defaults to Site)
 
+redirect(new moodle_url("/user/profile.php", array('id' => $id, 'courseid' => $courseid)));
+
 if (empty($id)) {            // See your own profile by default
     require_login();
     $id = $USER->id;

@@ -2172,6 +2172,20 @@ class global_navigation extends navigation_node {
             }
         }
 
+        // Add the profile edit link
+        if (($iscurrentuser || is_siteadmin($USER) || !is_siteadmin($user)) && has_capability('moodle/user:update', $coursecontext)) {
+            $url = new moodle_url('/user/editadvanced.php', array('id'=>$user->id, 'course'=>$course->id));
+            $usernode->add(get_string('editmyprofile'), $url, self::TYPE_SETTING);
+        } else if ((has_capability('moodle/user:editprofile', $usercontext) && !is_siteadmin($user)) || ($currentuser && has_capability('moodle/user:editownprofile', $systemcontext))) {
+            if ($userauthplugin && $userauthplugin->can_edit_profile()) {
+                $url = $userauthplugin->edit_profile_url();
+                if (empty($url)) {
+                    $url = new moodle_url('/user/edit.php', array('id'=>$user->id, 'course'=>$course->id));
+                }
+                $usernode->add(get_string('editmyprofile'), $url, self::TYPE_SETTING);
+            }
+        }
+
         if (!empty($CFG->navadduserpostslinks)) {
             // Add nodes for forum posts and discussions if the user can view either or both
             // There are no capability checks here as the content of the page is based
@@ -4096,22 +4110,6 @@ class settings_navigation extends navigation_node {
         $userauthplugin = false;
         if (!empty($user->auth)) {
             $userauthplugin = get_auth_plugin($user->auth);
-        }
-
-        // Add the profile edit link
-        if (isloggedin() && !isguestuser($user) && !is_mnet_remote_user($user)) {
-            if (($currentuser || is_siteadmin($USER) || !is_siteadmin($user)) && has_capability('moodle/user:update', $systemcontext)) {
-                $url = new moodle_url('/user/editadvanced.php', array('id'=>$user->id, 'course'=>$course->id));
-                $useraccount->add(get_string('editmyprofile'), $url, self::TYPE_SETTING);
-            } else if ((has_capability('moodle/user:editprofile', $usercontext) && !is_siteadmin($user)) || ($currentuser && has_capability('moodle/user:editownprofile', $systemcontext))) {
-                if ($userauthplugin && $userauthplugin->can_edit_profile()) {
-                    $url = $userauthplugin->edit_profile_url();
-                    if (empty($url)) {
-                        $url = new moodle_url('/user/edit.php', array('id'=>$user->id, 'course'=>$course->id));
-                    }
-                    $useraccount->add(get_string('editmyprofile'), $url, self::TYPE_SETTING);
-                }
-            }
         }
 
         $useraccount->add('Account settings', new moodle_url('/user/accountsettings.php', array('userid' => $user->id)), self::TYPE_SETTING);

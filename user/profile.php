@@ -248,7 +248,15 @@ $forumpostsurl = $forumpostsurl->out();
 <div>
     <div style="display: inline-block; margin-right: 1em; "><?php echo $OUTPUT->user_picture($user, array('size'=>100)); ?></div>
     <div style="display: inline-block; vertical-align: top;">
-        <h2 style="margin: 0;"><?php echo fullname($user); echo $courseid ? " <span class='badge badge-default'>Course profile</span>" : ''; ?></h2>
+        <h2 style="margin: 0;"><?php
+        echo fullname($user);
+        if ($currentuser || is_siteadmin($USER) || !is_siteadmin($user) && has_capability('moodle/user:update', $coursecontext)) {
+            $url = '/user/editadvanced.php?id=' . $userid;
+        } else {
+            $url = '/user/edit.php?id=' . $userid;
+        }
+        echo ' ' . html_writer::link(new moodle_url($url), $OUTPUT->pix_icon('t/edit', ''));
+        echo $courseid ? " <span class='badge badge-default'>Course profile</span>" : ''; ?></h2>
         <div>
             <?php
             if (!empty($user->city) && !empty($user->country)):
@@ -297,19 +305,19 @@ $forumpostsurl = $forumpostsurl->out();
             ?>
         </div>
         <ul style='list-style: none;'>
-            <li>
-                <?php echo $OUTPUT->pix_icon('t/edit', '') . ' ' . html_writer::link(new moodle_url('/user/edit.php?id=' . $userid), 'Edit profile'); ?>
-            </li>
+            <?php
+            if (!$currentuser) { ?>
             <li>
                 <?php echo $OUTPUT->pix_icon('t/edit', '') . ' ' . html_writer::link(new moodle_url('/user/preferences.php?userid=' . $userid), 'Preferences'); ?>
             </li>
             <?php
+            }
             if (!$user->deleted and !$currentuser && !\core\session\manager::is_loggedinas() && has_capability('moodle/user:loginas', $context) && !is_siteadmin($user->id)) {
                 $loginasurl = new moodle_url('/course/loginas.php', array('user'=>$user->id, 'sesskey'=>sesskey()));
                 ?>
-            <li>
-                <?php echo $OUTPUT->pix_icon('t/edit', '') . ' ' . html_writer::link($loginasurl, 'Log in as'); ?>
-            </li>
+                <li>
+                    <?php echo $OUTPUT->pix_icon('t/edit', '') . ' ' . html_writer::link($loginasurl, 'Log in as'); ?>
+                </li>
             <?php } ?>
         </ul>
     </div>

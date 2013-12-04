@@ -229,7 +229,7 @@ class theme_clean_core_renderer extends theme_bootstrapbase_core_renderer {
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown" style="padding: 0 3px; text-decoration: none; display: block; line-height: 41px; height: 41px; position: relative;"><?php echo fullname($USER, true); ?>
                             <b class="caret" style='vertical-align: text-top;'></b> <?php echo $this->user_picture($USER, array('link' => false)); ?></a>
                         <ul class="dropdown-menu pull-right">
-                            <li><?php echo html_writer::link(new moodle_url('/my/'), $this->pix_icon('i/course', '') . ' My home'); ?></li>
+                            <li><?php echo html_writer::link(new moodle_url('/my/'), $this->pix_icon('i/course', '') . ' My dashboard'); ?></li>
                             <li class="divider"></li>
                             <li><?php echo html_writer::link($data->link, $this->pix_icon('i/user', '') . ' My profile'); ?></li>
                             <li><?php echo html_writer::link(new moodle_url('/message/index.php'), $this->pix_icon('t/message', '') . ' Messages'); ?></li>

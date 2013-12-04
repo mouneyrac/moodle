@@ -1019,7 +1019,7 @@ class global_navigation extends navigation_node {
             return;
         }
 
-        if (get_home_page() == HOMEPAGE_SITE) {
+        if (true || get_home_page() == HOMEPAGE_SITE) {
             // We are using the site home for the root element
             $properties = array(
                 'key' => 'home',
@@ -1088,10 +1088,10 @@ class global_navigation extends navigation_node {
         // courses: Additional courses are added here.
         // users: Other users information loaded here.
         $this->rootnodes = array();
-        if (get_home_page() == HOMEPAGE_SITE) {
+        if (true || get_home_page() == HOMEPAGE_SITE) {
             // The home element should be my moodle because the root element is the site
             if (isloggedin() && !isguestuser()) {  // Makes no sense if you aren't logged in
-                $this->rootnodes['home'] = $this->add(get_string('myhome'), new moodle_url('/my/'), self::TYPE_SETTING, null, 'home');
+                $this->rootnodes['home'] = $this->add('My dashboard', new moodle_url('/my/'), self::TYPE_SETTING, null, 'home');
             }
         } else {
             // The home element should be the site because the root node is my moodle
@@ -1104,7 +1104,7 @@ class global_navigation extends navigation_node {
         $this->rootnodes['site'] = $this->add_course($SITE);
         $this->rootnodes['myprofile'] = $this->add(get_string('myprofile'), new moodle_url('/user/profile.php'), self::TYPE_USER, null, 'myprofile');
         $this->rootnodes['currentcourse'] = $this->add(get_string('currentcourse'), null, self::TYPE_ROOTNODE, null, 'currentcourse');
-        $this->rootnodes['mycourses'] = $this->add(get_string('mycourses'), new moodle_url('/my/'), self::TYPE_ROOTNODE, null, 'mycourses');
+        $this->rootnodes['mycourses'] = $this->rootnodes['home']->add(get_string('mycourses'), null, self::TYPE_ROOTNODE, null, 'mycourses');
         $this->rootnodes['courses'] = $this->add(get_string('courses'), new moodle_url('/course/index.php'), self::TYPE_ROOTNODE, null, 'courses');
         $this->rootnodes['users'] = $this->add(get_string('users'), null, self::TYPE_ROOTNODE, null, 'users');
 
@@ -2176,14 +2176,9 @@ class global_navigation extends navigation_node {
         if (($iscurrentuser || is_siteadmin($USER) || !is_siteadmin($user)) && has_capability('moodle/user:update', $coursecontext)) {
             $url = new moodle_url('/user/editadvanced.php', array('id'=>$user->id, 'course'=>$course->id));
             $usernode->add(get_string('editmyprofile'), $url, self::TYPE_SETTING);
-        } else if ((has_capability('moodle/user:editprofile', $usercontext) && !is_siteadmin($user)) || ($currentuser && has_capability('moodle/user:editownprofile', $systemcontext))) {
-            if ($userauthplugin && $userauthplugin->can_edit_profile()) {
-                $url = $userauthplugin->edit_profile_url();
-                if (empty($url)) {
-                    $url = new moodle_url('/user/edit.php', array('id'=>$user->id, 'course'=>$course->id));
-                }
-                $usernode->add(get_string('editmyprofile'), $url, self::TYPE_SETTING);
-            }
+        } else if ((has_capability('moodle/user:editprofile', $usercontext) && !is_siteadmin($user)) || ($iscurrentuser && has_capability('moodle/user:editownprofile', $coursecontext))) {
+            $url = new moodle_url('/user/edit.php', array('id'=>$user->id, 'course'=>$course->id));
+            $usernode->add(get_string('editmyprofile'), $url, self::TYPE_SETTING);
         }
 
         if (!empty($CFG->navadduserpostslinks)) {
@@ -2227,19 +2222,39 @@ class global_navigation extends navigation_node {
                 $messageargs['viewing'] = MESSAGE_VIEW_COURSE. $course->id;
             }
             $url = new moodle_url('/message/index.php',$messageargs);
-            $usernode->add(get_string('messages', 'message'), $url, self::TYPE_SETTING, null, 'messages');
+            // $usernode->add(get_string('messages', 'message'), $url, self::TYPE_SETTING, null, 'messages');
         }
+
+        $url = new moodle_url('/user/profile.php?id=' . $USER->id);
+        $this->rootnodes['home']->add('My profile', $url, self::TYPE_SETTING, null, 'myprofile');
+        $this->rootnodes['home']->find('myprofile', self::TYPE_SETTING)->display = false;
+
+        $url = new moodle_url('/message/index.php');
+        $this->rootnodes['home']->add('Messages', $url, self::TYPE_SETTING, null, 'mymessages');
+        $this->rootnodes['home']->find('mymessages', self::TYPE_SETTING)->display = false;
+
+        $url = new moodle_url('/grade/report/overview/index.php?id=1&userid=' . $USER->id);
+        $this->rootnodes['home']->add('My grades', $url, self::TYPE_SETTING, null, 'mygrades');
+        $this->rootnodes['home']->find('mygrades', self::TYPE_SETTING)->display = false;
+
+        $url = new moodle_url('/user/preferences.php');
+        $this->rootnodes['home']->add('Preferences', $url, self::TYPE_SETTING, null, 'mypreferences');
+        $this->rootnodes['home']->find('mypreferences', self::TYPE_SETTING)->display = false;
 
         if ($iscurrentuser && has_capability('moodle/user:manageownfiles', context_user::instance($USER->id))) {
             $url = new moodle_url('/user/files.php');
-            $usernode->add(get_string('myfiles'), $url, self::TYPE_SETTING);
+            $this->rootnodes['home']->add(get_string('myfiles'), $url, self::TYPE_SETTING, null, 'myprivatefiles');
+            $this->rootnodes['home']->find('myprivatefiles', self::TYPE_SETTING)->display = false;
         }
+
 
         if (!empty($CFG->enablebadges) && $iscurrentuser &&
                 has_capability('moodle/badges:manageownbadges', context_user::instance($USER->id))) {
             $url = new moodle_url('/badges/mybadges.php');
             $usernode->add(get_string('mybadges', 'badges'), $url, self::TYPE_SETTING);
         }
+
+        $usernode->add('My grades', new moodle_url('/grade/report/overview/index.php?id=1&userid=' . $USER->id), self::TYPE_USER);
 
         // Add a node to view the users notes if permitted
         if (!empty($CFG->enablenotes) && has_any_capability(array('moodle/notes:manage', 'moodle/notes:view'), $coursecontext)) {
@@ -4076,13 +4091,15 @@ class settings_navigation extends navigation_node {
 
         $fullname = fullname($user, has_capability('moodle/site:viewfullnames', $this->page->context));
 
+        $titlestr = 'My preferences';
         $key = $gstitle;
         if ($gstitle != 'usercurrentsettings') {
             $key .= $userid;
+            $titlestr = get_string($gstitle, 'moodle', $fullname);
         }
 
         // Add a user setting branch
-        $usersetting = $this->add(get_string($gstitle, 'moodle', $fullname), new moodle_url('/user/preferences.php', array('userid' => $userid)), self::TYPE_CONTAINER, null, $key);
+        $usersetting = $this->add($titlestr, new moodle_url('/user/preferences.php', array('userid' => $userid)), self::TYPE_CONTAINER, null, $key);
         $usersetting->id = 'usersettings';
         if ($this->page->context->contextlevel == CONTEXT_USER && $this->page->context->instanceid == $user->id) {
             // Automatically start by making it active

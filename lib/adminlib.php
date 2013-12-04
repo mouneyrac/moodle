@@ -2855,6 +2855,167 @@ class admin_setting_configselect extends admin_setting {
 
 
 /**
+ * Select one value from list
+ *
+ * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+class admin_setting_configselectbootswatch extends admin_setting {
+    /** @var array Array of choices value=>label */
+    public $choices;
+
+    /**
+     * Constructor
+     * @param string $name unique ascii name, either 'mysetting' for settings that in config, or 'myplugin/mysetting' for ones in config_plugins.
+     * @param string $visiblename localised
+     * @param string $description long localised info
+     * @param string|int $defaultsetting
+     * @param array $choices array of $value=>$label for each selection
+     */
+    public function __construct($name, $visiblename, $description, $defaultsetting, $choices) {
+        $this->choices = $choices;
+        parent::__construct($name, $visiblename, $description, $defaultsetting);
+    }
+
+    /**
+     * This function may be used in ancestors for lazy loading of choices
+     *
+     * Override this method if loading of choices is expensive, such
+     * as when it requires multiple db requests.
+     *
+     * @return bool true if loaded, false if error
+     */
+    public function load_choices() {
+        /*
+        if (is_array($this->choices)) {
+            return true;
+        }
+        .... load choices here
+        */
+        return true;
+    }
+
+    /**
+     * Check if this is $query is related to a choice
+     *
+     * @param string $query
+     * @return bool true if related, false if not
+     */
+    public function is_related($query) {
+        if (parent::is_related($query)) {
+            return true;
+        }
+        if (!$this->load_choices()) {
+            return false;
+        }
+        foreach ($this->choices as $key=>$value) {
+            if (strpos(core_text::strtolower($key), $query) !== false) {
+                return true;
+            }
+            if (strpos(core_text::strtolower($value), $query) !== false) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Return the setting
+     *
+     * @return mixed returns config if successful else null
+     */
+    public function get_setting() {
+        return $this->config_read($this->name);
+    }
+
+    /**
+     * Save a setting
+     *
+     * @param string $data
+     * @return string empty of error string
+     */
+    public function write_setting($data) {
+        if (!$this->load_choices() or empty($this->choices)) {
+            return '';
+        }
+        if (!array_key_exists($data, $this->choices)) {
+            return ''; // ignore it
+        }
+
+        //
+
+        return ($this->config_write($this->name, $data) ? '' : get_string('errorsetting', 'admin'));
+    }
+
+    /**
+     * Returns XHTML select field
+     *
+     * Ensure the options are loaded, and generate the XHTML for the select
+     * element and any warning message. Separating this out from output_html
+     * makes it easier to subclass this class.
+     *
+     * @param string $data the option to show as selected.
+     * @param string $current the currently selected option in the database, null if none.
+     * @param string $default the default selected option.
+     * @return array the HTML for the select element, and a warning message.
+     */
+    public function output_select_html($data, $current, $default, $extraname = '') {
+        if (!$this->load_choices() or empty($this->choices)) {
+            return array('', '');
+        }
+
+        $warning = '';
+        if (is_null($current)) {
+            // first run
+        } else if (empty($current) and (array_key_exists('', $this->choices) or array_key_exists(0, $this->choices))) {
+            // no warning
+        } else if (!array_key_exists($current, $this->choices)) {
+            $warning = get_string('warningcurrentsetting', 'admin', s($current));
+            if (!is_null($default) and $data == $current) {
+                $data = $default; // use default instead of first value when showing the form
+            }
+        }
+
+        $selecthtml = '<select id="'.$this->get_id().'" name="'.$this->get_full_name().$extraname.'">';
+        foreach ($this->choices as $key => $value) {
+            // the string cast is needed because key may be integer - 0 is equal to most strings!
+            $selecthtml .= '<option value="'.$key.'"'.((string)$key==$data ? ' selected="selected"' : '').'>'.$value.'</option>';
+        }
+        $selecthtml .= '</select>';
+        return array($selecthtml, $warning);
+    }
+
+    /**
+     * Returns XHTML select field and wrapping div(s)
+     *
+     * @see output_select_html()
+     *
+     * @param string $data the option to show as selected
+     * @param string $query
+     * @return string XHTML field and wrapping div
+     */
+    public function output_html($data, $query='') {
+        $default = $this->get_defaultsetting();
+        $current = $this->get_setting();
+
+        list($selecthtml, $warning) = $this->output_select_html($data, $current, $default);
+        if (!$selecthtml) {
+            return '';
+        }
+
+        if (!is_null($default) and array_key_exists($default, $this->choices)) {
+            $defaultinfo = $this->choices[$default];
+        } else {
+            $defaultinfo = NULL;
+        }
+
+        $return = '<div class="form-select defaultsnext">' . $selecthtml . '</div>';
+
+        return format_admin_setting($this, $this->visiblename, $return, $this->description, true, $warning, $defaultinfo, $query);
+    }
+}
+
+
+/**
  * Select multiple items from list
  *
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later

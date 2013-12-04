@@ -207,7 +207,7 @@ echo '<div class="userprofile">';
 
 // Print the standard content of this page, the basic profile info
 
-echo $OUTPUT->heading(fullname($user));
+//echo $OUTPUT->heading(fullname($user));
 
 if (is_mnet_remote_user($user)) {
     $sql = "SELECT h.id, h.name, h.wwwroot,
@@ -224,206 +224,390 @@ if (is_mnet_remote_user($user)) {
     echo $OUTPUT->box(get_string('remoteuserinfo', 'mnet', $a), 'remoteuserinfo');
 }
 
-echo '<div class="userprofilebox clearfix"><div class="profilepicture">';
-echo $OUTPUT->user_picture($user, array('size'=>100));
-echo '</div>';
+//echo '<div class="userprofilebox clearfix"><div class="profilepicture">';
+//echo $OUTPUT->user_picture($user, array('size'=>100));
+//echo '</div>';
+//
+//echo '<div class="descriptionbox"><div class="description">';
+//// Print the description
+//
+//if ($user->description && !isset($hiddenfields['description'])) {
+//    if (!empty($CFG->profilesforenrolledusersonly) && !$currentuser && !$DB->record_exists('role_assignments', array('userid'=>$user->id))) {
+//        echo get_string('profilenotshown', 'moodle');
+//    } else {
+//        $user->description = file_rewrite_pluginfile_urls($user->description, 'pluginfile.php', $usercontext->id, 'user', 'profile', null);
+//        $options = array('overflowdiv'=>true);
+//        echo format_text($user->description, $user->descriptionformat, $options);
+//    }
+//}
+//echo '</div>';
+//
+//
+//// Print all the little details in a list
+//
+//echo html_writer::start_tag('dl', array('class'=>'list'));
+//if (!isset($hiddenfields['country']) && $user->country) {
+//    echo html_writer::tag('dt', get_string('country'));
+//    echo html_writer::tag('dd', get_string($user->country, 'countries'));
+//}
+//
+//if (!isset($hiddenfields['city']) && $user->city) {
+//    echo html_writer::tag('dt', get_string('city'));
+//    echo html_writer::tag('dd', $user->city);
+//}
+//
+//if (isset($identityfields['address']) && $user->address) {
+//    echo html_writer::tag('dt', get_string('address'));
+//    echo html_writer::tag('dd', $user->address);
+//}
+//
+//if (isset($identityfields['phone1']) && $user->phone1) {
+//    echo html_writer::tag('dt', get_string('phone'));
+//    echo html_writer::tag('dd', $user->phone1);
+//}
+//
+//if (isset($identityfields['phone2']) && $user->phone2) {
+//    echo html_writer::tag('dt', get_string('phone2'));
+//    echo html_writer::tag('dd', $user->phone2);
+//}
+//
+//if (isset($identityfields['institution']) && $user->institution) {
+//    echo html_writer::tag('dt', get_string('institution'));
+//    echo html_writer::tag('dd', $user->institution);
+//}
+//
+//if (isset($identityfields['department']) && $user->department) {
+//    echo html_writer::tag('dt', get_string('department'));
+//    echo html_writer::tag('dd', $user->department);
+//}
+//
+//if (isset($identityfields['idnumber']) && $user->idnumber) {
+//    echo html_writer::tag('dt', get_string('idnumber'));
+//    echo html_writer::tag('dd', $user->idnumber);
+//}
+//
+//if (isset($identityfields['email']) and ($currentuser
+//  or $user->maildisplay == 1
+//  or has_capability('moodle/course:useremail', $context)
+//  or ($user->maildisplay == 2 and enrol_sharing_course($user, $USER)))) {
+//    echo html_writer::tag('dt', get_string('email'));
+//    echo html_writer::tag('dd', obfuscate_mailto($user->email, ''));
+//}
+//
+//if ($user->url && !isset($hiddenfields['webpage'])) {
+//    $url = $user->url;
+//    if (strpos($user->url, '://') === false) {
+//        $url = 'http://'. $url;
+//    }
+//    $webpageurl = new moodle_url($url);
+//    echo html_writer::tag('dt', get_string('webpage'));
+//    echo html_writer::tag('dd', html_writer::link($webpageurl, s($user->url)));
+//}
+//
+//if ($user->icq && !isset($hiddenfields['icqnumber'])) {
+//    $imurl = new moodle_url('http://web.icq.com/wwp', array('uin'=>$user->icq) );
+//    $iconurl = new moodle_url('http://web.icq.com/whitepages/online', array('icq'=>$user->icq, 'img'=>'5'));
+//    $statusicon = html_writer::tag('img', '', array('src'=>$iconurl, 'class'=>'icon icon-post', 'alt'=>get_string('status')));
+//    echo html_writer::tag('dt', get_string('icqnumber'));
+//    echo html_writer::tag('dd', html_writer::link($imurl, s($user->icq) . $statusicon));
+//}
+//
+//if ($user->skype && !isset($hiddenfields['skypeid'])) {
+//    $imurl = 'skype:'.urlencode($user->skype).'?call';
+//    $iconurl = new moodle_url('http://mystatus.skype.com/smallicon/'.$user->skype);
+//    if (strpos($CFG->httpswwwroot, 'https:') === 0) {
+//        // Bad luck, skype devs are lazy to set up SSL on their servers - see MDL-37233.
+//        $statusicon = '';
+//    } else {
+//        $statusicon = html_writer::empty_tag('img', array('src'=>$iconurl, 'class'=>'icon icon-post', 'alt'=>get_string('status')));
+//    }
+//    echo html_writer::tag('dt', get_string('skypeid'));
+//    echo html_writer::tag('dd', html_writer::link($imurl, s($user->skype) . $statusicon));
+//}
+//if ($user->yahoo && !isset($hiddenfields['yahooid'])) {
+//    $imurl = new moodle_url('http://edit.yahoo.com/config/send_webmesg', array('.target'=>$user->yahoo, '.src'=>'pg'));
+//    $iconurl = new moodle_url('http://opi.yahoo.com/online', array('u'=>$user->yahoo, 'm'=>'g', 't'=>'0'));
+//    $statusicon = html_writer::tag('img', '', array('src'=>$iconurl, 'class'=>'iconsmall icon-post', 'alt'=>get_string('status')));
+//    echo html_writer::tag('dt', get_string('yahooid'));
+//    echo html_writer::tag('dd', html_writer::link($imurl, s($user->yahoo) . $statusicon));
+//}
+//if ($user->aim && !isset($hiddenfields['aimid'])) {
+//    $imurl = 'aim:goim?screenname='.urlencode($user->aim);
+//    echo html_writer::tag('dt', get_string('aimid'));
+//    echo html_writer::tag('dd', html_writer::link($imurl, s($user->aim)));
+//}
+//if ($user->msn && !isset($hiddenfields['msnid'])) {
+//    echo html_writer::tag('dt', get_string('msnid'));
+//    echo html_writer::tag('dd', s($user->msn));
+//}
+//
+///// Print the Custom User Fields
+//profile_display_fields($user->id);
+//
+//
+//if (!isset($hiddenfields['mycourses'])) {
+//    if ($mycourses = enrol_get_all_users_courses($user->id, true, NULL, 'visible DESC,sortorder ASC')) {
+//        $shown=0;
+//        $courselisting = '';
+//        foreach ($mycourses as $mycourse) {
+//            if ($mycourse->category) {
+//                context_helper::preload_from_record($mycourse);
+//                $ccontext = context_course::instance($mycourse->id);
+//                $class = '';
+//                if ($mycourse->visible == 0) {
+//                    if (!has_capability('moodle/course:viewhiddencourses', $ccontext)) {
+//                        continue;
+//                    }
+//                    $class = 'class="dimmed"';
+//                }
+//                $courselisting .= "<a href=\"{$CFG->wwwroot}/user/view.php?id={$user->id}&amp;course={$mycourse->id}\" $class >" . $ccontext->get_context_name(false) . "</a>, ";
+//            }
+//            $shown++;
+//            if($shown==20) {
+//                $courselisting.= "...";
+//                break;
+//            }
+//        }
+//        echo html_writer::tag('dt', get_string('courseprofiles'));
+//        echo html_writer::tag('dd', rtrim($courselisting,', '));
+//    }
+//}
+//if (!isset($hiddenfields['firstaccess'])) {
+//    if ($user->firstaccess) {
+//        $datestring = userdate($user->firstaccess)."&nbsp; (".format_time(time() - $user->firstaccess).")";
+//    } else {
+//        $datestring = get_string("never");
+//    }
+//    echo html_writer::tag('dt', get_string('firstaccess'));
+//    echo html_writer::tag('dd', $datestring);
+//}
+//if (!isset($hiddenfields['lastaccess'])) {
+//    if ($user->lastaccess) {
+//        $datestring = userdate($user->lastaccess)."&nbsp; (".format_time(time() - $user->lastaccess).")";
+//    } else {
+//        $datestring = get_string("never");
+//    }
+//    echo html_writer::tag('dt', get_string('lastaccess'));
+//    echo html_writer::tag('dd', $datestring);
+//}
+//
+///// Printing tagged interests
+//if (!empty($CFG->usetags)) {
+//    if ($interests = tag_get_tags_csv('user', $user->id) ) {
+//        echo html_writer::tag('dt', get_string('interests'));
+//        echo html_writer::tag('dd', $interests);
+//    }
+//}
+//
+//if (!isset($hiddenfields['suspended'])) {
+//    if ($user->suspended) {
+//        echo html_writer::tag('dt', '&nbsp;');
+//        echo html_writer::tag('dd', get_string('suspended', 'auth'));
+//    }
+//}
+//
+//require_once($CFG->libdir . '/badgeslib.php');
+//if (!empty($CFG->enablebadges)) {
+//    profile_display_badges($user->id);
+//}
+//
+//echo html_writer::end_tag('dl');
+//echo "</div></div>"; // Closing desriptionbox and userprofilebox.
+//echo '<div id="region-content" class="block-region"><div class="region-content">';
+//echo $OUTPUT->blocks_for_region('content');
+//echo '</div></div>';
+//
+//// Print messaging link if allowed
+//if (isloggedin() && has_capability('moodle/site:sendmessage', $context)
+//    && !empty($CFG->messaging) && !isguestuser() && !isguestuser($user) && ($USER->id != $user->id)) {
+//    echo '<div class="messagebox">';
+//    echo '<a href="'.$CFG->wwwroot.'/message/index.php?id='.$user->id.'">'.get_string('messageselectadd').'</a>';
+//    echo '</div>';
+//}
+//
+//echo '</div>';  // userprofile class
 
-echo '<div class="descriptionbox"><div class="description">';
-// Print the description
+$pagetodisplay = optional_param('page', 'about.html', PARAM_TEXT);
+if ($pagetodisplay == 'about.html') {
 
-if ($user->description && !isset($hiddenfields['description'])) {
-    if (!empty($CFG->profilesforenrolledusersonly) && !$currentuser && !$DB->record_exists('role_assignments', array('userid'=>$user->id))) {
-        echo get_string('profilenotshown', 'moodle');
-    } else {
-        $user->description = file_rewrite_pluginfile_urls($user->description, 'pluginfile.php', $usercontext->id, 'user', 'profile', null);
-        $options = array('overflowdiv'=>true);
-        echo format_text($user->description, $user->descriptionformat, $options);
-    }
+echo '<div class="row-fluid">
+        <div class="span2">
+
+            '.$OUTPUT->user_picture($user, array('size'=>200)).'
+            <!--/.well -->
+            <a href='.$CFG->wwwroot.'/user/editadvanced.php?id='.$user->id.'>
+            <span class="label label-info" style="margin-right:5px; margin-top:12px;">
+            Edit Profile
+            </span></a> <br/>
+            <a href='.$CFG->wwwroot.'/user/preferences.php?id='.$user->id.'>
+            <span class="label label-info" style="margin-right:5px; margin-top:10px;">Preferences</span>
+            </a>
+            <br/>
+            <a href="'.$CFG->wwwroot.'/admin/roles/permissions.php?contextid='.context_user::instance($user->id)->id.'&userid='.$user->id.'">
+            <span class="label label-info" style="margin-right:5px; margin-top:10px;">Permissions</span>
+            </a>
+            <br/>
+            <a href="'.$CFG->wwwroot.'/course/loginas.php?id='.$USER->id.'&user='.$user->id.'&sesskey='.sesskey().'">
+            <span class="label label-info" style="margin-right:5px; margin-top:10px;">Login as</span>
+            </a>
+        </div>
+        <!--/span-->
+        <div class="span9">
+            <div class="hero-unit" style="">
+                <h1>'.fullname($user).'</h1>
+                <p class="muted">New York, USA</p>
+                <a href="'.$CFG->wwwroot.'/message/index.php?id='.$user->id.'">
+                <p class="text-info"><img src="http://www.neolane.com/Assets/neolane.comAssets/gl_Assets/icons/Message-Center-icon.png" width="30" height="30">Send message</p>
+                </a>
+            </div>
+            <ul class="nav nav-tabs">
+                <li class="active">
+                    <a href="#">About</a>
+                </li>
+                <li>
+                    <a href="?id='.$user->id.'&page=course.html">Course Information</a>
+                </li>
+            </ul>
+            <div class="row-fluid">
+                <div class="span12">
+                    <div class="span12">
+                        <div class="span9">
+                        '.$user->description.'
+                           </div>
+                        <div class="span3">
+                            <div class="well pull-left well-small">
+                                <a href="'.$CFG->wwwroot.'/mod/forum/user.php?id='.$user->id.'">View posts</a><br>
+                                <a href="'.$CFG->wwwroot.'/blog/index.php?userid='.$user->id.'">View blog entries</a><br>
+                                <a href="#">View reports</a><br>
+                                <a href="'.$CFG->wwwroot.'/notes/index.php?user='.$user->id.'">View notes</a><br></div>
+                        </div>
+                    </div>
+                    <h3>Badges</h3>
+                    <p></p>
+                    <p><img style="margin-right:10px" src="http://moodlebadges.com/wp-content/uploads/dlm_uploads/2013/05/work-place-security-180x180.png" width="100" height="100">
+                        <img style="margin-right:10px" src="http://moodlebadges.com/wp-content/uploads/dlm_uploads/2013/05/stress-management-180x180.png" width="100" height="100">
+                        <img style="margin-right:10px" src="http://moodlebadges.com/wp-content/uploads/dlm_uploads/2013/05/surviving-crime-180x180.png" width="100" height="100">
+                        <img src="http://moodlebadges.com/wp-content/uploads/dlm_uploads/2013/05/strategy-180x180.png" width="100" height="100"></p>
+                    <!--/row-->
+                    <h3>Contact</h3>
+                    <p><a href="#">johnmarteson@example.com</a></p>
+                    <p><a href="#">+6145635243</a></p>
+                    <p>University of NY - 2, First Avenue, Manathan, 6000, NYC, USA</p>
+                    <p>Departement of Physics</p>
+                    <p><a href="#">@johnmarteson</a></p>
+                    <p><a href="#">Facebook page</a></p>
+
+                    <p><br></p>
+                    <div class="row-fluid">
+                        <div class="span4">
+                            <p></p>
+                        </div>
+                        <!--/span-->
+                        <div class="span4">
+                            <p></p>
+                        </div>
+                        <!--/span-->
+                        <div class="span4">
+                            <p></p>
+                        </div>
+                        <!--/span-->
+                    </div>
+                    <!--/row-->
+                </div>
+                <!--/span-->
+            </div>
+            <!--/row-->
+            <hr>
+        </div>
+        <!--/.fluid-container-->
+    </div>';
+} else {
+    echo '<div class="row-fluid">
+        <div class="span2">
+
+            '.$OUTPUT->user_picture($user, array('size'=>200)).'
+            <!--/.well -->
+            <a href='.$CFG->wwwroot.'/user/editadvanced.php?id='.$user->id.'>
+            <span class="label label-info" style="margin-right:5px; margin-top:12px;">
+            Edit Profile
+            </span></a> <br/>
+            <a href='.$CFG->wwwroot.'/user/preferences.php?id='.$user->id.'>
+            <span class="label label-info" style="margin-right:5px; margin-top:10px;">Preferences</span>
+            </a>
+            <br/><span class="label label-info" style="margin-right:5px; margin-top:10px;">Permissions</span><br/> <span class="label label-info" style="margin-right:5px; margin-top:10px;">Login as</span>
+        </div>
+        <!--/span-->
+        <div class="span9">
+            <div class="hero-unit" style="">
+                <h1>'.fullname($user).'</h1>
+                <p class="muted">New York, USA</p>
+                <a href="'.$CFG->wwwroot.'/message/index.php?id='.$user->id.'">
+                <p class="text-info"><img src="http://www.neolane.com/Assets/neolane.comAssets/gl_Assets/icons/Message-Center-icon.png" width="30" height="30">Send message</p>
+                </a>
+            </div>
+            <ul class="nav nav-tabs">
+                <li>
+                    <a href="?id='.$user->id.'&page=about.html">About</a>
+                </li>
+                <li class="active">
+                    <a>Course Information</a>
+                </li>
+            </ul>
+            <div class="pull-right ">
+                <select class="">
+                    <option>Physics 101 - NY</option>
+                    <option>Physics 102 - NY</option>
+                    <option>Physics 201 - NY</option>
+                    <option></option>
+                </select>
+                <div class="well well-small">
+                    <a href="#">View course posts</a><br/>
+                    <a href="#">View course blog entries</a><br/>
+                    <a href="#">View course reports</a><br/>
+                    <a href="#">View course notes</a><br/></div>
+
+            </div>
+
+            <p class="muted" style="margin-top:-15px;font-size:90%"><i>Last course access: 12th December 2012</i></p>
+            <div class="row-fluid">
+                <div class="span12" style="margin-top: -135px">
+                    <p>
+                        <b>Roles:</b> Teacher<br/>
+                        <b>Groups:</b> Teachers<br/><br/>
+
+                    <h3>Course badges</h3>
+                    <p></p>
+                    <p><img style="margin-right:10px" src="http://moodlebadges.com/wp-content/uploads/dlm_uploads/2013/05/work-place-security-180x180.png" width="100" height="100">
+
+                        <img src="http://moodlebadges.com/wp-content/uploads/dlm_uploads/2013/05/strategy-180x180.png" width="100" height="100"></p>
+
+
+                    </p>
+                </div>
+                <!--/span-->
+                <!--/span-->
+                <!--/span-->
+            </div>
+            <!--/row-->
+            <div class="row-fluid">
+                <div class="span4">
+                    <p></p>
+                </div>
+                <!--/span-->
+                <div class="span4">
+                    <p></p>
+                </div>
+                <!--/span-->
+                <div class="span4">
+                    <p></p>
+                </div>
+                <!--/span-->
+            </div>
+            <!--/row-->
+        </div>
+        <!--/span-->
+    </div>';
 }
-echo '</div>';
 
 
-// Print all the little details in a list
-
-echo html_writer::start_tag('dl', array('class'=>'list'));
-if (!isset($hiddenfields['country']) && $user->country) {
-    echo html_writer::tag('dt', get_string('country'));
-    echo html_writer::tag('dd', get_string($user->country, 'countries'));
-}
-
-if (!isset($hiddenfields['city']) && $user->city) {
-    echo html_writer::tag('dt', get_string('city'));
-    echo html_writer::tag('dd', $user->city);
-}
-
-if (isset($identityfields['address']) && $user->address) {
-    echo html_writer::tag('dt', get_string('address'));
-    echo html_writer::tag('dd', $user->address);
-}
-
-if (isset($identityfields['phone1']) && $user->phone1) {
-    echo html_writer::tag('dt', get_string('phone'));
-    echo html_writer::tag('dd', $user->phone1);
-}
-
-if (isset($identityfields['phone2']) && $user->phone2) {
-    echo html_writer::tag('dt', get_string('phone2'));
-    echo html_writer::tag('dd', $user->phone2);
-}
-
-if (isset($identityfields['institution']) && $user->institution) {
-    echo html_writer::tag('dt', get_string('institution'));
-    echo html_writer::tag('dd', $user->institution);
-}
-
-if (isset($identityfields['department']) && $user->department) {
-    echo html_writer::tag('dt', get_string('department'));
-    echo html_writer::tag('dd', $user->department);
-}
-
-if (isset($identityfields['idnumber']) && $user->idnumber) {
-    echo html_writer::tag('dt', get_string('idnumber'));
-    echo html_writer::tag('dd', $user->idnumber);
-}
-
-if (isset($identityfields['email']) and ($currentuser
-  or $user->maildisplay == 1
-  or has_capability('moodle/course:useremail', $context)
-  or ($user->maildisplay == 2 and enrol_sharing_course($user, $USER)))) {
-    echo html_writer::tag('dt', get_string('email'));
-    echo html_writer::tag('dd', obfuscate_mailto($user->email, ''));
-}
-
-if ($user->url && !isset($hiddenfields['webpage'])) {
-    $url = $user->url;
-    if (strpos($user->url, '://') === false) {
-        $url = 'http://'. $url;
-    }
-    $webpageurl = new moodle_url($url);
-    echo html_writer::tag('dt', get_string('webpage'));
-    echo html_writer::tag('dd', html_writer::link($webpageurl, s($user->url)));
-}
-
-if ($user->icq && !isset($hiddenfields['icqnumber'])) {
-    $imurl = new moodle_url('http://web.icq.com/wwp', array('uin'=>$user->icq) );
-    $iconurl = new moodle_url('http://web.icq.com/whitepages/online', array('icq'=>$user->icq, 'img'=>'5'));
-    $statusicon = html_writer::tag('img', '', array('src'=>$iconurl, 'class'=>'icon icon-post', 'alt'=>get_string('status')));
-    echo html_writer::tag('dt', get_string('icqnumber'));
-    echo html_writer::tag('dd', html_writer::link($imurl, s($user->icq) . $statusicon));
-}
-
-if ($user->skype && !isset($hiddenfields['skypeid'])) {
-    $imurl = 'skype:'.urlencode($user->skype).'?call';
-    $iconurl = new moodle_url('http://mystatus.skype.com/smallicon/'.$user->skype);
-    if (strpos($CFG->httpswwwroot, 'https:') === 0) {
-        // Bad luck, skype devs are lazy to set up SSL on their servers - see MDL-37233.
-        $statusicon = '';
-    } else {
-        $statusicon = html_writer::empty_tag('img', array('src'=>$iconurl, 'class'=>'icon icon-post', 'alt'=>get_string('status')));
-    }
-    echo html_writer::tag('dt', get_string('skypeid'));
-    echo html_writer::tag('dd', html_writer::link($imurl, s($user->skype) . $statusicon));
-}
-if ($user->yahoo && !isset($hiddenfields['yahooid'])) {
-    $imurl = new moodle_url('http://edit.yahoo.com/config/send_webmesg', array('.target'=>$user->yahoo, '.src'=>'pg'));
-    $iconurl = new moodle_url('http://opi.yahoo.com/online', array('u'=>$user->yahoo, 'm'=>'g', 't'=>'0'));
-    $statusicon = html_writer::tag('img', '', array('src'=>$iconurl, 'class'=>'iconsmall icon-post', 'alt'=>get_string('status')));
-    echo html_writer::tag('dt', get_string('yahooid'));
-    echo html_writer::tag('dd', html_writer::link($imurl, s($user->yahoo) . $statusicon));
-}
-if ($user->aim && !isset($hiddenfields['aimid'])) {
-    $imurl = 'aim:goim?screenname='.urlencode($user->aim);
-    echo html_writer::tag('dt', get_string('aimid'));
-    echo html_writer::tag('dd', html_writer::link($imurl, s($user->aim)));
-}
-if ($user->msn && !isset($hiddenfields['msnid'])) {
-    echo html_writer::tag('dt', get_string('msnid'));
-    echo html_writer::tag('dd', s($user->msn));
-}
-
-/// Print the Custom User Fields
-profile_display_fields($user->id);
-
-
-if (!isset($hiddenfields['mycourses'])) {
-    if ($mycourses = enrol_get_all_users_courses($user->id, true, NULL, 'visible DESC,sortorder ASC')) {
-        $shown=0;
-        $courselisting = '';
-        foreach ($mycourses as $mycourse) {
-            if ($mycourse->category) {
-                context_helper::preload_from_record($mycourse);
-                $ccontext = context_course::instance($mycourse->id);
-                $class = '';
-                if ($mycourse->visible == 0) {
-                    if (!has_capability('moodle/course:viewhiddencourses', $ccontext)) {
-                        continue;
-                    }
-                    $class = 'class="dimmed"';
-                }
-                $courselisting .= "<a href=\"{$CFG->wwwroot}/user/view.php?id={$user->id}&amp;course={$mycourse->id}\" $class >" . $ccontext->get_context_name(false) . "</a>, ";
-            }
-            $shown++;
-            if($shown==20) {
-                $courselisting.= "...";
-                break;
-            }
-        }
-        echo html_writer::tag('dt', get_string('courseprofiles'));
-        echo html_writer::tag('dd', rtrim($courselisting,', '));
-    }
-}
-if (!isset($hiddenfields['firstaccess'])) {
-    if ($user->firstaccess) {
-        $datestring = userdate($user->firstaccess)."&nbsp; (".format_time(time() - $user->firstaccess).")";
-    } else {
-        $datestring = get_string("never");
-    }
-    echo html_writer::tag('dt', get_string('firstaccess'));
-    echo html_writer::tag('dd', $datestring);
-}
-if (!isset($hiddenfields['lastaccess'])) {
-    if ($user->lastaccess) {
-        $datestring = userdate($user->lastaccess)."&nbsp; (".format_time(time() - $user->lastaccess).")";
-    } else {
-        $datestring = get_string("never");
-    }
-    echo html_writer::tag('dt', get_string('lastaccess'));
-    echo html_writer::tag('dd', $datestring);
-}
-
-/// Printing tagged interests
-if (!empty($CFG->usetags)) {
-    if ($interests = tag_get_tags_csv('user', $user->id) ) {
-        echo html_writer::tag('dt', get_string('interests'));
-        echo html_writer::tag('dd', $interests);
-    }
-}
-
-if (!isset($hiddenfields['suspended'])) {
-    if ($user->suspended) {
-        echo html_writer::tag('dt', '&nbsp;');
-        echo html_writer::tag('dd', get_string('suspended', 'auth'));
-    }
-}
-
-require_once($CFG->libdir . '/badgeslib.php');
-if (!empty($CFG->enablebadges)) {
-    profile_display_badges($user->id);
-}
-
-echo html_writer::end_tag('dl');
-echo "</div></div>"; // Closing desriptionbox and userprofilebox.
-echo '<div id="region-content" class="block-region"><div class="region-content">';
-echo $OUTPUT->blocks_for_region('content');
-echo '</div></div>';
-
-// Print messaging link if allowed
-if (isloggedin() && has_capability('moodle/site:sendmessage', $context)
-    && !empty($CFG->messaging) && !isguestuser() && !isguestuser($user) && ($USER->id != $user->id)) {
-    echo '<div class="messagebox">';
-    echo '<a href="'.$CFG->wwwroot.'/message/index.php?id='.$user->id.'">'.get_string('messageselectadd').'</a>';
-    echo '</div>';
-}
-
-echo '</div>';  // userprofile class
 echo $OUTPUT->footer();

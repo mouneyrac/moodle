@@ -1775,3 +1775,7 @@ a:hover .caret {
     -o-animation: progress-bar-stripes 2s linear infinite;
     animation: progress-bar-stripes 2s linear infinite;
 }
+
+#page-footer .logininfo .dropdown {
+    display: none;
+}

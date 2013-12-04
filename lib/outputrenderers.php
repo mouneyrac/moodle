@@ -640,6 +640,34 @@ class core_renderer extends renderer_base {
                 $loggedinas = $realuserinfo.get_string('loggedinas', 'moodle', $username);
                 if ($withlinks) {
                     $loggedinas .= " (<a href=\"$CFG->wwwroot/login/logout.php?sesskey=".sesskey()."\">".get_string('logout').'</a>)';
+                    $loggedinas = '<p class="navbar-text pull-right">
+
+                <div class="dropdown pull-right" style="margin-top: -11px;">
+
+                    <a href="#" id="drop3" role="button" class="dropdown-toggle" data-toggle="dropdown" style="text-decoration:none;color:#999">
+                       '.fullname($USER).'
+                        <b class="caret" style="border-top-color: #777777;border-bottom-color: #777777;margin-top: 13px;margin-left: -2px;"></b>
+                        &nbsp;&nbsp;&nbsp;
+                    </a>
+                       '.$this->user_picture($USER, array('size'=>40)).'
+
+
+                <ul class="dropdown-menu  pull-right" role="menu" aria-labelledby="drop3">
+                   <li><a tabindex="-1" href="'.$CFG->wwwroot.'/my/"><i class="icon-home"></i> My home</a></li>
+                    <li class="divider"></li>
+                     <li><a tabindex="-1" href="'.$CFG->wwwroot.'/user/profile.php?id='.$USER->id.'"><i class="icon-user"></i> My profile</a></li>
+
+                    <li><a tabindex="-1" href="'.$CFG->wwwroot.'/course/user.php?mode=grade&id=1&user='.$USER->id.'"><i class="icon-star"></i> My grades</a></li>
+                    <li><a tabindex="-1" href="'.$CFG->wwwroot.'/message/index.php?user1='.$USER->id.'"><i class="icon-comment"></i> Messages</a></li>
+                    <li><a tabindex="-1" href="'.$CFG->wwwroot.'/calendar/view.php?view=month"><i class="icon-calendar"></i> Calendar</a></li>
+                    <li><a tabindex="-1" href="'.$CFG->wwwroot.'/user/preferences.php?id='.$USER->id.'"><i class="icon-cog"></i> Preferences</a></li>
+                    <li class="divider"></li>
+                    <li><a tabindex="-1" href="'.$CFG->wwwroot.'/login/logout.php?sesskey='.sesskey().'"><i class="icon-off"></i> Logout</a></li>
+                </ul>
+            </div>
+
+                </p>
+                <p></p>';
                 }
             }
         } else {

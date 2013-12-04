@@ -250,7 +250,7 @@ $forumpostsurl = $forumpostsurl->out();
     <div style="display: inline-block; vertical-align: top;">
         <h2 style="margin: 0;"><?php
         echo fullname($user);
-        if ($currentuser || is_siteadmin($USER) || !is_siteadmin($user) && has_capability('moodle/user:update', $coursecontext)) {
+        if (($currentuser || is_siteadmin($USER) || !is_siteadmin($user)) && has_capability('moodle/user:update', $context)) {
             $url = '/user/editadvanced.php?id=' . $userid;
         } else {
             $url = '/user/edit.php?id=' . $userid;
@@ -269,8 +269,10 @@ $forumpostsurl = $forumpostsurl->out();
             echo $OUTPUT->pix_icon('t/cohort', '') . ' <a href="'.$CFG->wwwroot.'/blog/index.php?userid='.$user->id.'">Blog</a>';
             echo ' - ';
             echo $OUTPUT->pix_icon('t/messages', '') . ' <a href="'.$CFG->wwwroot.'/mod/forum/user.php?id='.$user->id.'">Forum interactions</a>';
-            echo ' - ';
-            echo $OUTPUT->pix_icon('t/approve', '') . ' <a href="'.$CFG->wwwroot.'/notes/index.php?id='.$user->id.'">Notes</a>';
+            if (has_any_capability(array('moodle/notes:manage', 'moodle/notes:view'), $context)) {
+                echo ' - ';
+                echo $OUTPUT->pix_icon('t/approve', '') . ' <a href="'.$CFG->wwwroot.'/notes/index.php?id='.$user->id.'">Notes</a>';
+            }
             ?>
         </div>
         <div><?php

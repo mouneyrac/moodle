@@ -2225,7 +2225,7 @@ class global_navigation extends navigation_node {
             // $usernode->add(get_string('messages', 'message'), $url, self::TYPE_SETTING, null, 'messages');
         }
 
-        if ($iscurrentuser) {
+        if ($iscurrentuser && !$this->rootnodes['home']->find('myprofile2', self::TYPE_SETTING)) {
             $url = new moodle_url('/user/profile.php?id=' . $USER->id);
             $this->rootnodes['home']->add('My profile', $url, self::TYPE_SETTING, null, 'myprofile2');
             $this->rootnodes['home']->find('myprofile2', self::TYPE_SETTING)->display = false;
@@ -2247,7 +2247,8 @@ class global_navigation extends navigation_node {
         }
 
 
-        if ($iscurrentuser && has_capability('moodle/user:manageownfiles', context_user::instance($USER->id))) {
+        if ($iscurrentuser && has_capability('moodle/user:manageownfiles', context_user::instance($USER->id))
+                 && !$this->rootnodes['home']->find('myprivatefiles', self::TYPE_SETTING)) {
             $url = new moodle_url('/user/files.php');
             $this->rootnodes['home']->add(get_string('myfiles'), $url, self::TYPE_SETTING, null, 'myprivatefiles');
             $this->rootnodes['home']->find('myprivatefiles', self::TYPE_SETTING)->display = false;

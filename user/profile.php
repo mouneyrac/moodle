@@ -115,7 +115,7 @@ if (isguestuser()) {     // Guests can never edit their profile
     $USER->editing = $edit = 0;  // Just in case
     $PAGE->set_blocks_editing_capability('moodle/my:configsyspages');  // unlikely :)
 } else {
-    if ($currentuser) {
+    if ($currentuser && (!$courseid || $courseid === SITEID)) {
         $PAGE->set_blocks_editing_capability('moodle/user:manageownblocks');
     } else {
         $PAGE->set_blocks_editing_capability('moodle/user:manageblocks');
@@ -250,12 +250,6 @@ $forumpostsurl = $forumpostsurl->out();
     <div style="display: inline-block; vertical-align: top;">
         <h2 style="margin: 0;"><?php
         echo fullname($user);
-        if (($currentuser || is_siteadmin($USER) || !is_siteadmin($user)) && has_capability('moodle/user:update', $context)) {
-            $url = '/user/editadvanced.php?id=' . $userid;
-        } else {
-            $url = '/user/edit.php?id=' . $userid;
-        }
-        echo ' ' . html_writer::link(new moodle_url($url), $OUTPUT->pix_icon('t/edit', ''));
         echo $courseid ? " <span class='badge badge-default'>Course profile</span>" : ''; ?></h2>
         <div>
             <?php
@@ -307,6 +301,16 @@ $forumpostsurl = $forumpostsurl->out();
             ?>
         </div>
         <ul style='list-style: none;'>
+            <li>
+                <?php
+                    if (($currentuser || is_siteadmin($USER) || !is_siteadmin($user)) && has_capability('moodle/user:update', $context)) {
+                        $url = '/user/editadvanced.php?id=' . $userid;
+                    } else {
+                        $url = '/user/edit.php?id=' . $userid;
+                    }
+                    echo $OUTPUT->pix_icon('t/edit', '') . ' ' . html_writer::link(new moodle_url($url), 'Edit profile');
+                ?>
+            </li>
             <?php
             if (!$currentuser) { ?>
             <li>
@@ -536,9 +540,7 @@ if ($user->description && !isset($hiddenfields['description'])) {
     </div>
 
     <div class="span8">
-        <h3>Badges
-            <?php echo $userid == $USER->id ? '<a href="'.$CFG->wwwroot.'/badges/mybadges.php">' . $OUTPUT->pix_icon('t/edit', '') . '</a>' : '';?>
-        </h3>
+        <h3>Badges</h3>
 
         <?php
         if (!empty($CFG->enablebadges)) {
@@ -546,6 +548,7 @@ if ($user->description && !isset($hiddenfields['description'])) {
             profile_display_badges($user->id);
         }
         ?>
+        <p style='margin-left: 2em;'><small><?php echo $userid == $USER->id ? $OUTPUT->pix_icon('t/edit', '') . ' <a href="'.$CFG->wwwroot.'/badges/mybadges.php">' . ' Manage my badges</a>' : '';?></small></p>
     </div>
     </div>
 </div>

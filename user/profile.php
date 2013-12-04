@@ -250,7 +250,7 @@ $forumpostsurl = $forumpostsurl->out();
     <div style="display: inline-block; vertical-align: top;">
         <h2 style="margin: 0;"><?php
         echo fullname($user);
-        echo $courseid ? " <span class='badge badge-default'>Course profile</span>" : ''; ?></h2>
+        echo ($courseid && $courseid != 1) ? " <span class='badge badge-default'>Course profile</span>" : ''; ?></h2>
         <div>
             <?php
             if (!empty($user->city) && !empty($user->country)):

@@ -2166,9 +2166,9 @@ class global_navigation extends navigation_node {
         // user than add a view profile link.
         if ($iscurrentuser || has_capability('moodle/user:viewdetails', $coursecontext) || has_capability('moodle/user:viewdetails', $usercontext)) {
             if ($issitecourse || ($iscurrentuser && !$forceforcontext)) {
-                $usernode->add(get_string('viewprofile'), new moodle_url('/user/profile.php',$baseargs));
+                // $usernode->add(get_string('viewprofile'), new moodle_url('/user/profile.php',$baseargs));
             } else {
-                $usernode->add(get_string('viewprofile'), new moodle_url('/user/view.php',$baseargs));
+                // $usernode->add(get_string('viewprofile'), new moodle_url('/user/view.php',$baseargs));
             }
         }
 
@@ -2225,21 +2225,27 @@ class global_navigation extends navigation_node {
             // $usernode->add(get_string('messages', 'message'), $url, self::TYPE_SETTING, null, 'messages');
         }
 
-        $url = new moodle_url('/user/profile.php?id=' . $USER->id);
-        $this->rootnodes['home']->add('My profile', $url, self::TYPE_SETTING, null, 'myprofile');
-        $this->rootnodes['home']->find('myprofile', self::TYPE_SETTING)->display = false;
+        if ($iscurrentuser) {
+            $url = new moodle_url('/user/profile.php?id=' . $USER->id);
+            $this->rootnodes['home']->add('My profile', $url, self::TYPE_SETTING, null, 'myprofile2');
+            $this->rootnodes['home']->find('myprofile2', self::TYPE_SETTING)->display = false;
 
-        $url = new moodle_url('/message/index.php');
-        $this->rootnodes['home']->add('Messages', $url, self::TYPE_SETTING, null, 'mymessages');
-        $this->rootnodes['home']->find('mymessages', self::TYPE_SETTING)->display = false;
+            $url = new moodle_url('/message/index.php');
+            $this->rootnodes['home']->add('Messages', $url, self::TYPE_SETTING, null, 'mymessages');
+            $this->rootnodes['home']->find('mymessages', self::TYPE_SETTING)->display = false;
 
-        $url = new moodle_url('/grade/report/overview/index.php?id=1&userid=' . $USER->id);
-        $this->rootnodes['home']->add('My grades', $url, self::TYPE_SETTING, null, 'mygrades');
-        $this->rootnodes['home']->find('mygrades', self::TYPE_SETTING)->display = false;
+            $url = new moodle_url('/grade/report/overview/index.php?id=1&userid=' . $USER->id);
+            $this->rootnodes['home']->add('My grades', $url, self::TYPE_SETTING, null, 'mygrades');
+            $this->rootnodes['home']->find('mygrades', self::TYPE_SETTING)->display = false;
 
-        $url = new moodle_url('/user/preferences.php');
-        $this->rootnodes['home']->add('Preferences', $url, self::TYPE_SETTING, null, 'mypreferences');
-        $this->rootnodes['home']->find('mypreferences', self::TYPE_SETTING)->display = false;
+            $url = new moodle_url('/user/preferences.php');
+            $this->rootnodes['home']->add('Preferences', $url, self::TYPE_SETTING, null, 'mypreferences');
+            $this->rootnodes['home']->find('mypreferences', self::TYPE_SETTING)->display = false;
+        } else {
+            $url = new moodle_url('/user/preferences.php?userid='.$user->id);
+            $usernode->add('Preferences', $url, self::TYPE_SETTING, null, 'mypreferences');
+        }
+
 
         if ($iscurrentuser && has_capability('moodle/user:manageownfiles', context_user::instance($USER->id))) {
             $url = new moodle_url('/user/files.php');
@@ -4095,7 +4101,7 @@ class settings_navigation extends navigation_node {
         $key = $gstitle;
         if ($gstitle != 'usercurrentsettings') {
             $key .= $userid;
-            $titlestr = get_string($gstitle, 'moodle', $fullname);
+            $titlestr = 'Preferences';
         }
 
         // Add a user setting branch
@@ -4118,7 +4124,7 @@ class settings_navigation extends navigation_node {
                 } else {
                     $profileurl = new moodle_url('/user/view.php', array('id'=>$user->id, 'course'=>$course->id));
                 }
-                $usersetting->add(get_string('userdeleted'), $profileurl, self::TYPE_SETTING);
+                // $usersetting->add(get_string('userdeleted'), $profileurl, self::TYPE_SETTING);
             }
             return true;
         }

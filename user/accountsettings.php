@@ -110,6 +110,14 @@ $PAGE->set_pagelayout('standard');
 $PAGE->set_title('Account settings');
 $PAGE->set_url('/user/accountsettings.php?userid=' . $userid);
 
+if ($USER->id == $userid) {
+    $nav = $PAGE->settingsnav->get('usercurrentsettings');
+} else {
+    $user = $DB->get_record('user', array('id' => $userid));
+    $PAGE->navigation->extend_for_user($user);
+    $nav = $PAGE->settingsnav->get('userviewingsettings'.$user->id);
+}
+
 echo $OUTPUT->header();
 $mform = new accountsettings_form($PAGE->url->out(false));
 echo $mform->display();

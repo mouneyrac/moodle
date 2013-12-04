@@ -758,7 +758,7 @@ function print_grade_page_head($courseid, $active_type, $active_plugin=null,
     $plugin_info = grade_get_plugin_info($courseid, $active_type, $active_plugin);
 
     // Determine the string of the active plugin
-    $stractive_plugin = ($active_plugin) ? $plugin_info['strings']['active_plugin_str'] : $heading;
+    $stractive_plugin = ($active_plugin && isset($plugin_info['strings']['active_plugin_str'])) ? $plugin_info['strings']['active_plugin_str'] : $heading;
     $stractive_type = $plugin_info['strings'][$active_type];
 
     if (empty($plugin_info[$active_type]->id) || !empty($plugin_info[$active_type]->parent)) {

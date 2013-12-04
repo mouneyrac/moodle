@@ -1088,7 +1088,7 @@ class global_navigation extends navigation_node {
         // courses: Additional courses are added here.
         // users: Other users information loaded here.
         $this->rootnodes = array();
-        if (true || get_home_page() == HOMEPAGE_SITE) {
+        if (isloggedin() && !isguestuser() ){ //get_home_page() == HOMEPAGE_SITE) {
             // The home element should be my moodle because the root element is the site
             if (isloggedin() && !isguestuser()) {  // Makes no sense if you aren't logged in
                 $this->rootnodes['home'] = $this->add('My dashboard', new moodle_url('/my/'), self::TYPE_SETTING, null, 'home');

@@ -527,7 +527,9 @@ echo '<div class="row-fluid">
     </div>';
 } else {
     echo '<div class="row-fluid">
-        <div class="span2">
+        <div class="span12">
+ <div class="hero-unit" style="min-height: 210px;">
+            <div class="span2">
 
             '.$OUTPUT->user_picture($user, array('size'=>200)).'
             <!--/.well -->
@@ -538,16 +540,23 @@ echo '<div class="row-fluid">
             <a href='.$CFG->wwwroot.'/user/preferences.php?id='.$user->id.'>
             <span class="label label-info" style="margin-right:5px; margin-top:10px;">Preferences</span>
             </a>
-            <br/><span class="label label-info" style="margin-right:5px; margin-top:10px;">Permissions</span><br/> <span class="label label-info" style="margin-right:5px; margin-top:10px;">Login as</span>
-        </div>
-        <!--/span-->
-        <div class="span9">
-            <div class="hero-unit" style="">
+            <br/>
+            <a href="'.$CFG->wwwroot.'/admin/roles/permissions.php?contextid='.context_user::instance($user->id)->id.'&userid='.$user->id.'">
+            <span class="label label-info" style="margin-right:5px; margin-top:10px;">Permissions</span>
+            </a>
+            <br/>
+            <a href="'.$CFG->wwwroot.'/course/loginas.php?id='.$USER->id.'&user='.$user->id.'&sesskey='.sesskey().'">
+            <span class="label label-info" style="margin-right:5px; margin-top:10px;">Login as</span>
+            </a>
+            </div>
+            <div class="span10">
                 <h1>'.fullname($user).'</h1>
                 <p class="muted">New York, USA</p>
                 <a href="'.$CFG->wwwroot.'/message/index.php?id='.$user->id.'">
                 <p class="text-info"><img src="http://www.neolane.com/Assets/neolane.comAssets/gl_Assets/icons/Message-Center-icon.png" width="30" height="30">Send message</p>
                 </a>
+                </div>
+            </div>
             </div>
             <ul class="nav nav-tabs">
                 <li>
@@ -558,11 +567,11 @@ echo '<div class="row-fluid">
                 </li>
             </ul>
             <div class="pull-right ">
+            Display info for
                 <select class="">
-                    <option>Physics 101 - NY</option>
-                    <option>Physics 102 - NY</option>
-                    <option>Physics 201 - NY</option>
-                    <option></option>
+                    <option>Course 1</option>
+                    <option>Course 2</option>
+                    <option>Course 3</option>
                 </select>
                 <div class="well well-small">
                     <a href="#">View course posts</a><br/>
@@ -576,8 +585,8 @@ echo '<div class="row-fluid">
             <div class="row-fluid">
                 <div class="span12" style="margin-top: -135px">
                     <p>
-                        <b>Roles:</b> Teacher<br/>
-                        <b>Groups:</b> Teachers<br/><br/>
+                        <b>Roles:</b> xxxx<br/>
+                        <b>Groups:</b> xxxx<br/><br/>
 
                     <h3>Course badges</h3>
                     <p></p>

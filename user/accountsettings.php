@@ -97,6 +97,8 @@ class accountsettings_form extends moodleform {
         $mform->addElement('select', 'maildisplay', get_string('emaildisplay'), $choices);
         $mform->setDefault('maildisplay', 2);
 
+        $mform->addElement('warning', '', '', '<div class="alert alert-warning">This form is fictional, the information it contains will not be saved.</div>');
+
         $this->add_action_buttons();
 
     }

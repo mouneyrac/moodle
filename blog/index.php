@@ -226,7 +226,8 @@ if ($USER->id == $userid) {
     echo "</div>";
 }
 echo "<div>";
-echo "" . $OUTPUT->pix_icon('i/rss', '') . ' ' . html_writer::link(new moodle_url(rss_get_url($sitecontext->id, $USER->id, 'blog', 'user/'.$user->id)), 'RSS Feed') . "";
+echo "" . $OUTPUT->pix_icon('i/rss', '') . ' ' . html_writer::link(new moodle_url(rss_get_url($sitecontext->id, $USER->id, 'blog', 'user/'.
+        empty($user)?$USER->id:$user->id)), 'RSS Feed') . "";
 echo "</div>";
 
 $bloglisting = new blog_listing($blogheaders['filters']);

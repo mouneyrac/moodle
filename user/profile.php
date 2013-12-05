@@ -431,7 +431,11 @@ $pagetodisplay = optional_param('page', 'about.html', PARAM_TEXT);
 if ($pagetodisplay == 'about.html') {
 
 echo '<div class="row-fluid">
-        <div class="span2">
+
+        <!--/span-->
+        <div class="span12">
+            <div class="hero-unit" style="min-height: 210px;">
+            <div class="span2">
 
             '.$OUTPUT->user_picture($user, array('size'=>200)).'
             <!--/.well -->
@@ -450,15 +454,15 @@ echo '<div class="row-fluid">
             <a href="'.$CFG->wwwroot.'/course/loginas.php?id='.$USER->id.'&user='.$user->id.'&sesskey='.sesskey().'">
             <span class="label label-info" style="margin-right:5px; margin-top:10px;">Login as</span>
             </a>
-        </div>
-        <!--/span-->
-        <div class="span9">
-            <div class="hero-unit" style="">
+            </div>
+            <div class="span10">
                 <h1>'.fullname($user).'</h1>
                 <p class="muted">New York, USA</p>
                 <a href="'.$CFG->wwwroot.'/message/index.php?id='.$user->id.'">
                 <p class="text-info"><img src="http://www.neolane.com/Assets/neolane.comAssets/gl_Assets/icons/Message-Center-icon.png" width="30" height="30">Send message</p>
                 </a>
+                </div>
+            </div>
             </div>
             <ul class="nav nav-tabs">
                 <li class="active">

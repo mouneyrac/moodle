@@ -2255,11 +2255,11 @@ class global_navigation extends navigation_node {
         }
 
 
-        if (!empty($CFG->enablebadges) && $iscurrentuser &&
-                has_capability('moodle/badges:manageownbadges', context_user::instance($USER->id))) {
-            $url = new moodle_url('/badges/mybadges.php');
-            $usernode->add(get_string('mybadges', 'badges'), $url, self::TYPE_SETTING);
-        }
+        // if (!empty($CFG->enablebadges) && $iscurrentuser &&
+        //         has_capability('moodle/badges:manageownbadges', context_user::instance($USER->id))) {
+        //     $url = new moodle_url('/badges/mybadges.php');
+        //     $usernode->add(get_string('mybadges', 'badges'), $url, self::TYPE_SETTING);
+        // }
 
         $usernode->add('My grades', new moodle_url('/grade/report/overview/index.php?id=1&userid=' . $USER->id), self::TYPE_USER);
 
@@ -4218,6 +4218,10 @@ class settings_navigation extends navigation_node {
         // Badges.
         if ($currentuser && !empty($CFG->enablebadges)) {
             $badges = $usersetting->add(get_string('badges'), null, navigation_node::TYPE_CONTAINER, null, 'badges');
+            if (has_capability('moodle/badges:manageownbadges', context_user::instance($USER->id))) {
+                $url = new moodle_url('/badges/mybadges.php');
+                $badges->add('Manage my badges', $url, self::TYPE_SETTING);
+            }
             $badges->add(get_string('preferences'), new moodle_url('/badges/preferences.php'), navigation_node::TYPE_SETTING);
             if (!empty($CFG->badges_allowexternalbackpack)) {
                 $badges->add(get_string('backpackdetails', 'badges'), new moodle_url('/badges/mybackpack.php'), navigation_node::TYPE_SETTING);

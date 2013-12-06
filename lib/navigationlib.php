@@ -2175,10 +2175,10 @@ class global_navigation extends navigation_node {
         // Add the profile edit link
         if (($iscurrentuser || is_siteadmin($USER) || !is_siteadmin($user)) && has_capability('moodle/user:update', $coursecontext)) {
             $url = new moodle_url('/user/editadvanced.php', array('id'=>$user->id, 'course'=>$course->id));
-            $usernode->add(get_string('editmyprofile'), $url, self::TYPE_SETTING);
+            // $usernode->add(get_string('editmyprofile'), $url, self::TYPE_SETTING);
         } else if ((has_capability('moodle/user:editprofile', $usercontext) && !is_siteadmin($user)) || ($iscurrentuser && has_capability('moodle/user:editownprofile', $coursecontext))) {
             $url = new moodle_url('/user/edit.php', array('id'=>$user->id, 'course'=>$course->id));
-            $usernode->add(get_string('editmyprofile'), $url, self::TYPE_SETTING);
+            // $usernode->add(get_string('editmyprofile'), $url, self::TYPE_SETTING);
         }
 
         if (!empty($CFG->navadduserpostslinks)) {
@@ -2255,11 +2255,11 @@ class global_navigation extends navigation_node {
         }
 
 
-        if (!empty($CFG->enablebadges) && $iscurrentuser &&
-                has_capability('moodle/badges:manageownbadges', context_user::instance($USER->id))) {
-            $url = new moodle_url('/badges/mybadges.php');
-            $usernode->add(get_string('mybadges', 'badges'), $url, self::TYPE_SETTING);
-        }
+        // if (!empty($CFG->enablebadges) && $iscurrentuser &&
+        //         has_capability('moodle/badges:manageownbadges', context_user::instance($USER->id))) {
+        //     $url = new moodle_url('/badges/mybadges.php');
+        //     $usernode->add(get_string('mybadges', 'badges'), $url, self::TYPE_SETTING);
+        // }
 
         $usernode->add('My grades', new moodle_url('/grade/report/overview/index.php?id=1&userid=' . $USER->id), self::TYPE_USER);
 
@@ -4136,6 +4136,22 @@ class settings_navigation extends navigation_node {
             $userauthplugin = get_auth_plugin($user->auth);
         }
 
+        // Add the profile edit link
+        if (isloggedin() && !isguestuser($user) && !is_mnet_remote_user($user)) {
+            if (($currentuser || is_siteadmin($USER) || !is_siteadmin($user)) && has_capability('moodle/user:update', $systemcontext)) {
+                $url = new moodle_url('/user/editadvanced.php', array('id'=>$user->id, 'course'=>$course->id));
+                $useraccount->add(get_string('editmyprofile'), $url, self::TYPE_SETTING);
+            } else if ((has_capability('moodle/user:editprofile', $usercontext) && !is_siteadmin($user)) || ($currentuser && has_capability('moodle/user:editownprofile', $systemcontext))) {
+                if ($userauthplugin && $userauthplugin->can_edit_profile()) {
+                    $url = $userauthplugin->edit_profile_url();
+                    if (empty($url)) {
+                        $url = new moodle_url('/user/edit.php', array('id'=>$user->id, 'course'=>$course->id));
+                    }
+                    $useraccount->add(get_string('editmyprofile'), $url, self::TYPE_SETTING);
+                }
+            }
+        }
+
         $useraccount->add('Account settings', new moodle_url('/user/accountsettings.php', array('userid' => $user->id)), self::TYPE_SETTING);
 
         // Change password link
@@ -4218,6 +4234,10 @@ class settings_navigation extends navigation_node {
         // Badges.
         if ($currentuser && !empty($CFG->enablebadges)) {
             $badges = $usersetting->add(get_string('badges'), null, navigation_node::TYPE_CONTAINER, null, 'badges');
+            if (has_capability('moodle/badges:manageownbadges', context_user::instance($USER->id))) {
+                $url = new moodle_url('/badges/mybadges.php');
+                $badges->add('Manage my badges', $url, self::TYPE_SETTING);
+            }
             $badges->add(get_string('preferences'), new moodle_url('/badges/preferences.php'), navigation_node::TYPE_SETTING);
             if (!empty($CFG->badges_allowexternalbackpack)) {
                 $badges->add(get_string('backpackdetails', 'badges'), new moodle_url('/badges/mybackpack.php'), navigation_node::TYPE_SETTING);

@@ -65,6 +65,11 @@ abstract class testing_util {
     protected static $sequencenames = null;
 
     /**
+     *  @var string name of the json file where we store the list of dataroot files to not reset during reset_dataroot.
+     */
+    private static $datarootlistjson = 'originaldatafiles.json';
+
+    /**
      * Returns the testing framework name
      * @static
      * @return string
@@ -584,6 +589,9 @@ abstract class testing_util {
 
         $childclassname = self::get_framework() . '_util';
 
+        // Do not delete automatically installed files.
+        self::skip_original_data_files($childclassname);
+
         $handle = opendir($CFG->dataroot);
         while (false !== ($item = readdir($handle))) {
             if (in_array($item, $childclassname::$datarootskiponreset)) {
@@ -736,6 +744,63 @@ abstract class testing_util {
             } else {
                 unlink($path);
             }
+        }
+
+        $jsonfilepath = $CFG->dataroot . '/' . self::$datarootlistjson;
+        if (file_exists($jsonfilepath)) {
+            // Delete the json file.
+            unlink($jsonfilepath);
+            // Delete the dataroot filedir.
+            remove_dir($CFG->dataroot . '/filedir', false);
+        }
+    }
+
+    /**
+     * Skip the original dataroot files to not been reset.
+     */
+    protected static function skip_original_data_files($childclassname) {
+        global $CFG;
+
+        $jsonfilepath = $CFG->dataroot . '/' . self::$datarootlistjson;
+        if (file_exists($jsonfilepath)) {
+
+            $listfiles = file_get_contents($jsonfilepath);
+
+            // Mark each files as to not be reset.
+            if (!empty($listfiles)) {
+                $originaldatarootfiles = json_decode($listfiles);
+                // Keep the json file. Only drop_dataroot() should delete it.
+                $originaldatarootfiles[] = self::$datarootlistjson;
+                $childclassname::$datarootskiponreset = array_merge($childclassname::$datarootskiponreset,
+                    $originaldatarootfiles);
+            }
+        }
+    }
+
+    /**
+     * Save the list of the original dataroot files into a json file.
+     */
+    protected static function save_original_data_files() {
+        global $CFG;
+
+        $jsonfilepath = $CFG->dataroot . '/' . self::$datarootlistjson;
+
+        // Save the original dataroot files if not done (only executed the first time).
+        if (!file_exists($jsonfilepath)) {
+            $directory = new RecursiveDirectoryIterator($CFG->dataroot . '/filedir');
+            $listfiles = array();
+            foreach (new RecursiveIteratorIterator($directory) as $file) {
+                if ($file->isDir()) {
+                    $listfiles[] = substr($file->getPath(), strlen($CFG->dataroot . '/'));
+                } else {
+                    $listfiles[] = substr($file->getPathName(), strlen($CFG->dataroot . '/'));
+                }
+            }
+
+            // Save the file list in a JSON file.
+            $fp = fopen($jsonfilepath, 'w');
+            fwrite($fp, json_encode($listfiles));
+            fclose($fp);
         }
     }
 }

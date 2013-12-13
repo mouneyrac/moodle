@@ -452,7 +452,7 @@ function grade_get_graded_users_select($report, $course, $userid, $groupid, $inc
     if (!empty($menususpendedusers)) {
         $menu[] = array(get_string('suspendedusers') => $menususpendedusers);
     }
-    $select = new single_select(new moodle_url('/grade/report/'.$report.'/index.php', array('id'=>$course->id)), 'userid', $menu, $userid);
+    $select = new single_select(new moodle_url('/grade/report/'.$report.'/index.php', array('id'=>$course->id)), 'userid', $menu, $userid, null);
     $select->label = $label;
     $select->formid = 'choosegradeuser';
     return $select;

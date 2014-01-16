@@ -29,8 +29,8 @@ $PAGE->set_popup_notification_allowed(false);
 //Get the user theme
 $USER = $DB->get_record('user', array('id'=>$chatuser->userid));
 
-if ($USER->lang) {
-    $SESSION->lang = $USER->lang;
+if ($CFG->lang) {
+    $SESSION->lang = $CFG->lang;
 }
 
 $module = array(

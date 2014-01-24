@@ -51,7 +51,7 @@ if (!$chat_sid = chat_login_user($chat->id, 'header_js', $groupid, $course)) {
     print_error('cantlogin', 'chat');
 }
 
-$params = "chat_id=$id&chat_sid={$chat_sid}";
+$params = "chat_id=$id&chat_sid={$chat_sid}&chat_lang={$SESSION->lang}";
 
 // fallback to the old jsupdate, but allow other update modes
 $updatemode = 'jsupdate';

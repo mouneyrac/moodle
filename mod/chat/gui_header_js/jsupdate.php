@@ -8,6 +8,7 @@ require('../lib.php');
 $chat_sid      = required_param('chat_sid', PARAM_ALPHANUM);
 $chat_lasttime = optional_param('chat_lasttime', 0, PARAM_INT);
 $chat_lastrow  = optional_param('chat_lastrow', 1, PARAM_INT);
+$SESSION->lang = optional_param('chat_lang', 'en', PARAM_ALPHAEXT);
 
 $url = new moodle_url('/mod/chat/gui_header_js/jsupdate.php', array('chat_sid'=>$chat_sid));
 if ($chat_lasttime !== 0) {

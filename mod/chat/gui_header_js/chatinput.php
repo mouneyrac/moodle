@@ -7,6 +7,8 @@ require_once($CFG->dirroot.'/mod/chat/lib.php');
 
 $chat_sid = required_param('chat_sid', PARAM_ALPHANUM);
 $chatid   = required_param('chat_id', PARAM_INT);
+$chatlang = optional_param('chat_lang', 'en', PARAM_ALPHAEXT);
+$SESSION->lang = $chatlang;
 
 if (!$chatuser = $DB->get_record('chat_users', array('sid'=>$chat_sid))) {
     print_error('notlogged', 'chat');
@@ -23,7 +25,8 @@ if (!$cm = get_coursemodule_from_instance('chat', $chat->id, $course->id)) {
     print_error('invalidcoursemodule');
 }
 
-$PAGE->set_url('/mod/chat/gui_header_js/chatinput.php', array('chat_sid'=>$chat_sid, 'chat_id'=>$chatid));
+$PAGE->set_url('/mod/chat/gui_header_js/chatinput.php', array('chat_sid' => $chat_sid, 'chat_id' => $chatid,
+    'chat_lang' => $chatlang));
 $PAGE->set_popup_notification_allowed(false);
 
 //Get the user theme

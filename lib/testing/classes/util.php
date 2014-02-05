@@ -853,15 +853,20 @@ abstract class testing_util {
 
         // Save the original dataroot files if not done (only executed the first time).
         if (!file_exists($jsonfilepath)) {
-            $directory = new RecursiveDirectoryIterator(self::get_dataroot() . '/filedir');
+
             $listfiles = array();
             $listfiles[] = 'filedir/.';
             $listfiles[] = 'filedir/..';
-            foreach (new RecursiveIteratorIterator($directory) as $file) {
-                if ($file->isDir()) {
-                    $listfiles[] = substr($file->getPath(), strlen(self::get_dataroot() . '/'));
-                } else {
-                    $listfiles[] = substr($file->getPathName(), strlen(self::get_dataroot() . '/'));
+
+            $filedir = self::get_dataroot() . '/filedir';
+            if (file_exists($filedir)) {
+                $directory = new RecursiveDirectoryIterator($filedir);
+                foreach (new RecursiveIteratorIterator($directory) as $file) {
+                    if ($file->isDir()) {
+                        $listfiles[] = substr($file->getPath(), strlen(self::get_dataroot() . '/'));
+                    } else {
+                        $listfiles[] = substr($file->getPathName(), strlen(self::get_dataroot() . '/'));
+                    }
                 }
             }
 

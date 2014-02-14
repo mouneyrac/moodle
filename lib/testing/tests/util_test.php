@@ -43,8 +43,7 @@ class core_test_util_testcase extends advanced_testcase {
     /**
      * Init the mock test framework.
      */
-    protected function setUp()
-    {
+    protected function setUp() {
         $this->mockutil = new mock_util();
     }
 
@@ -56,7 +55,8 @@ class core_test_util_testcase extends advanced_testcase {
         $this->mockutil->installjsonfile();
 
         // Check that the json file has been created and contain the init data root filedir file.
-        $this->assertEquals(true, file_exists($this->mockutil->get_dataroot() . '/' . $this->mockutil->get_originaldatafilesjson()));
+        $this->assertEquals(true, file_exists($this->mockutil->get_dataroot() . '/' .
+            $this->mockutil->get_originaldatafilesjson()));
 
         // Create a file in dataroot (Simulate creation of a file when running a test).
         $file = $this->mockutil->get_dataroot() . '/filedir/testfile.txt';
@@ -76,12 +76,14 @@ class core_test_util_testcase extends advanced_testcase {
         $this->assertEquals(1, iterator_count($fi));
 
         // Check that the json file is still here.
-        $this->assertEquals(true, file_exists($this->mockutil->get_dataroot() . '/' . $this->mockutil->get_originaldatafilesjson()));
+        $this->assertEquals(true, file_exists($this->mockutil->get_dataroot() . '/' .
+            $this->mockutil->get_originaldatafilesjson()));
 
         $this->mockutil->dropdataroot();
 
         // Check that there is no json file.
-        $this->assertEquals(false, file_exists($this->mockutil->get_dataroot() . '/' . $this->mockutil->get_originaldatafilesjson()));
+        $this->assertEquals(false, file_exists($this->mockutil->get_dataroot() . '/' .
+            $this->mockutil->get_originaldatafilesjson()));
 
         // Check there is not filedir directory.
         $this->assertEquals(0, file_exists($this->mockutil->get_dataroot() . '/filedir'));
@@ -108,7 +110,9 @@ class mock_util extends testing_util {
      */
     protected static $datarootskipondrop = array('.', '..', 'lock', 'webrunner.xml');
 
-    // We are using PHPunit dataroot to save our mock dataroot.
+    /**
+     * @var string We are using PHPunit dataroot to save our mock dataroot.
+     */
     protected $mockdataroot;
 
     /**

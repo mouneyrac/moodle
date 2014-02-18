@@ -75,6 +75,11 @@ abstract class testing_util {
     private static $originaldatafilesjson = 'originaldatafiles.json';
 
     /**
+     * @var boolean set to true once $originaldatafilesjson file is created.
+     */
+    private static $originaldatafilesjsonadded = false;
+
+    /**
      * Return the name of the JSON file containing the init filenames.
      *
      * @static
@@ -833,12 +838,13 @@ abstract class testing_util {
             $listfiles = file_get_contents($jsonfilepath);
 
             // Mark each files as to not be reset.
-            if (!empty($listfiles)) {
+            if (!empty($listfiles) && !self::$originaldatafilesjsonadded) {
                 $originaldatarootfiles = json_decode($listfiles);
                 // Keep the json file. Only drop_dataroot() should delete it.
                 $originaldatarootfiles[] = self::$originaldatafilesjson;
                 $utilclassname::$datarootskiponreset = array_merge($utilclassname::$datarootskiponreset,
                     $originaldatarootfiles);
+                self::$originaldatafilesjsonadded = true;
             }
         }
     }

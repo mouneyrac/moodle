@@ -9,7 +9,7 @@
  * @license http://www.gnu.org/copyleft/gpl.html GNU Public License
  * @package moodlecore
  */
-
+date_default_timezone_set('Australia/Perth');
 ////// DOCUMENTATION IN PHPDOC FORMAT FOR MOODLE GLOBALS AND COMMON OBJECT TYPES /////////////
 /**
  * $USER is a global instance of a typical $user record.

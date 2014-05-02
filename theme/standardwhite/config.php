@@ -4,8 +4,7 @@
 /// This file contains a few configuration variables that control 
 /// how Moodle uses this theme.
 ////////////////////////////////////////////////////////////////////////////////
-
-
+$THEME = new stdClass();
 $THEME->sheets = array('gradients');
 
 /// This variable is an array containing the names of all the 

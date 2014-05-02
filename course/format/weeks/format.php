@@ -104,6 +104,7 @@
         echo '<td class="content">';
         
         echo '<div class="summary">';
+        $summaryformatoptions = new stdClass();
         $summaryformatoptions->noclean = true;
         echo format_text($thissection->summary, FORMAT_HTML, $summaryformatoptions);
 
@@ -199,6 +200,7 @@
                 print_heading($weekperiod, null, 3, 'weekdates');
 
                 echo '<div class="summary">';
+                $summaryformatoptions = new stdClass();
                 $summaryformatoptions->noclean = true;
                 echo format_text($thissection->summary, FORMAT_HTML, $summaryformatoptions);
 

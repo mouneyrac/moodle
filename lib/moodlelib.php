@@ -8534,6 +8534,9 @@ function setup_lang_from_browser() {
             continue; // language not allowed, try next one
         }
         if (file_exists($CFG->dataroot .'/lang/'. $lang) or file_exists($CFG->dirroot .'/lang/'. $lang)) {
+            if(empty($SESSION)) {
+                $SESSION = new stdClass();
+            }
             $SESSION->lang = $lang; /// Lang exists, set it in session
             break; /// We have finished. Go out
         }

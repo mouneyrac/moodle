@@ -2126,7 +2126,7 @@ function print_course($course, $highlightterms = '') {
     echo $enrol->get_access_icons($course);
 
     echo '</div><div class="summary">';
-    $options = NULL;
+    $options = new stdClass();
     $options->noclean = true;
     $options->para = false;
     echo highlight($highlightterms, format_text($course->summary, FORMAT_MOODLE, $options,  $course->id));

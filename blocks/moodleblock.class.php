@@ -431,6 +431,7 @@ class block_base {
         
         
         if (!isset($this->str)) {
+            $this->str = new stdClass();
             $this->str->delete    = get_string('delete');
             $this->str->moveup    = get_string('moveup');
             $this->str->movedown  = get_string('movedown');

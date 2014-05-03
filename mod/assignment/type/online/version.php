@@ -4,7 +4,7 @@
 //  Code fragment to define the module version etc.
 //  This fragment is called by /admin/index.php
 ////////////////////////////////////////////////////////////////////////////////
-
+$plugin = new stdClass();
 $plugin->version   = 2005042900;
 $plugin->requires  = 2007101000;
 

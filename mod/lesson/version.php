@@ -7,7 +7,7 @@
  * @license http://www.gnu.org/copyleft/gpl.html GNU Public License
  * @package lesson
  **/
-
+$module = new stdClass();
 $module->version  = 2008112601;  // The current module version (Date: YYYYMMDDXX)
 $module->requires = 2007101509;  // Requires this Moodle version
 $module->cron     = 0;           // Period for cron to check this module (secs)

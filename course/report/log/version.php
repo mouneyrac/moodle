@@ -22,7 +22,7 @@
 //          http://www.gnu.org/copyleft/gpl.html                         //
 //                                                                       //
 ///////////////////////////////////////////////////////////////////////////
-
+$plugin = new stdClass();
 $plugin->version  = 2007101504;
 $plugin->requires = 2007101532;
 

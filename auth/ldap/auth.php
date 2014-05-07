@@ -42,6 +42,9 @@ class auth_plugin_ldap extends auth_plugin_base {
         $this->authtype = 'ldap';
         $this->config = get_config('auth/ldap');
         if (empty($this->config->ldapencoding)) {
+            if(empty($this->config)) {
+                $this->config = new stdClass();
+            }
             $this->config->ldapencoding = 'utf-8';
         }
         if (empty($this->config->user_type)) {

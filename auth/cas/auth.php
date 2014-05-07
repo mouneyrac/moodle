@@ -27,6 +27,9 @@ class auth_plugin_cas extends auth_plugin_base {
         $this->authtype = 'cas';
         $this->config = get_config('auth/cas');
         if (empty($this->config->ldapencoding)) {
+            if(empty($this->config)) {
+                $this->config = new stdClass();
+            }
             $this->config->ldapencoding = 'utf-8';
         }
         if (empty($this->config->user_type)) {

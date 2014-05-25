@@ -296,6 +296,9 @@ httpsrequired();
     }
 
     if (empty($frm->username) && $authsequence[0] != 'shibboleth') {  // See bug 5184
+        if (empty($frm)) {
+           $frm = new stdClass();
+        }
         if (!empty($_GET["username"])) {
             $frm->username = $_GET["username"];
         } else {

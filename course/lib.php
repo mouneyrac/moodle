@@ -1010,6 +1010,9 @@ function get_array_of_activities($courseid) {
                    if (empty($rawmods[$seq])) {
                        continue;
                    }
+                   if (empty($mod[$seq])) {
+                       $mod[$seq] = new stdClass();
+                   }
                    $mod[$seq]->id               = $rawmods[$seq]->instance;
                    $mod[$seq]->cm               = $rawmods[$seq]->id;
                    $mod[$seq]->mod              = $rawmods[$seq]->modname;
@@ -2688,6 +2691,7 @@ function make_editing_buttons($mod, $absolute=false, $moveselect=true, $indent=-
     }
 
     if (!isset($str)) {
+        $str = new stdClass();
         $str->delete         = get_string("delete");
         $str->move           = get_string("move");
         $str->moveup         = get_string("moveup");

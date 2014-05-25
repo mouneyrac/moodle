@@ -438,6 +438,9 @@
 		
 		
         // Print overview table
+        if (empty($table)) {
+            $table = new stdClass();
+        }
         $table->tablealign = 'center';
         $table->cellpadding = 5;
         $table->cellspacing = 0;

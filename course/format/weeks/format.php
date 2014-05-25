@@ -153,6 +153,7 @@
 
         } else {
             unset($thissection);
+            $thissection = new stdClass();
             $thissection->course = $course->id;   // Create a new week structure
             $thissection->section = $section;
             $thissection->summary = '';

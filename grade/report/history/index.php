@@ -75,7 +75,11 @@ if ($data = $mform->get_data()) {
     );
 }
 
-$table = new \gradereport_history\output\tablelog('gradereport_history', $context, $url, $filters, $download, $page);
+$perpage = get_config('moodle', 'grade_report_historyperpage');
+if (empty($perpage)) {
+    $perpage = 50;
+}
+$table = new \gradereport_history\output\tablelog('gradereport_history', $context, $url, $filters, $download, $page, $perpage);
 
 $names = array();
 foreach ($table->get_selected_users() as $key => $user) {

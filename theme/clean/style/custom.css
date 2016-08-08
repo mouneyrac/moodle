@@ -16,6 +16,43 @@ a.logo {
     float: right;
 }
 
+.breadcrumb .dropdown-toggle { height: 16px; width: 16px; }
+
+.logininfo > ul { list-style: none; }
+.logininfo > ul > li { float: left; padding-left: 1em; }
+.logininfo > ul > li > a {
+    padding: 10px 5px;
+    display: block;
+    color: inherit;
+    text-decoration: none;
+}
+.logininfo > ul > li > a:hover {
+    text-decoration: none;
+}
+.logininfo .smallicon { height: 16px; width: 16px; }
+
+.breadcrumb li .current { font-weight: bold;}
+
+h1 {
+    font-size: 32px;
+}
+h2 {
+    font-size: 28px;
+}
+h3 {
+    font-size: 24px;
+}
+h4 {
+    font-size: 20px;
+}
+h5 {
+    font-size: 16px;
+}
+h6 {
+    font-size: 12px;
+}
+
 /* Custom CSS Settings
 -------------------------*/
 [[setting:customcss]]
+

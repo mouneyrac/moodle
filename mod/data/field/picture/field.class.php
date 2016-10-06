@@ -67,6 +67,13 @@ class data_field_picture extends data_field_base {
                     }
                 }
                 $alttext = $content->content1;
+            } else {
+                $content = new stdClass();
+                $content->fieldid  = $this->field->id;
+                $content->recordid = $recordid;
+                $id = $DB->insert_record('data_content', $content);
+                $content = $DB->get_record('data_content', array('id'=>$id));
+                file_prepare_draft_area($itemid, $this->context->id, 'mod_data', 'content', $content->id);
             }
         } else {
             $itemid = file_get_unused_draft_itemid();
